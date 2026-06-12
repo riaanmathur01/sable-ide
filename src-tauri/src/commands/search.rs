@@ -1,0 +1,208 @@
+//! Project-wide text search, built on ripgrep's own crates (`ignore` for
+//! the gitignore-aware parallel walk, `grep-searcher`/`grep-regex` for
+//! matching) rather than shelling out to an `rg` binary — so search works
+//! on every machine with nothing extra installed.
+//!
+//! Results stream to the frontend in batches over `search:results`
+//! events; `search:done` closes a search. Each search gets an id from a
+//! shared generation counter, and worker threads abandon the walk the
+//! moment a newer search starts.
+
+use grep_regex::RegexMatcherBuilder;
+use grep_searcher::sinks::UTF8;
+use grep_searcher::{BinaryDetection, SearcherBuilder};
+use ignore::{WalkBuilder, WalkState};
+use serde::Serialize;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::mpsc::RecvTimeoutError;
+use std::sync::Arc;
+use std::time::Duration;
+use tauri::{AppHandle, Emitter, State};
+
+/// Stop after this many matches — a too-broad query on a big repo should
+/// not flood the UI.
+const MATCH_LIMIT: usize = 500;
+const BATCH_SIZE: usize = 50;
+const BATCH_FLUSH_INTERVAL: Duration = Duration::from_millis(60);
+
+pub struct SearchState(pub Arc<AtomicU64>);
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchMatch {
+    pub path: String,
+    pub line_number: u64,
+    pub preview: String,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SearchBatch {
+    search_id: u64,
+    matches: Vec<SearchMatch>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SearchDone {
+    search_id: u64,
+    total: usize,
+    limit_hit: bool,
+}
+
+/// The query is treated as literal text, not a regex.
+fn escape_regex(literal: &str) -> String {
+    let mut escaped = String::with_capacity(literal.len() * 2);
+    for character in literal.chars() {
+        if r"\.+*?()|[]{}^$#&-~".contains(character) {
+            escaped.push('\\');
+        }
+        escaped.push(character);
+    }
+    escaped
+}
+
+/// Kick off a streaming search and return its id immediately.
+#[tauri::command]
+pub fn search_workspace(
+    app: AppHandle,
+    state: State<SearchState>,
+    root: String,
+    query: String,
+) -> Result<u64, String> {
+    // Starting (or clearing) a search invalidates the previous one.
+    let search_id = state.0.fetch_add(1, Ordering::SeqCst) + 1;
+
+    if query.trim().is_empty() {
+        let _ = app.emit(
+            "search:done",
+            SearchDone {
+                search_id,
+                total: 0,
+                limit_hit: false,
+            },
+        );
+        return Ok(search_id);
+    }
+
+    // Smart case: insensitive unless the query contains an uppercase letter.
+    let case_insensitive = !query.chars().any(|character| character.is_uppercase());
+    let matcher = RegexMatcherBuilder::new()
+        .case_insensitive(case_insensitive)
+        .build(&escape_regex(&query))
+        .map_err(|error| format!("Could not build search pattern: {error}"))?;
+
+    let generation = state.0.clone();
+    let total_matches = Arc::new(AtomicUsize::new(0));
+    let (match_sender, match_receiver) = std::sync::mpsc::channel::<SearchMatch>();
+
+    // Collector thread: batches matches into events so the UI gets a few
+    // updates per second instead of one event per match.
+    let collector_app = app.clone();
+    let collector_total = total_matches.clone();
+    std::thread::spawn(move || {
+        let mut batch: Vec<SearchMatch> = Vec::new();
+        loop {
+            match match_receiver.recv_timeout(BATCH_FLUSH_INTERVAL) {
+                Ok(search_match) => {
+                    batch.push(search_match);
+                    if batch.len() >= BATCH_SIZE {
+                        let _ = collector_app.emit(
+                            "search:results",
+                            SearchBatch {
+                                search_id,
+                                matches: std::mem::take(&mut batch),
+                            },
+                        );
+                    }
+                }
+                Err(RecvTimeoutError::Timeout) => {
+                    if !batch.is_empty() {
+                        let _ = collector_app.emit(
+                            "search:results",
+                            SearchBatch {
+                                search_id,
+                                matches: std::mem::take(&mut batch),
+                            },
+                        );
+                    }
+                }
+                Err(RecvTimeoutError::Disconnected) => {
+                    // Walk finished; flush what's left and close out.
+                    if !batch.is_empty() {
+                        let _ = collector_app.emit(
+                            "search:results",
+                            SearchBatch {
+                                search_id,
+                                matches: std::mem::take(&mut batch),
+                            },
+                        );
+                    }
+                    let total = collector_total.load(Ordering::Relaxed);
+                    let _ = collector_app.emit(
+                        "search:done",
+                        SearchDone {
+                            search_id,
+                            total: total.min(MATCH_LIMIT),
+                            limit_hit: total >= MATCH_LIMIT,
+                        },
+                    );
+                    break;
+                }
+            }
+        }
+    });
+
+    // Walker thread pool: gitignore-aware parallel traversal.
+    std::thread::spawn(move || {
+        let walker = WalkBuilder::new(&root).build_parallel();
+        walker.run(|| {
+            let matcher = matcher.clone();
+            let match_sender = match_sender.clone();
+            let generation = generation.clone();
+            let total_matches = total_matches.clone();
+            Box::new(move |entry_result| {
+                // A newer search started, or we have enough — stop walking.
+                if generation.load(Ordering::Relaxed) != search_id
+                    || total_matches.load(Ordering::Relaxed) >= MATCH_LIMIT
+                {
+                    return WalkState::Quit;
+                }
+                let Ok(entry) = entry_result else {
+                    return WalkState::Continue;
+                };
+                if !entry.file_type().is_some_and(|kind| kind.is_file()) {
+                    return WalkState::Continue;
+                }
+
+                let file_path = entry.path().to_path_buf();
+                let path_string = file_path.to_string_lossy().into_owned();
+                let mut searcher = SearcherBuilder::new()
+                    .binary_detection(BinaryDetection::quit(0))
+                    .line_number(true)
+                    .build();
+                let _ = searcher.search_path(
+                    &matcher,
+                    &file_path,
+                    UTF8(|line_number, line| {
+                        if total_matches.fetch_add(1, Ordering::Relaxed) >= MATCH_LIMIT {
+                            return Ok(false); // stop searching this file
+                        }
+                        let preview: String =
+                            line.trim_end().chars().take(250).collect();
+                        let _ = match_sender.send(SearchMatch {
+                            path: path_string.clone(),
+                            line_number,
+                            preview,
+                        });
+                        Ok(true)
+                    }),
+                );
+                WalkState::Continue
+            })
+        });
+        // All sender clones drop here, disconnecting the collector.
+    });
+
+    Ok(search_id)
+}

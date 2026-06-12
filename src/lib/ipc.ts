@@ -75,6 +75,23 @@ export function killTerminal(id: string): Promise<void> {
   return invoke<void>("kill_terminal", { id });
 }
 
+export interface SearchMatch {
+  path: string;
+  lineNumber: number;
+  preview: string;
+}
+
+/**
+ * Start a streaming workspace search; returns the search id. Matches
+ * arrive as `search:results` events, completion as `search:done`.
+ */
+export function searchWorkspace(
+  root: string,
+  query: string,
+): Promise<number> {
+  return invoke<number>("search_workspace", { root, query });
+}
+
 /** Parent directory of an absolute path, handling both separators. */
 export function parentDirectoryOf(path: string): string {
   const lastSeparator = Math.max(

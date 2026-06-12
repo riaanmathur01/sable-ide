@@ -15,11 +15,19 @@ import { runActiveFile } from "./runFile";
  *   Cmd/Ctrl+`  toggle terminal (works when the OS lets it through)
  *   Cmd/Ctrl+B  toggle sidebar
  *   Cmd/Ctrl+W  close active tab
+ *   Cmd/Ctrl+Shift+F  search in workspace
  */
 export function useGlobalKeybindings() {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (!(event.metaKey || event.ctrlKey)) return;
+
+      // Shift combos first: event.key is uppercase when Shift is held.
+      if (event.shiftKey && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        useUiStore.getState().setSidebarView("search");
+        return;
+      }
 
       switch (event.key) {
         case "s": {

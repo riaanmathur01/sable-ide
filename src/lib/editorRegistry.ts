@@ -70,6 +70,29 @@ export function isModelDirty(path: string): boolean {
   );
 }
 
+/**
+ * Move the cursor to a line and center it — used by search results.
+ * The model switch after openFile() is asynchronous (and Monaco itself
+ * may still be lazy-loading), so this retries across animation frames
+ * until the right model is active.
+ */
+export function revealPosition(path: string, lineNumber: number) {
+  let attemptsLeft = 60; // ~1s of frames, covers Monaco's first load
+  const tryReveal = () => {
+    const editor = editorInstance;
+    const model = editor?.getModel();
+    const targetUri = monacoInstance?.Uri.parse(path).toString();
+    if (editor && model && targetUri && model.uri.toString() === targetUri) {
+      editor.setPosition({ lineNumber, column: 1 });
+      editor.revealLineInCenter(lineNumber);
+      editor.focus();
+      return;
+    }
+    if (attemptsLeft-- > 0) requestAnimationFrame(tryReveal);
+  };
+  tryReveal();
+}
+
 /** Dispose the model on tab close so reopening reloads from disk. */
 export function disposeModel(path: string) {
   const model = modelForPath(path);

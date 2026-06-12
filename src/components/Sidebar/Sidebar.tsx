@@ -1,10 +1,17 @@
 import { useState } from "react";
-import { FilePlus, FolderOpen, FolderPlus } from "lucide-react";
+import {
+  FilePlus,
+  Files,
+  FolderOpen,
+  FolderPlus,
+  Search,
+} from "lucide-react";
 import { open as openNativeDialog } from "@tauri-apps/plugin-dialog";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import { useUiStore } from "../../store/uiStore";
 import { createDirectory, createFile } from "../../lib/ipc";
 import { FileTree } from "./FileTree";
+import { SearchPanel } from "./SearchPanel";
 import "./Sidebar.css";
 
 type PendingCreate = "file" | "folder" | null;
@@ -19,6 +26,8 @@ export function Sidebar() {
   const openWorkspace = useWorkspaceStore((state) => state.openWorkspace);
   const refreshDirectory = useWorkspaceStore((state) => state.refreshDirectory);
   const setLastError = useUiStore((state) => state.setLastError);
+  const sidebarView = useUiStore((state) => state.sidebarView);
+  const setSidebarView = useUiStore((state) => state.setSidebarView);
 
   const [pendingCreate, setPendingCreate] = useState<PendingCreate>(null);
   const [pendingName, setPendingName] = useState("");
@@ -62,28 +71,53 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <span className="sidebar-title">{rootName ?? "Explorer"}</span>
-        {rootPath && (
-          <span className="sidebar-actions">
-            <button
-              className="icon-button"
-              title="New File"
-              onClick={() => setPendingCreate("file")}
-            >
-              <FilePlus size={15} strokeWidth={1.5} />
-            </button>
-            <button
-              className="icon-button"
-              title="New Folder"
-              onClick={() => setPendingCreate("folder")}
-            >
-              <FolderPlus size={15} strokeWidth={1.5} />
-            </button>
-          </span>
-        )}
+        <span className="sidebar-title">
+          {sidebarView === "search" ? "Search" : (rootName ?? "Explorer")}
+        </span>
+        <span className="sidebar-actions">
+          <button
+            className={
+              sidebarView === "files" ? "icon-button active" : "icon-button"
+            }
+            title="Explorer"
+            onClick={() => setSidebarView("files")}
+          >
+            <Files size={15} strokeWidth={1.5} />
+          </button>
+          <button
+            className={
+              sidebarView === "search" ? "icon-button active" : "icon-button"
+            }
+            title="Search (⇧⌘F)"
+            onClick={() => setSidebarView("search")}
+          >
+            <Search size={15} strokeWidth={1.5} />
+          </button>
+          {rootPath && sidebarView === "files" && (
+            <>
+              <span className="sidebar-actions-divider" />
+              <button
+                className="icon-button"
+                title="New File"
+                onClick={() => setPendingCreate("file")}
+              >
+                <FilePlus size={15} strokeWidth={1.5} />
+              </button>
+              <button
+                className="icon-button"
+                title="New Folder"
+                onClick={() => setPendingCreate("folder")}
+              >
+                <FolderPlus size={15} strokeWidth={1.5} />
+              </button>
+            </>
+          )}
+        </span>
       </div>
 
-      {pendingCreate && (
+      {sidebarView === "search" && <SearchPanel />}
+
+      {sidebarView === "files" && pendingCreate && (
         <input
           className="sidebar-create-input"
           autoFocus
@@ -98,18 +132,21 @@ export function Sidebar() {
         />
       )}
 
-      {rootPath ? (
-        <FileTree />
-      ) : (
-        <div className="sidebar-empty">
-          <FolderOpen size={28} strokeWidth={1.25} aria-hidden />
-          <p>No folder opened</p>
-          <button className="sidebar-open-button" onClick={pickFolder}>
-            Open Folder
-          </button>
-          <p className="sidebar-empty-hint">or drag a folder into the window</p>
-        </div>
-      )}
+      {sidebarView === "files" &&
+        (rootPath ? (
+          <FileTree />
+        ) : (
+          <div className="sidebar-empty">
+            <FolderOpen size={28} strokeWidth={1.25} aria-hidden />
+            <p>No folder opened</p>
+            <button className="sidebar-open-button" onClick={pickFolder}>
+              Open Folder
+            </button>
+            <p className="sidebar-empty-hint">
+              or drag a folder into the window
+            </p>
+          </div>
+        ))}
     </aside>
   );
 }

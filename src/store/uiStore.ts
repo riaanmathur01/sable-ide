@@ -9,12 +9,16 @@ interface CursorPosition {
   column: number;
 }
 
+export type SidebarView = "files" | "search";
+
 interface UiState {
   sidebarVisible: boolean;
+  sidebarView: SidebarView;
   terminalVisible: boolean;
   lastError: string | null;
   cursorPosition: CursorPosition | null;
   toggleSidebar: () => void;
+  setSidebarView: (view: SidebarView) => void;
   toggleTerminal: () => void;
   setTerminalVisible: (visible: boolean) => void;
   setLastError: (message: string | null) => void;
@@ -25,6 +29,9 @@ let errorDismissTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const useUiStore = create<UiState>((set) => ({
   sidebarVisible: true,
+  sidebarView: "files",
+  setSidebarView: (view) =>
+    set({ sidebarView: view, sidebarVisible: true }),
   terminalVisible: false,
   lastError: null,
   cursorPosition: null,

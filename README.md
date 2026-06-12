@@ -12,9 +12,9 @@ Everything runs locally.
 | 0 | Scaffold, dark theme tokens, shell layout | ✅ done |
 | 1 | File explorer (native open-folder dialog, virtualized tree) | ✅ done |
 | 2 | Monaco editor, tabs, save | ✅ done |
-| 3 | Command palette & keybindings | — |
-| 4 | Integrated terminal (portable-pty + xterm.js) | — |
-| 5 | File operations, watcher, project-wide search | — |
+| 3 | Command palette & keybindings | ⏳ partial (core shortcuts done; palette pending) |
+| 4 | Integrated terminal (portable-pty + xterm.js) | ✅ done |
+| 5 | File operations, watcher, project-wide search | ✅ done |
 
 ## Prerequisites
 
@@ -51,6 +51,13 @@ Frontend state is held in small [zustand](https://github.com/pmndrs/zustand)
 stores under `src/store/`. Design tokens (colors, typography, motion) are
 CSS variables in `src/lib/theme.css` — components never hard-code colors.
 
+**Search: ripgrep's crates, not the ripgrep binary.** Project search uses
+`ignore` (gitignore-aware parallel walk) + `grep-searcher`/`grep-regex`
+(the matching engine ripgrep itself is built on) compiled into the app,
+rather than shelling out to an `rg` binary. Same speed class, but it
+works on every machine with nothing extra installed, and results stream
+to the UI in batches over Tauri events with stale-search cancellation.
+
 **File tree: custom virtualization instead of react-arborist.** The tree
 only ever renders the rows inside the viewport (fixed 24px rows, windowed
 on scroll), and directory contents load lazily from Rust one level at a
@@ -60,7 +67,14 @@ controlled-tree model fights the lazy-loading-from-Rust design.
 
 ## Keyboard shortcuts
 
-Added in Phase 3.
+| Shortcut | Action |
+| -------- | ------ |
+| `Cmd/Ctrl+S` | Save (auto-save also runs ~0.8s after typing stops) |
+| `Cmd/Ctrl+R` | Run the active file in the terminal |
+| `Cmd/Ctrl+J` (or `` Cmd+` ``) | Toggle terminal |
+| `Cmd/Ctrl+B` | Toggle sidebar |
+| `Cmd/Ctrl+W` | Close tab |
+| `Cmd/Ctrl+Shift+F` | Search in workspace |
 
 ## Bundle size
 

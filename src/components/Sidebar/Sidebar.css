@@ -49,6 +49,18 @@
   color: var(--text);
 }
 
+.icon-button.active {
+  color: var(--accent);
+}
+
+.sidebar-actions-divider {
+  width: 1px;
+  height: 14px;
+  margin: 0 3px;
+  background: var(--border);
+  align-self: center;
+}
+
 .sidebar-create-input {
   margin: 0 8px 6px;
   padding: 4px 8px;

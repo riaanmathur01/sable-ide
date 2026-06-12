@@ -8,7 +8,8 @@ mod commands;
 mod watcher;
 
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::atomic::AtomicU64;
+use std::sync::{Arc, Mutex};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -18,6 +19,7 @@ pub fn run() {
         .manage(commands::terminal::TerminalState(Mutex::new(
             HashMap::new(),
         )))
+        .manage(commands::search::SearchState(Arc::new(AtomicU64::new(0))))
         .invoke_handler(tauri::generate_handler![
             commands::fs::read_directory,
             commands::fs::read_file,
@@ -31,6 +33,7 @@ pub fn run() {
             commands::terminal::write_terminal,
             commands::terminal::resize_terminal,
             commands::terminal::kill_terminal,
+            commands::search::search_workspace,
             watcher::watch_workspace,
         ])
         .run(tauri::generate_context!())

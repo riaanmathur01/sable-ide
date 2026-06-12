@@ -7,7 +7,8 @@ import { TerminalPanel } from "./components/Terminal/TerminalPanel";
 import { StatusBar } from "./components/StatusBar/StatusBar";
 import { useUiStore } from "./store/uiStore";
 import { useWorkspaceStore } from "./store/workspaceStore";
-import { isDirectory } from "./lib/ipc";
+import { useSearchStore } from "./store/searchStore";
+import { isDirectory, type SearchMatch } from "./lib/ipc";
 import { useGlobalKeybindings } from "./lib/useGlobalKeybindings";
 import "./App.css";
 
@@ -37,6 +38,30 @@ function App() {
       unlistenPromise.then((unlisten) => unlisten());
     };
   }, [applyExternalChanges]);
+
+  // Streaming search results from the Rust side.
+  useEffect(() => {
+    const unlistenBatch = listen<{ searchId: number; matches: SearchMatch[] }>(
+      "search:results",
+      (event) =>
+        useSearchStore
+          .getState()
+          .receiveBatch(event.payload.searchId, event.payload.matches),
+    );
+    const unlistenDone = listen<{
+      searchId: number;
+      total: number;
+      limitHit: boolean;
+    }>("search:done", (event) =>
+      useSearchStore
+        .getState()
+        .finishSearch(event.payload.searchId, event.payload.limitHit),
+    );
+    return () => {
+      unlistenBatch.then((unlisten) => unlisten());
+      unlistenDone.then((unlisten) => unlisten());
+    };
+  }, []);
 
   // Native drag-and-drop: dropping a folder anywhere on the window opens
   // it as the workspace. The OS gives us real paths (unlike browser DnD),
