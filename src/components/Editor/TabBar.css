@@ -8,6 +8,34 @@
   flex-shrink: 0;
 }
 
+.tab-bar-actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding: 0 8px;
+  position: sticky;
+  right: 0;
+  background: var(--bg-panel);
+}
+
+.tab-bar-run {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.tab-bar-run:hover {
+  background: var(--bg-elevated);
+  color: var(--accent);
+}
+
 .editor-tab {
   display: flex;
   align-items: center;

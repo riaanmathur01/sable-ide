@@ -16,6 +16,7 @@ interface UiState {
   cursorPosition: CursorPosition | null;
   toggleSidebar: () => void;
   toggleTerminal: () => void;
+  setTerminalVisible: (visible: boolean) => void;
   setLastError: (message: string | null) => void;
   setCursorPosition: (position: CursorPosition | null) => void;
 }
@@ -32,6 +33,7 @@ export const useUiStore = create<UiState>((set) => ({
     set((state) => ({ sidebarVisible: !state.sidebarVisible })),
   toggleTerminal: () =>
     set((state) => ({ terminalVisible: !state.terminalVisible })),
+  setTerminalVisible: (visible) => set({ terminalVisible: visible }),
   setLastError: (message) => {
     set({ lastError: message });
     // Errors are transient: auto-dismiss so the status bar stays calm.

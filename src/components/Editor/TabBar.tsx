@@ -1,5 +1,6 @@
-import { X } from "lucide-react";
+import { Play, X } from "lucide-react";
 import { useTabsStore } from "../../store/tabsStore";
+import { runActiveFile } from "../../lib/runFile";
 import "./TabBar.css";
 
 /**
@@ -44,6 +45,15 @@ export function TabBar() {
           </span>
         </div>
       ))}
+      <div className="tab-bar-actions">
+        <button
+          className="tab-bar-run"
+          title="Run File (⌘R)"
+          onClick={() => runActiveFile()}
+        >
+          <Play size={14} strokeWidth={1.5} />
+        </button>
+      </div>
     </div>
   );
 }

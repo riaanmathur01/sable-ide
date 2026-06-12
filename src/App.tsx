@@ -3,10 +3,12 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { EditorArea } from "./components/Editor/EditorArea";
+import { TerminalPanel } from "./components/Terminal/TerminalPanel";
 import { StatusBar } from "./components/StatusBar/StatusBar";
 import { useUiStore } from "./store/uiStore";
 import { useWorkspaceStore } from "./store/workspaceStore";
 import { isDirectory } from "./lib/ipc";
+import { useGlobalKeybindings } from "./lib/useGlobalKeybindings";
 import "./App.css";
 
 /**
@@ -22,6 +24,8 @@ function App() {
     (state) => state.applyExternalChanges,
   );
   const [isDropTarget, setIsDropTarget] = useState(false);
+
+  useGlobalKeybindings();
 
   // The Rust watcher reports which directories changed on disk (already
   // debounced); refresh whichever of them the tree has loaded.
@@ -64,7 +68,10 @@ function App() {
     <div className="app-shell">
       <div className="app-main">
         {sidebarVisible && <Sidebar />}
-        <EditorArea />
+        <div className="editor-column">
+          <EditorArea />
+          <TerminalPanel />
+        </div>
       </div>
       <StatusBar />
       {isDropTarget && (

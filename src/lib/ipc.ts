@@ -50,6 +50,31 @@ export function watchWorkspace(path: string): Promise<void> {
   return invoke<void>("watch_workspace", { path });
 }
 
+export function createTerminal(
+  id: string,
+  cols: number,
+  rows: number,
+  cwd: string | null,
+): Promise<void> {
+  return invoke<void>("create_terminal", { id, cols, rows, cwd });
+}
+
+export function writeTerminal(id: string, data: string): Promise<void> {
+  return invoke<void>("write_terminal", { id, data });
+}
+
+export function resizeTerminal(
+  id: string,
+  cols: number,
+  rows: number,
+): Promise<void> {
+  return invoke<void>("resize_terminal", { id, cols, rows });
+}
+
+export function killTerminal(id: string): Promise<void> {
+  return invoke<void>("kill_terminal", { id });
+}
+
 /** Parent directory of an absolute path, handling both separators. */
 export function parentDirectoryOf(path: string): string {
   const lastSeparator = Math.max(

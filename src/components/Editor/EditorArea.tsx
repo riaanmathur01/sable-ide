@@ -1,10 +1,11 @@
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy } from "react";
 import { TabBar } from "./TabBar";
 import { useTabsStore } from "../../store/tabsStore";
 import "./EditorArea.css";
 
 // Monaco (and its workers) live in their own chunks, fetched the first
 // time a file opens — the app shell cold-starts without any of it.
+// (Cmd/Ctrl+S and the rest live in lib/useGlobalKeybindings.)
 const MonacoPane = lazy(() => import("./MonacoPane"));
 
 /**
@@ -13,20 +14,6 @@ const MonacoPane = lazy(() => import("./MonacoPane"));
  */
 export function EditorArea() {
   const hasOpenTabs = useTabsStore((state) => state.tabs.length > 0);
-
-  // Window-level Cmd/Ctrl+S so saving works even when the editor isn't
-  // focused (e.g. right after clicking around the tree).
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key === "s") {
-        event.preventDefault();
-        const { activePath, saveTab } = useTabsStore.getState();
-        if (activePath) saveTab(activePath);
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
 
   return (
     <main className="editor-area">
