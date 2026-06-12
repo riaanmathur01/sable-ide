@@ -10,7 +10,7 @@ Everything runs locally.
 | Phase | Scope | State |
 | ----- | ----- | ----- |
 | 0 | Scaffold, dark theme tokens, shell layout | ✅ done |
-| 1 | File explorer (native open-folder dialog, virtualized tree) | ⏳ next |
+| 1 | File explorer (native open-folder dialog, virtualized tree) | ✅ done |
 | 2 | Monaco editor, tabs, save | — |
 | 3 | Command palette & keybindings | — |
 | 4 | Integrated terminal (portable-pty + xterm.js) | — |
@@ -50,6 +50,13 @@ as Tauri events rather than blocking calls.
 Frontend state is held in small [zustand](https://github.com/pmndrs/zustand)
 stores under `src/store/`. Design tokens (colors, typography, motion) are
 CSS variables in `src/lib/theme.css` — components never hard-code colors.
+
+**File tree: custom virtualization instead of react-arborist.** The tree
+only ever renders the rows inside the viewport (fixed 24px rows, windowed
+on scroll), and directory contents load lazily from Rust one level at a
+time. That's ~120 lines in `FileTree.tsx`; react-arborist would add a
+dependency plus drag-to-reorder machinery we don't need, and its
+controlled-tree model fights the lazy-loading-from-Rust design.
 
 ## Keyboard shortcuts
 
