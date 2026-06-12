@@ -1,0 +1,55 @@
+/*
+ * Sable design tokens — the single source of truth for color, type, and
+ * motion. Components must reference these variables; never hard-code
+ * colors elsewhere.
+ */
+
+:root {
+  /* Color — calm, near-black dark theme. One accent, everything else grey. */
+  --bg-base: #0d0d0f; /* app background, deepest layer */
+  --bg-panel: #161618; /* sidebar, terminal, panels */
+  --bg-elevated: #1e1e22; /* hover, active tab, inputs */
+  --border: #2a2a30; /* 1px dividers — subtle, never harsh */
+  --text: #e6e6e9; /* primary text */
+  --text-muted: #8a8a93; /* secondary / inactive */
+  --accent: #7c93ff; /* active states, focus rings, caret */
+  --danger: #f87171; /* delete / errors */
+
+  /* Typography */
+  --font-ui: -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", monospace;
+  --font-size-ui: 13px;
+  --font-size-status: 12px;
+
+  /* Motion — subtle only, nothing bouncy */
+  --transition-fast: 120ms ease;
+  --transition-base: 160ms ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-ui);
+  -webkit-font-smoothing: antialiased;
+  user-select: none; /* the editor and inputs opt back in */
+  cursor: default;
+}
+
+:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
