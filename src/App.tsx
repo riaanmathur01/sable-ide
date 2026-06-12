@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { EditorArea } from "./components/Editor/EditorArea";
@@ -17,7 +18,21 @@ function App() {
   const sidebarVisible = useUiStore((state) => state.sidebarVisible);
   const setLastError = useUiStore((state) => state.setLastError);
   const openWorkspace = useWorkspaceStore((state) => state.openWorkspace);
+  const applyExternalChanges = useWorkspaceStore(
+    (state) => state.applyExternalChanges,
+  );
   const [isDropTarget, setIsDropTarget] = useState(false);
+
+  // The Rust watcher reports which directories changed on disk (already
+  // debounced); refresh whichever of them the tree has loaded.
+  useEffect(() => {
+    const unlistenPromise = listen<string[]>("fs:changed", (event) =>
+      applyExternalChanges(event.payload),
+    );
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten());
+    };
+  }, [applyExternalChanges]);
 
   // Native drag-and-drop: dropping a folder anywhere on the window opens
   // it as the workspace. The OS gives us real paths (unlike browser DnD),

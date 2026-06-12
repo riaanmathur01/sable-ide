@@ -41,3 +41,27 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.tree-create-input,
+.tree-rename-input {
+  padding: 2px 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-ui);
+  outline: none;
+  user-select: text;
+}
+
+.tree-create-input {
+  margin: 0 8px 6px;
+  padding: 4px 8px;
+}
+
+.tree-rename-input {
+  flex: 1;
+  min-width: 0;
+  margin-right: 4px;
+}

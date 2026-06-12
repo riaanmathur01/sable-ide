@@ -71,3 +71,33 @@ pub fn create_directory(path: String) -> Result<(), String> {
     std::fs::create_dir(&path)
         .map_err(|error| format!("Could not create folder {path}: {error}"))
 }
+
+/// Permanently delete a file or folder (recursively). The frontend shows
+/// a native confirm dialog before calling this.
+#[tauri::command]
+pub fn delete_path(path: String) -> Result<(), String> {
+    let target = Path::new(&path);
+    let result = if target.is_dir() {
+        std::fs::remove_dir_all(target)
+    } else {
+        std::fs::remove_file(target)
+    };
+    result.map_err(|error| format!("Could not delete {path}: {error}"))
+}
+
+/// Rename an entry in place. Takes the new *name* (not path) and joins it
+/// here so path separators are handled on the Rust side for both OSes.
+#[tauri::command]
+pub fn rename_path(path: String, new_name: String) -> Result<String, String> {
+    let source = Path::new(&path);
+    let parent = source
+        .parent()
+        .ok_or_else(|| format!("{path} has no parent directory"))?;
+    let destination = parent.join(&new_name);
+    if destination.exists() {
+        return Err(format!("{new_name} already exists"));
+    }
+    std::fs::rename(source, &destination)
+        .map_err(|error| format!("Could not rename {path}: {error}"))?;
+    Ok(destination.to_string_lossy().into_owned())
+}

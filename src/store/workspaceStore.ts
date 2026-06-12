@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { readDirectory, type FsEntry } from "../lib/ipc";
+import { readDirectory, watchWorkspace, type FsEntry } from "../lib/ipc";
 import { useUiStore } from "./uiStore";
 
 /**
@@ -18,6 +18,8 @@ interface WorkspaceState {
   toggleDirectory: (path: string) => Promise<void>;
   /** Re-read a directory from disk (after create/delete/rename). */
   refreshDirectory: (path: string) => Promise<void>;
+  /** Watcher callback: re-read every changed directory we have cached. */
+  applyExternalChanges: (changedDirectories: string[]) => Promise<void>;
 }
 
 function reportError(error: unknown) {
@@ -41,6 +43,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         childrenByPath: { [path]: rootChildren },
         expandedPaths: new Set([path]),
       });
+      // Keep the tree in sync with Finder/other apps from here on.
+      await watchWorkspace(path);
     } catch (error) {
       reportError(error);
     }
@@ -78,5 +82,34 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     } catch (error) {
       reportError(error);
     }
+  },
+
+  applyExternalChanges: async (changedDirectories) => {
+    const { childrenByPath } = get();
+    await Promise.all(
+      changedDirectories
+        .filter((directory) => childrenByPath[directory] !== undefined)
+        .map(async (directory) => {
+          try {
+            const children = await readDirectory(directory);
+            set((state) => ({
+              childrenByPath: {
+                ...state.childrenByPath,
+                [directory]: children,
+              },
+            }));
+          } catch {
+            // The directory itself is gone — drop it from the cache and
+            // collapse it. Its parent's refresh removes the row.
+            set((state) => {
+              const childrenByPath = { ...state.childrenByPath };
+              delete childrenByPath[directory];
+              const expandedPaths = new Set(state.expandedPaths);
+              expandedPaths.delete(directory);
+              return { childrenByPath, expandedPaths };
+            });
+          }
+        }),
+    );
   },
 }));
