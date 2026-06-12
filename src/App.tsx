@@ -1,7 +1,11 @@
+import { useEffect, useState } from "react";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { EditorArea } from "./components/Editor/EditorArea";
 import { StatusBar } from "./components/StatusBar/StatusBar";
 import { useUiStore } from "./store/uiStore";
+import { useWorkspaceStore } from "./store/workspaceStore";
+import { isDirectory } from "./lib/ipc";
 import "./App.css";
 
 /**
@@ -11,6 +15,35 @@ import "./App.css";
  */
 function App() {
   const sidebarVisible = useUiStore((state) => state.sidebarVisible);
+  const setLastError = useUiStore((state) => state.setLastError);
+  const openWorkspace = useWorkspaceStore((state) => state.openWorkspace);
+  const [isDropTarget, setIsDropTarget] = useState(false);
+
+  // Native drag-and-drop: dropping a folder anywhere on the window opens
+  // it as the workspace. The OS gives us real paths (unlike browser DnD),
+  // delivered through Tauri's webview event stream.
+  useEffect(() => {
+    const unlistenPromise = getCurrentWebview().onDragDropEvent((event) => {
+      if (event.payload.type === "over") {
+        setIsDropTarget(true);
+      } else if (event.payload.type === "drop") {
+        setIsDropTarget(false);
+        const droppedPath = event.payload.paths[0];
+        if (!droppedPath) return;
+        isDirectory(droppedPath)
+          .then((directory) => {
+            if (directory) return openWorkspace(droppedPath);
+            setLastError("Drop a folder to open it as a workspace");
+          })
+          .catch((error) => setLastError(String(error)));
+      } else {
+        setIsDropTarget(false);
+      }
+    });
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten());
+    };
+  }, [openWorkspace, setLastError]);
 
   return (
     <div className="app-shell">
@@ -19,6 +52,9 @@ function App() {
         <EditorArea />
       </div>
       <StatusBar />
+      {isDropTarget && (
+        <div className="drop-overlay">Drop folder to open</div>
+      )}
     </div>
   );
 }

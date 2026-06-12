@@ -1,16 +1,32 @@
+import { useUiStore } from "../../store/uiStore";
+import { useWorkspaceStore } from "../../store/workspaceStore";
 import "./StatusBar.css";
 
 /**
- * Status bar pinned to the bottom of the window. Phase 0 shows static
- * placeholders; later phases wire in cursor position, language, and
- * workspace info.
+ * Status bar pinned to the bottom of the window: workspace name on the
+ * left, transient errors in the middle, app version on the right.
  */
 export function StatusBar() {
+  const rootName = useWorkspaceStore((state) => state.rootName);
+  const lastError = useUiStore((state) => state.lastError);
+  const setLastError = useUiStore((state) => state.setLastError);
+
   return (
     <footer className="status-bar">
       <div className="status-bar-group">
-        <span className="status-bar-item">No folder opened</span>
+        <span className="status-bar-item">
+          {rootName ?? "No folder opened"}
+        </span>
       </div>
+      {lastError && (
+        <button
+          className="status-bar-error"
+          title="Dismiss"
+          onClick={() => setLastError(null)}
+        >
+          {lastError}
+        </button>
+      )}
       <div className="status-bar-group">
         <span className="status-bar-item">Sable 0.1.0</span>
       </div>

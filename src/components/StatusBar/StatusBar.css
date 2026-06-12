@@ -19,3 +19,16 @@
 .status-bar-item {
   white-space: nowrap;
 }
+
+.status-bar-error {
+  overflow: hidden;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-status);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}

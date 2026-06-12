@@ -9,7 +9,10 @@
 }
 
 .sidebar-header {
-  padding: 10px 16px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 10px 8px 16px;
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.08em;
@@ -17,11 +20,53 @@
   color: var(--text-muted);
 }
 
+.sidebar-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.icon-button:hover {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.sidebar-create-input {
+  margin: 0 8px 6px;
+  padding: 4px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-ui);
+  outline: none;
+  user-select: text;
+}
+
 .sidebar-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   padding: 40px 20px;
   color: var(--text-muted);
   text-align: center;
@@ -29,6 +74,22 @@
 
 .sidebar-empty p {
   margin: 0;
+}
+
+.sidebar-open-button {
+  padding: 5px 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-ui);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.sidebar-open-button:hover {
+  border-color: var(--accent);
 }
 
 .sidebar-empty-hint {

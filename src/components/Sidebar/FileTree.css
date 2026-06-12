@@ -1,0 +1,43 @@
+.file-tree {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.file-tree-spacer {
+  position: relative;
+  overflow: hidden;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding-right: 8px;
+  white-space: nowrap;
+  color: var(--text);
+  transition: background var(--transition-fast);
+}
+
+.tree-row:hover {
+  background: var(--bg-elevated);
+}
+
+.tree-row-chevron {
+  display: flex;
+  align-items: center;
+  width: 13px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.tree-row-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.tree-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
