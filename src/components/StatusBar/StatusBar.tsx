@@ -26,7 +26,7 @@ export function StatusBar() {
               ? "status-bar-button active"
               : "status-bar-button"
           }
-          title="Toggle Terminal (⌘`)"
+          title="Toggle Terminal (⌘J)"
           onClick={toggleTerminal}
         >
           <SquareTerminal size={13} strokeWidth={1.5} />

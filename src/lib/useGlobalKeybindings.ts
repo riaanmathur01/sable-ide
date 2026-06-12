@@ -10,7 +10,9 @@ import { runActiveFile } from "./runFile";
  *
  *   Cmd/Ctrl+S  save active file
  *   Cmd/Ctrl+R  run active file
- *   Cmd/Ctrl+`  toggle terminal
+ *   Cmd/Ctrl+J  toggle terminal (Cmd+` is a macOS system shortcut and
+ *               may never reach the app, so J is the primary binding)
+ *   Cmd/Ctrl+`  toggle terminal (works when the OS lets it through)
  *   Cmd/Ctrl+B  toggle sidebar
  *   Cmd/Ctrl+W  close active tab
  */
@@ -31,7 +33,8 @@ export function useGlobalKeybindings() {
           runActiveFile();
           break;
         }
-        case "`": {
+        case "`":
+        case "j": {
           event.preventDefault();
           useUiStore.getState().toggleTerminal();
           break;
