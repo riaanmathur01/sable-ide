@@ -29,10 +29,20 @@ pub struct SearchState(pub Arc<AtomicU64>);
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub enum SearchMatchKind {
+    /// The file's name matches the query (shown first in the UI).
+    File,
+    /// A line inside the file matches.
+    Content,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SearchMatch {
     pub path: String,
     pub line_number: u64,
     pub preview: String,
+    pub kind: SearchMatchKind,
 }
 
 #[derive(Clone, Serialize)]
@@ -153,7 +163,15 @@ pub fn search_workspace(
         }
     });
 
-    // Walker thread pool: gitignore-aware parallel traversal.
+    // Walker thread pool: gitignore-aware parallel traversal. Each file
+    // is checked twice in one visit: name against the query, then
+    // contents — file-name hits are sectioned above content hits by the
+    // UI regardless of arrival order.
+    let query_for_names = if case_insensitive {
+        query.to_lowercase()
+    } else {
+        query.clone()
+    };
     std::thread::spawn(move || {
         let walker = WalkBuilder::new(&root).build_parallel();
         walker.run(|| {
@@ -161,6 +179,7 @@ pub fn search_workspace(
             let match_sender = match_sender.clone();
             let generation = generation.clone();
             let total_matches = total_matches.clone();
+            let query_for_names = query_for_names.clone();
             Box::new(move |entry_result| {
                 // A newer search started, or we have enough — stop walking.
                 if generation.load(Ordering::Relaxed) != search_id
@@ -177,6 +196,24 @@ pub fn search_workspace(
 
                 let file_path = entry.path().to_path_buf();
                 let path_string = file_path.to_string_lossy().into_owned();
+
+                let file_name = entry.file_name().to_string_lossy().into_owned();
+                let name_matches = if case_insensitive {
+                    file_name.to_lowercase().contains(&query_for_names)
+                } else {
+                    file_name.contains(&query_for_names)
+                };
+                if name_matches
+                    && total_matches.fetch_add(1, Ordering::Relaxed) < MATCH_LIMIT
+                {
+                    let _ = match_sender.send(SearchMatch {
+                        path: path_string.clone(),
+                        line_number: 0,
+                        preview: file_name,
+                        kind: SearchMatchKind::File,
+                    });
+                }
+
                 let mut searcher = SearcherBuilder::new()
                     .binary_detection(BinaryDetection::quit(0))
                     .line_number(true)
@@ -194,6 +231,7 @@ pub fn search_workspace(
                             path: path_string.clone(),
                             line_number,
                             preview,
+                            kind: SearchMatchKind::Content,
                         });
                         Ok(true)
                     }),

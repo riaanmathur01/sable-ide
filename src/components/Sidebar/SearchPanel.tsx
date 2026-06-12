@@ -12,29 +12,58 @@ const ROW_HEIGHT = 24;
 const OVERSCAN_ROWS = 10;
 const SEARCH_DEBOUNCE_MS = 250;
 
-/** Results flattened for virtualization: file header rows + match rows. */
+/**
+ * Results flattened for virtualization. File-name matches always render
+ * in their own section above content matches, whatever order they
+ * streamed in.
+ */
 type ResultRow =
+  | { kind: "section"; label: string }
+  | { kind: "fileName"; match: SearchMatch; relativePath: string }
   | { kind: "file"; path: string; fileName: string; matchCount: number }
   | { kind: "match"; match: SearchMatch };
 
-function buildRows(matches: SearchMatch[]): ResultRow[] {
+function buildRows(
+  matches: SearchMatch[],
+  rootPath: string | null,
+): ResultRow[] {
+  const fileNameMatches = matches.filter((match) => match.kind === "file");
+  const contentMatches = matches.filter((match) => match.kind === "content");
   const rows: ResultRow[] = [];
-  let currentPath: string | null = null;
-  let currentHeaderIndex = -1;
-  for (const match of matches) {
-    if (match.path !== currentPath) {
-      currentPath = match.path;
-      currentHeaderIndex = rows.length;
-      rows.push({
-        kind: "file",
-        path: match.path,
-        fileName: match.path.split(/[/\\]/).filter(Boolean).pop() ?? match.path,
-        matchCount: 0,
-      });
+
+  if (fileNameMatches.length > 0) {
+    rows.push({ kind: "section", label: "Files" });
+    for (const match of fileNameMatches) {
+      let relativePath = match.path;
+      if (rootPath && relativePath.startsWith(rootPath)) {
+        relativePath = relativePath
+          .slice(rootPath.length)
+          .replace(/^[/\\]/, "");
+      }
+      rows.push({ kind: "fileName", match, relativePath });
     }
-    const header = rows[currentHeaderIndex];
-    if (header.kind === "file") header.matchCount += 1;
-    rows.push({ kind: "match", match });
+  }
+
+  if (contentMatches.length > 0) {
+    rows.push({ kind: "section", label: "Content" });
+    let currentPath: string | null = null;
+    let currentHeaderIndex = -1;
+    for (const match of contentMatches) {
+      if (match.path !== currentPath) {
+        currentPath = match.path;
+        currentHeaderIndex = rows.length;
+        rows.push({
+          kind: "file",
+          path: match.path,
+          fileName:
+            match.path.split(/[/\\]/).filter(Boolean).pop() ?? match.path,
+          matchCount: 0,
+        });
+      }
+      const header = rows[currentHeaderIndex];
+      if (header.kind === "file") header.matchCount += 1;
+      rows.push({ kind: "match", match });
+    }
   }
   return rows;
 }
@@ -73,11 +102,16 @@ export function SearchPanel() {
     return () => observer.disconnect();
   }, []);
 
-  const rows = useMemo(() => buildRows(matches), [matches]);
+  const rows = useMemo(
+    () => buildRows(matches, rootPath),
+    [matches, rootPath],
+  );
 
   async function jumpToMatch(match: SearchMatch) {
     await openFile(match.path);
-    revealPosition(match.path, match.lineNumber);
+    if (match.kind === "content") {
+      revealPosition(match.path, match.lineNumber);
+    }
   }
 
   const firstVisibleIndex = Math.max(
@@ -125,22 +159,56 @@ export function SearchPanel() {
               <div
                 style={{ transform: `translateY(${firstVisibleIndex * ROW_HEIGHT}px)` }}
               >
-                {visibleRows.map((row) =>
-                  row.kind === "file" ? (
-                    <FileHeaderRow key={`h:${row.path}`} row={row} />
-                  ) : (
-                    <MatchRow
-                      key={`m:${row.match.path}:${row.match.lineNumber}:${row.match.preview}`}
-                      match={row.match}
-                      onJump={() => jumpToMatch(row.match)}
-                    />
-                  ),
-                )}
+                {visibleRows.map((row) => {
+                  switch (row.kind) {
+                    case "section":
+                      return (
+                        <div key={`s:${row.label}`} className="search-section-row">
+                          {row.label}
+                        </div>
+                      );
+                    case "fileName":
+                      return (
+                        <FileNameRow
+                          key={`f:${row.match.path}`}
+                          row={row}
+                          onJump={() => jumpToMatch(row.match)}
+                        />
+                      );
+                    case "file":
+                      return <FileHeaderRow key={`h:${row.path}`} row={row} />;
+                    case "match":
+                      return (
+                        <MatchRow
+                          key={`m:${row.match.path}:${row.match.lineNumber}:${row.match.preview}`}
+                          match={row.match}
+                          onJump={() => jumpToMatch(row.match)}
+                        />
+                      );
+                  }
+                })}
               </div>
             </div>
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function FileNameRow({
+  row,
+  onJump,
+}: {
+  row: Extract<ResultRow, { kind: "fileName" }>;
+  onJump: () => void;
+}) {
+  const FileIcon = iconForFile(row.match.preview);
+  return (
+    <div className="search-filename-row" onClick={onJump} title={row.match.path}>
+      <FileIcon size={13} strokeWidth={1.5} className="search-file-icon" />
+      <span className="search-file-name">{row.match.preview}</span>
+      <span className="search-filename-path">{row.relativePath}</span>
     </div>
   );
 }
