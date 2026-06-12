@@ -11,7 +11,7 @@ Everything runs locally.
 | ----- | ----- | ----- |
 | 0 | Scaffold, dark theme tokens, shell layout | ✅ done |
 | 1 | File explorer (native open-folder dialog, virtualized tree) | ✅ done |
-| 2 | Monaco editor, tabs, save | — |
+| 2 | Monaco editor, tabs, save | ✅ done |
 | 3 | Command palette & keybindings | — |
 | 4 | Integrated terminal (portable-pty + xterm.js) | — |
 | 5 | File operations, watcher, project-wide search | — |
