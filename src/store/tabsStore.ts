@@ -3,6 +3,7 @@ import { ask as confirmNative } from "@tauri-apps/plugin-dialog";
 import { readFile, writeFile } from "../lib/ipc";
 import {
   disposeModel,
+  getEditor,
   getModelValue,
   isModelDirty,
   markSaved,
@@ -29,7 +30,22 @@ interface TabsState {
   /** Re-check the active model's dirty state (called on editor change). */
   syncDirtyState: (path: string) => void;
   saveTab: (path: string) => Promise<void>;
+  /** Debounced save-after-typing-stops; called on every editor change. */
+  scheduleAutoSave: (path: string) => void;
   closeTab: (path: string) => Promise<void>;
+}
+
+/** Auto-save fires this long after the last keystroke. */
+const AUTO_SAVE_DELAY_MS = 800;
+
+const autoSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function cancelAutoSave(path: string) {
+  const timer = autoSaveTimers.get(path);
+  if (timer !== undefined) {
+    clearTimeout(timer);
+    autoSaveTimers.delete(path);
+  }
 }
 
 function fileNameOf(path: string): string {
@@ -79,8 +95,20 @@ export const useTabsStore = create<TabsState>((set, get) => ({
   },
 
   saveTab: async (path) => {
-    const value = getModelValue(path);
-    if (value === null) return;
+    cancelAutoSave(path);
+    // Read from the model; fall back to the live editor for the active
+    // tab. If neither works something is genuinely wrong — say so
+    // instead of silently dropping the save.
+    let value = getModelValue(path);
+    if (value === null && get().activePath === path) {
+      value = getEditor()?.getValue() ?? null;
+    }
+    if (value === null) {
+      useUiStore
+        .getState()
+        .setLastError(`Could not read editor contents for ${path}`);
+      return;
+    }
     try {
       await writeFile(path, value);
       markSaved(path);
@@ -90,10 +118,24 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     }
   },
 
+  scheduleAutoSave: (path) => {
+    cancelAutoSave(path);
+    autoSaveTimers.set(
+      path,
+      setTimeout(() => {
+        autoSaveTimers.delete(path);
+        get().saveTab(path);
+      }, AUTO_SAVE_DELAY_MS),
+    );
+  },
+
   closeTab: async (path) => {
     const { tabs } = get();
     const closingTab = tabs.find((tab) => tab.path === path);
     if (!closingTab) return;
+
+    // A pending auto-save must not fire against a disposed model.
+    cancelAutoSave(path);
 
     if (closingTab.isDirty) {
       const discard = await confirmNative(

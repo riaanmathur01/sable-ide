@@ -19,6 +19,7 @@ export default function MonacoPane() {
     (state) => state.initialContentByPath,
   );
   const syncDirtyState = useTabsStore((state) => state.syncDirtyState);
+  const scheduleAutoSave = useTabsStore((state) => state.scheduleAutoSave);
   const setCursorPosition = useUiStore((state) => state.setCursorPosition);
 
   if (!activePath) return null;
@@ -47,7 +48,11 @@ export default function MonacoPane() {
       path={activePath}
       defaultValue={initialContentByPath[activePath] ?? ""}
       onMount={handleMount}
-      onChange={() => syncDirtyState(activePath)}
+      onChange={() => {
+        syncDirtyState(activePath);
+        // Auto-save: content hits the disk shortly after typing stops.
+        scheduleAutoSave(activePath);
+      }}
       saveViewState
       options={{
         minimap: { enabled: false },

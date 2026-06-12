@@ -36,6 +36,7 @@ export function StatusBar() {
             Ln {cursorPosition.line}, Col {cursorPosition.column}
           </span>
         )}
+        {hasActiveTab && <span className="status-bar-item">Auto Save</span>}
         <span className="status-bar-item">Sable 0.1.0</span>
       </div>
     </footer>
