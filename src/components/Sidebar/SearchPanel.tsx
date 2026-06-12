@@ -92,15 +92,19 @@ export function SearchPanel() {
     return () => clearTimeout(timer);
   }, [query, runSearch]);
 
+  // The results container only exists while a query is active, so the
+  // observer must re-attach whenever it (re)appears — not just on mount.
+  const resultsContainerExists = Boolean(rootPath && query.trim() !== "");
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
+    setViewportHeight(container.clientHeight);
     const observer = new ResizeObserver(() =>
       setViewportHeight(container.clientHeight),
     );
     observer.observe(container);
     return () => observer.disconnect();
-  }, []);
+  }, [resultsContainerExists]);
 
   const rows = useMemo(
     () => buildRows(matches, rootPath),

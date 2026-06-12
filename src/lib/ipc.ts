@@ -85,14 +85,17 @@ export interface SearchMatch {
 }
 
 /**
- * Start a streaming workspace search; returns the search id. Matches
- * arrive as `search:results` events, completion as `search:done`.
+ * Start a streaming workspace search. The caller supplies a fresh,
+ * monotonically increasing id (see searchStore) so it can tag results
+ * before any batch arrives. Matches stream as `search:results` events,
+ * completion as `search:done`.
  */
 export function searchWorkspace(
   root: string,
   query: string,
-): Promise<number> {
-  return invoke<number>("search_workspace", { root, query });
+  searchId: number,
+): Promise<void> {
+  return invoke<void>("search_workspace", { root, query, searchId });
 }
 
 /** Parent directory of an absolute path, handling both separators. */

@@ -20,6 +20,12 @@ interface SearchStoreState {
   finishSearch: (searchId: number, limitHit: boolean) => void;
 }
 
+let searchIdCounter = 0;
+function nextSearchId(): number {
+  searchIdCounter += 1;
+  return searchIdCounter;
+}
+
 export const useSearchStore = create<SearchStoreState>((set, get) => ({
   query: "",
   activeSearchId: null,
@@ -33,15 +39,20 @@ export const useSearchStore = create<SearchStoreState>((set, get) => ({
     const rootPath = useWorkspaceStore.getState().rootPath;
     const { query } = get();
     if (!rootPath) return;
+    // The id is minted here and set *before* invoking Rust: result
+    // batches can arrive faster than the invoke promise resolves, and
+    // they must not be mistaken for a stale search.
+    const searchId = nextSearchId();
+    set({
+      activeSearchId: searchId,
+      matches: [],
+      isSearching: query.trim().length > 0,
+      limitHit: false,
+    });
     try {
-      const searchId = await searchWorkspace(rootPath, query);
-      set({
-        activeSearchId: searchId,
-        matches: [],
-        isSearching: query.trim().length > 0,
-        limitHit: false,
-      });
+      await searchWorkspace(rootPath, query, searchId);
     } catch (error) {
+      set({ isSearching: false });
       useUiStore.getState().setLastError(String(error));
     }
   },
