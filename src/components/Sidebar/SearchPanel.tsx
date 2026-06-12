@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search } from "lucide-react";
+import { Folder, Search } from "lucide-react";
 import { useSearchStore } from "../../store/searchStore";
 import { useTabsStore } from "../../store/tabsStore";
 import { useWorkspaceStore } from "../../store/workspaceStore";
+import { useUiStore } from "../../store/uiStore";
 import { revealPosition } from "../../lib/editorRegistry";
 import { iconForFile } from "../../lib/fileIcons";
 import type { SearchMatch } from "../../lib/ipc";
@@ -27,13 +28,13 @@ function buildRows(
   matches: SearchMatch[],
   rootPath: string | null,
 ): ResultRow[] {
-  const fileNameMatches = matches.filter((match) => match.kind === "file");
+  const nameMatches = matches.filter((match) => match.kind !== "content");
   const contentMatches = matches.filter((match) => match.kind === "content");
   const rows: ResultRow[] = [];
 
-  if (fileNameMatches.length > 0) {
-    rows.push({ kind: "section", label: "Files" });
-    for (const match of fileNameMatches) {
+  if (nameMatches.length > 0) {
+    rows.push({ kind: "section", label: "Files & Folders" });
+    for (const match of nameMatches) {
       let relativePath = match.path;
       if (rootPath && relativePath.startsWith(rootPath)) {
         relativePath = relativePath
@@ -81,6 +82,8 @@ export function SearchPanel() {
   const isSearching = useSearchStore((state) => state.isSearching);
   const limitHit = useSearchStore((state) => state.limitHit);
   const openFile = useTabsStore((state) => state.openFile);
+  const revealPath = useWorkspaceStore((state) => state.revealPath);
+  const setSidebarView = useUiStore((state) => state.setSidebarView);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
@@ -112,6 +115,12 @@ export function SearchPanel() {
   );
 
   async function jumpToMatch(match: SearchMatch) {
+    if (match.kind === "folder") {
+      // Expand the tree down to the folder and show the explorer.
+      await revealPath(match.path);
+      setSidebarView("files");
+      return;
+    }
     await openFile(match.path);
     if (match.kind === "content") {
       revealPosition(match.path, match.lineNumber);
@@ -207,7 +216,8 @@ function FileNameRow({
   row: Extract<ResultRow, { kind: "fileName" }>;
   onJump: () => void;
 }) {
-  const FileIcon = iconForFile(row.match.preview);
+  const FileIcon =
+    row.match.kind === "folder" ? Folder : iconForFile(row.match.preview);
   return (
     <div className="search-filename-row" onClick={onJump} title={row.match.path}>
       <FileIcon size={13} strokeWidth={1.5} className="search-file-icon" />

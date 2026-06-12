@@ -30,9 +30,11 @@ pub struct SearchState(pub Arc<AtomicU64>);
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum SearchMatchKind {
-    /// The file's name matches the query (shown first in the UI).
+    /// A file's name matches the query (shown first in the UI).
     File,
-    /// A line inside the file matches.
+    /// A folder's name matches the query (shown first in the UI).
+    Folder,
+    /// A line inside a file matches.
     Content,
 }
 
@@ -167,15 +169,84 @@ pub fn search_workspace(
         }
     });
 
-    // Walker thread pool: gitignore-aware parallel traversal. Each file
-    // is checked twice in one visit: name against the query, then
-    // contents — file-name hits are sectioned above content hits by the
-    // UI regardless of arrival order.
+    // Name walk: a separate, readdir-only traversal that sees *every*
+    // entry — files and folders, gitignored or hidden — so "node_modules"
+    // is findable by name even though content search rightly skips it.
+    // It yields the names of heavy/hidden directories without descending
+    // into them, so it stays fast on any repo.
     let query_for_names = if case_insensitive {
         query.to_lowercase()
     } else {
         query.clone()
     };
+    {
+        let name_sender = match_sender.clone();
+        let name_generation = generation.clone();
+        let name_total = total_matches.clone();
+        let name_root = root.clone();
+        let name_query = query_for_names;
+        std::thread::spawn(move || {
+            const NO_DESCEND: &[&str] = &[
+                "node_modules",
+                "target",
+                "dist",
+                "build",
+                "__pycache__",
+                "venv",
+            ];
+            const MAX_ENTRIES: usize = 100_000;
+            let mut pending = vec![std::path::PathBuf::from(&name_root)];
+            let mut visited = 0usize;
+            while let Some(directory) = pending.pop() {
+                if name_generation.load(Ordering::Relaxed) != search_id
+                    || name_total.load(Ordering::Relaxed) >= MATCH_LIMIT
+                    || visited >= MAX_ENTRIES
+                {
+                    break;
+                }
+                let Ok(reader) = std::fs::read_dir(&directory) else {
+                    continue;
+                };
+                for entry in reader.flatten() {
+                    visited += 1;
+                    let entry_name =
+                        entry.file_name().to_string_lossy().into_owned();
+                    let is_directory = entry
+                        .file_type()
+                        .map(|kind| kind.is_dir())
+                        .unwrap_or(false);
+                    let comparable_name = if case_insensitive {
+                        entry_name.to_lowercase()
+                    } else {
+                        entry_name.clone()
+                    };
+                    if comparable_name.contains(&name_query)
+                        && name_total.fetch_add(1, Ordering::Relaxed)
+                            < MATCH_LIMIT
+                    {
+                        let _ = name_sender.send(SearchMatch {
+                            path: entry.path().to_string_lossy().into_owned(),
+                            line_number: 0,
+                            preview: entry_name.clone(),
+                            kind: if is_directory {
+                                SearchMatchKind::Folder
+                            } else {
+                                SearchMatchKind::File
+                            },
+                        });
+                    }
+                    if is_directory
+                        && !entry_name.starts_with('.')
+                        && !NO_DESCEND.contains(&entry_name.as_str())
+                    {
+                        pending.push(entry.path());
+                    }
+                }
+            }
+        });
+    }
+
+    // Content walker thread pool: gitignore-aware parallel traversal.
     std::thread::spawn(move || {
         let walker = WalkBuilder::new(&root).build_parallel();
         walker.run(|| {
@@ -183,7 +254,6 @@ pub fn search_workspace(
             let match_sender = match_sender.clone();
             let generation = generation.clone();
             let total_matches = total_matches.clone();
-            let query_for_names = query_for_names.clone();
             Box::new(move |entry_result| {
                 // A newer search started, or we have enough — stop walking.
                 if generation.load(Ordering::Relaxed) != search_id
@@ -200,24 +270,6 @@ pub fn search_workspace(
 
                 let file_path = entry.path().to_path_buf();
                 let path_string = file_path.to_string_lossy().into_owned();
-
-                let file_name = entry.file_name().to_string_lossy().into_owned();
-                let name_matches = if case_insensitive {
-                    file_name.to_lowercase().contains(&query_for_names)
-                } else {
-                    file_name.contains(&query_for_names)
-                };
-                if name_matches
-                    && total_matches.fetch_add(1, Ordering::Relaxed) < MATCH_LIMIT
-                {
-                    let _ = match_sender.send(SearchMatch {
-                        path: path_string.clone(),
-                        line_number: 0,
-                        preview: file_name,
-                        kind: SearchMatchKind::File,
-                    });
-                }
-
                 let mut searcher = SearcherBuilder::new()
                     .binary_detection(BinaryDetection::quit(0))
                     .line_number(true)

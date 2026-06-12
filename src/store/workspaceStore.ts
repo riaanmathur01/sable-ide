@@ -20,6 +20,8 @@ interface WorkspaceState {
   refreshDirectory: (path: string) => Promise<void>;
   /** Watcher callback: re-read every changed directory we have cached. */
   applyExternalChanges: (changedDirectories: string[]) => Promise<void>;
+  /** Expand the tree down to a folder (used by search folder results). */
+  revealPath: (path: string) => Promise<void>;
 }
 
 function reportError(error: unknown) {
@@ -81,6 +83,30 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       }));
     } catch (error) {
       reportError(error);
+    }
+  },
+
+  revealPath: async (path) => {
+    const { rootPath, toggleDirectory } = get();
+    if (!rootPath || !path.startsWith(rootPath)) return;
+    const segments = path
+      .slice(rootPath.length)
+      .split(/[/\\]/)
+      .filter(Boolean);
+    // Expand ancestors one level at a time, resolving each child through
+    // the loaded listing so paths keep the OS's native separators.
+    let currentPath = rootPath;
+    for (const segment of segments) {
+      if (!get().expandedPaths.has(currentPath)) {
+        await toggleDirectory(currentPath);
+      }
+      const child = get()
+        .childrenByPath[currentPath]?.find((entry) => entry.name === segment);
+      if (!child) return; // gone from disk meanwhile
+      currentPath = child.path;
+    }
+    if (!get().expandedPaths.has(currentPath)) {
+      await toggleDirectory(currentPath);
     }
   },
 

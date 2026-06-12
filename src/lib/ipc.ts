@@ -77,11 +77,11 @@ export function killTerminal(id: string): Promise<void> {
 
 export interface SearchMatch {
   path: string;
-  /** 0 for file-name matches. */
+  /** 0 for file/folder-name matches. */
   lineNumber: number;
-  /** The matching line for content hits; the file name for name hits. */
+  /** The matching line for content hits; the entry name for name hits. */
   preview: string;
-  kind: "file" | "content";
+  kind: "file" | "folder" | "content";
 }
 
 /**
