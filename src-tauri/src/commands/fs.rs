@@ -100,6 +100,34 @@ pub fn delete_path(path: String) -> Result<(), String> {
     result.map_err(|error| format!("Could not delete {path}: {error}"))
 }
 
+/// Move a file or folder into another directory (tree drag-and-drop).
+/// Returns the new absolute path.
+#[tauri::command]
+pub fn move_path(source: String, target_directory: String) -> Result<String, String> {
+    let source_path = Path::new(&source);
+    let target_dir = Path::new(&target_directory);
+    let entry_name = source_path
+        .file_name()
+        .ok_or_else(|| format!("{source} has no name"))?;
+
+    if target_dir.starts_with(source_path) {
+        return Err("Cannot move a folder into itself".to_string());
+    }
+    let destination = target_dir.join(entry_name);
+    if destination == source_path {
+        return Ok(source); // dropped where it already lives — no-op
+    }
+    if destination.exists() {
+        return Err(format!(
+            "{} already exists in that folder",
+            entry_name.to_string_lossy()
+        ));
+    }
+    std::fs::rename(source_path, &destination)
+        .map_err(|error| format!("Could not move {source}: {error}"))?;
+    Ok(destination.to_string_lossy().into_owned())
+}
+
 /// Rename an entry in place. Takes the new *name* (not path) and joins it
 /// here so path separators are handled on the Rust side for both OSes.
 #[tauri::command]

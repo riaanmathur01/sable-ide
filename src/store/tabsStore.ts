@@ -33,6 +33,17 @@ interface TabsState {
   /** Debounced save-after-typing-stops; called on every editor change. */
   scheduleAutoSave: (path: string) => void;
   closeTab: (path: string) => Promise<void>;
+  /** After a move on disk, repoint affected tabs at their new paths. */
+  remapMovedPaths: (oldPath: string, newPath: string) => Promise<void>;
+}
+
+/** True if `path` is `prefix` itself or lives underneath it. */
+function isSameOrInside(path: string, prefix: string): boolean {
+  return (
+    path === prefix ||
+    path.startsWith(`${prefix}/`) ||
+    path.startsWith(`${prefix}\\`)
+  );
 }
 
 /** Auto-save fires this long after the last keystroke. */
@@ -127,6 +138,44 @@ export const useTabsStore = create<TabsState>((set, get) => ({
         get().saveTab(path);
       }, AUTO_SAVE_DELAY_MS),
     );
+  },
+
+  remapMovedPaths: async (oldPath, newPath) => {
+    const affectedTabs = get().tabs.filter((tab) =>
+      isSameOrInside(tab.path, oldPath),
+    );
+    for (const tab of affectedTabs) {
+      const updatedPath = newPath + tab.path.slice(oldPath.length);
+      try {
+        // The old Monaco model's URI can't change; reload from the new
+        // location instead. Callers save dirty tabs before moving, so
+        // nothing is lost.
+        const contents = await readFile(updatedPath);
+        cancelAutoSave(tab.path);
+        disposeModel(tab.path);
+        set((state) => {
+          const initialContentByPath = { ...state.initialContentByPath };
+          delete initialContentByPath[tab.path];
+          initialContentByPath[updatedPath] = contents;
+          return {
+            tabs: state.tabs.map((openTab) =>
+              openTab.path === tab.path
+                ? {
+                    path: updatedPath,
+                    name: fileNameOf(updatedPath),
+                    isDirty: false,
+                  }
+                : openTab,
+            ),
+            activePath:
+              state.activePath === tab.path ? updatedPath : state.activePath,
+            initialContentByPath,
+          };
+        });
+      } catch (error) {
+        useUiStore.getState().setLastError(String(error));
+      }
+    }
   },
 
   closeTab: async (path) => {

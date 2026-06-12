@@ -9,6 +9,7 @@ import {
   createDirectory,
   createFile,
   deletePath,
+  movePath,
   parentDirectoryOf,
   renamePath,
   type FsEntry,
@@ -37,6 +38,24 @@ interface PendingCreate {
   kind: "file" | "folder";
   parentDirectory: string;
 }
+
+/**
+ * Tree-internal drag state for moving entries. Implemented with raw
+ * mouse events (not HTML5 drag-and-drop) because Tauri's native drop
+ * zone — which powers drag-a-folder-from-the-OS-to-open — swallows
+ * HTML5 drag events inside the webview.
+ */
+interface DragState {
+  entry: FsEntry;
+  startX: number;
+  startY: number;
+  x: number;
+  y: number;
+  /** Becomes true after the pointer travels past a small threshold. */
+  active: boolean;
+}
+
+const DRAG_THRESHOLD_PX = 4;
 
 /**
  * Flatten the expanded portion of the tree into a list of visible rows.
@@ -87,6 +106,13 @@ export function FileTree() {
   );
   const [pendingName, setPendingName] = useState("");
 
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const [dropTargetDirectory, setDropTargetDirectory] = useState<
+    string | null
+  >(null);
+  // A completed drag must not fire the row's click (open/toggle).
+  const suppressNextClickRef = useRef(false);
+
   // Track the container height so the visible window stays correct when
   // the panel is resized.
   useEffect(() => {
@@ -106,7 +132,103 @@ export function FileTree() {
     return output;
   }, [rootPath, childrenByPath, expandedPaths]);
 
+  // Drive an in-progress drag from window-level mouse events, so it
+  // keeps working when the pointer leaves the sidebar.
+  useEffect(() => {
+    if (!drag || !rootPath) return;
+
+    function resolveDropTarget(clientX: number, clientY: number) {
+      const elementUnderPointer = document.elementFromPoint(clientX, clientY);
+      const rowElement = elementUnderPointer?.closest<HTMLElement>(
+        "[data-tree-path]",
+      );
+      let target: string | null = null;
+      if (rowElement?.dataset.treePath) {
+        target =
+          rowElement.dataset.treeDir === "1"
+            ? rowElement.dataset.treePath
+            : parentDirectoryOf(rowElement.dataset.treePath);
+      } else if (elementUnderPointer?.closest("[data-tree-root]")) {
+        target = rootPath; // empty area below the rows → workspace root
+      }
+      if (!target) return null;
+      const source = drag!.entry.path;
+      // No-ops and impossible targets: same parent, itself, descendants.
+      if (target === parentDirectoryOf(source)) return null;
+      if (
+        target === source ||
+        target.startsWith(`${source}/`) ||
+        target.startsWith(`${source}\\`)
+      ) {
+        return null;
+      }
+      return target;
+    }
+
+    function onMouseMove(event: MouseEvent) {
+      setDrag((current) => {
+        if (!current) return current;
+        const movedFar =
+          Math.abs(event.clientX - current.startX) > DRAG_THRESHOLD_PX ||
+          Math.abs(event.clientY - current.startY) > DRAG_THRESHOLD_PX;
+        return {
+          ...current,
+          x: event.clientX,
+          y: event.clientY,
+          active: current.active || movedFar,
+        };
+      });
+      if (drag!.active) {
+        setDropTargetDirectory(resolveDropTarget(event.clientX, event.clientY));
+      }
+    }
+
+    function onMouseUp(event: MouseEvent) {
+      const target = drag!.active
+        ? resolveDropTarget(event.clientX, event.clientY)
+        : null;
+      if (drag!.active) suppressNextClickRef.current = true;
+      const draggedEntry = drag!.entry;
+      setDrag(null);
+      setDropTargetDirectory(null);
+      if (target) void moveEntry(draggedEntry, target);
+    }
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drag, rootPath]);
+
   if (!rootPath) return null;
+
+  async function moveEntry(entry: FsEntry, targetDirectory: string) {
+    try {
+      // Flush unsaved edits in any affected tab to the old location
+      // first, so nothing is lost when paths change.
+      const tabsState = useTabsStore.getState();
+      for (const tab of tabsState.tabs) {
+        if (
+          tab.isDirty &&
+          (tab.path === entry.path ||
+            tab.path.startsWith(`${entry.path}/`) ||
+            tab.path.startsWith(`${entry.path}\\`))
+        ) {
+          await tabsState.saveTab(tab.path);
+        }
+      }
+      const newPath = await movePath(entry.path, targetDirectory);
+      if (newPath === entry.path) return; // no-op drop
+      await refreshDirectory(parentDirectoryOf(entry.path));
+      await refreshDirectory(targetDirectory);
+      await useTabsStore.getState().remapMovedPaths(entry.path, newPath);
+    } catch (error) {
+      setLastError(String(error));
+    }
+  }
 
   function startCreate(kind: "file" | "folder", entry: FsEntry) {
     const parentDirectory = entry.isDirectory
@@ -218,6 +340,7 @@ export function FileTree() {
       <div
         ref={scrollContainerRef}
         className="file-tree"
+        data-tree-root="1"
         onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
       >
         <div
@@ -236,15 +359,33 @@ export function FileTree() {
                 depth={depth}
                 isExpanded={expandedPaths.has(entry.path)}
                 isRenaming={renamingPath === entry.path}
+                isDropTarget={
+                  entry.isDirectory && entry.path === dropTargetDirectory
+                }
                 renameValue={renameValue}
                 onRenameChange={setRenameValue}
                 onRenameSubmit={() => confirmRename(entry)}
                 onRenameCancel={() => setRenamingPath(null)}
-                onActivate={() =>
-                  entry.isDirectory
-                    ? toggleDirectory(entry.path)
-                    : openFile(entry.path)
-                }
+                onActivate={() => {
+                  if (suppressNextClickRef.current) {
+                    suppressNextClickRef.current = false;
+                    return;
+                  }
+                  if (entry.isDirectory) toggleDirectory(entry.path);
+                  else openFile(entry.path);
+                }}
+                onDragStart={(event) => {
+                  if (event.button !== 0 || renamingPath === entry.path)
+                    return;
+                  setDrag({
+                    entry,
+                    startX: event.clientX,
+                    startY: event.clientY,
+                    x: event.clientX,
+                    y: event.clientY,
+                    active: false,
+                  });
+                }}
                 onContextMenu={(event) => {
                   event.preventDefault();
                   setMenu({ x: event.clientX, y: event.clientY, entry });
@@ -262,6 +403,14 @@ export function FileTree() {
           onClose={() => setMenu(null)}
         />
       )}
+      {drag?.active && (
+        <div
+          className="tree-drag-ghost"
+          style={{ left: drag.x + 12, top: drag.y + 10 }}
+        >
+          {drag.entry.name}
+        </div>
+      )}
     </>
   );
 }
@@ -271,11 +420,13 @@ interface TreeRowProps {
   depth: number;
   isExpanded: boolean;
   isRenaming: boolean;
+  isDropTarget: boolean;
   renameValue: string;
   onRenameChange: (value: string) => void;
   onRenameSubmit: () => void;
   onRenameCancel: () => void;
   onActivate: () => void;
+  onDragStart: (event: React.MouseEvent) => void;
   onContextMenu: (event: React.MouseEvent) => void;
 }
 
@@ -284,11 +435,13 @@ function TreeRow({
   depth,
   isExpanded,
   isRenaming,
+  isDropTarget,
   renameValue,
   onRenameChange,
   onRenameSubmit,
   onRenameCancel,
   onActivate,
+  onDragStart,
   onContextMenu,
 }: TreeRowProps) {
   const FileIcon = entry.isDirectory
@@ -300,9 +453,12 @@ function TreeRow({
 
   return (
     <div
-      className="tree-row"
+      className={isDropTarget ? "tree-row drop-target" : "tree-row"}
       style={{ paddingLeft: 8 + depth * 14 }}
+      data-tree-path={entry.path}
+      data-tree-dir={entry.isDirectory ? "1" : "0"}
       onClick={!isRenaming ? onActivate : undefined}
+      onMouseDown={onDragStart}
       onContextMenu={onContextMenu}
       title={entry.path}
     >

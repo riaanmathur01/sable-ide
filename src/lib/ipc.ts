@@ -45,6 +45,14 @@ export function renamePath(path: string, newName: string): Promise<string> {
   return invoke<string>("rename_path", { path, newName });
 }
 
+/** Moves an entry into another directory; returns the new path. */
+export function movePath(
+  source: string,
+  targetDirectory: string,
+): Promise<string> {
+  return invoke<string>("move_path", { source, targetDirectory });
+}
+
 /** Start watching the workspace; changes arrive as `fs:changed` events. */
 export function watchWorkspace(path: string): Promise<void> {
   return invoke<void>("watch_workspace", { path });

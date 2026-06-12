@@ -29,6 +29,7 @@ pub fn run() {
             commands::fs::create_directory,
             commands::fs::delete_path,
             commands::fs::rename_path,
+            commands::fs::move_path,
             commands::terminal::create_terminal,
             commands::terminal::write_terminal,
             commands::terminal::resize_terminal,
