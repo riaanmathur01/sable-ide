@@ -24,6 +24,14 @@ export function createFile(path: string): Promise<void> {
   return invoke<void>("create_file", { path });
 }
 
+export function readFile(path: string): Promise<string> {
+  return invoke<string>("read_file", { path });
+}
+
+export function writeFile(path: string, contents: string): Promise<void> {
+  return invoke<void>("write_file", { path, contents });
+}
+
 export function createDirectory(path: string): Promise<void> {
   return invoke<void>("create_directory", { path });
 }

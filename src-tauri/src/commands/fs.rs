@@ -72,6 +72,21 @@ pub fn create_directory(path: String) -> Result<(), String> {
         .map_err(|error| format!("Could not create folder {path}: {error}"))
 }
 
+/// Read a file as UTF-8 text for the editor. Binary/non-UTF-8 files
+/// produce a friendly error instead of garbage in Monaco.
+#[tauri::command]
+pub fn read_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path)
+        .map_err(|error| format!("Could not open {path}: {error}"))
+}
+
+/// Write editor contents back to disk (Cmd/Ctrl+S).
+#[tauri::command]
+pub fn write_file(path: String, contents: String) -> Result<(), String> {
+    std::fs::write(&path, contents)
+        .map_err(|error| format!("Could not save {path}: {error}"))
+}
+
 /// Permanently delete a file or folder (recursively). The frontend shows
 /// a native confirm dialog before calling this.
 #[tauri::command]

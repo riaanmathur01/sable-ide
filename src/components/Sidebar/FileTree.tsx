@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Folder, FolderOpen } from "lucide-react";
 import { ask as confirmNative } from "@tauri-apps/plugin-dialog";
 import { useWorkspaceStore } from "../../store/workspaceStore";
+import { useTabsStore } from "../../store/tabsStore";
 import { useUiStore } from "../../store/uiStore";
 import { iconForFile } from "../../lib/fileIcons";
 import {
@@ -71,6 +72,7 @@ export function FileTree() {
   const expandedPaths = useWorkspaceStore((state) => state.expandedPaths);
   const toggleDirectory = useWorkspaceStore((state) => state.toggleDirectory);
   const refreshDirectory = useWorkspaceStore((state) => state.refreshDirectory);
+  const openFile = useTabsStore((state) => state.openFile);
   const setLastError = useUiStore((state) => state.setLastError);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -238,7 +240,11 @@ export function FileTree() {
                 onRenameChange={setRenameValue}
                 onRenameSubmit={() => confirmRename(entry)}
                 onRenameCancel={() => setRenamingPath(null)}
-                onToggle={() => toggleDirectory(entry.path)}
+                onActivate={() =>
+                  entry.isDirectory
+                    ? toggleDirectory(entry.path)
+                    : openFile(entry.path)
+                }
                 onContextMenu={(event) => {
                   event.preventDefault();
                   setMenu({ x: event.clientX, y: event.clientY, entry });
@@ -269,7 +275,7 @@ interface TreeRowProps {
   onRenameChange: (value: string) => void;
   onRenameSubmit: () => void;
   onRenameCancel: () => void;
-  onToggle: () => void;
+  onActivate: () => void;
   onContextMenu: (event: React.MouseEvent) => void;
 }
 
@@ -282,7 +288,7 @@ function TreeRow({
   onRenameChange,
   onRenameSubmit,
   onRenameCancel,
-  onToggle,
+  onActivate,
   onContextMenu,
 }: TreeRowProps) {
   const FileIcon = entry.isDirectory
@@ -296,7 +302,7 @@ function TreeRow({
     <div
       className="tree-row"
       style={{ paddingLeft: 8 + depth * 14 }}
-      onClick={entry.isDirectory && !isRenaming ? onToggle : undefined}
+      onClick={!isRenaming ? onActivate : undefined}
       onContextMenu={onContextMenu}
       title={entry.path}
     >

@@ -1,5 +1,6 @@
 import { useUiStore } from "../../store/uiStore";
 import { useWorkspaceStore } from "../../store/workspaceStore";
+import { useTabsStore } from "../../store/tabsStore";
 import "./StatusBar.css";
 
 /**
@@ -10,6 +11,8 @@ export function StatusBar() {
   const rootName = useWorkspaceStore((state) => state.rootName);
   const lastError = useUiStore((state) => state.lastError);
   const setLastError = useUiStore((state) => state.setLastError);
+  const cursorPosition = useUiStore((state) => state.cursorPosition);
+  const hasActiveTab = useTabsStore((state) => state.activePath !== null);
 
   return (
     <footer className="status-bar">
@@ -28,6 +31,11 @@ export function StatusBar() {
         </button>
       )}
       <div className="status-bar-group">
+        {hasActiveTab && cursorPosition && (
+          <span className="status-bar-item">
+            Ln {cursorPosition.line}, Col {cursorPosition.column}
+          </span>
+        )}
         <span className="status-bar-item">Sable 0.1.0</span>
       </div>
     </footer>

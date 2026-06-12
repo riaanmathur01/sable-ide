@@ -1,16 +1,22 @@
 .editor-area {
   display: flex;
+  flex-direction: column;
   flex: 1;
   min-width: 0;
-  align-items: center;
-  justify-content: center;
   background: var(--bg-base);
+}
+
+.editor-surface {
+  flex: 1;
+  min-height: 0;
 }
 
 .editor-empty {
   display: flex;
   flex-direction: column;
+  flex: 1;
   align-items: center;
+  justify-content: center;
   gap: 4px;
 }
 

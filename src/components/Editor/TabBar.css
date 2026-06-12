@@ -1,0 +1,87 @@
+.tab-bar {
+  display: flex;
+  height: 34px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+
+.editor-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 12px;
+  max-width: 180px;
+  border-right: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--font-size-ui);
+  white-space: nowrap;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.editor-tab:hover {
+  background: var(--bg-elevated);
+}
+
+/* The active tab visually joins the editor surface below it. */
+.editor-tab.active {
+  background: var(--bg-base);
+  color: var(--text);
+}
+
+.editor-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Close affordance: a 16px square that shows either the dirty dot or
+   the X. Dirty tabs show the dot until hovered, then the X. */
+.editor-tab-close {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.editor-tab-close:hover {
+  background: var(--bg-elevated);
+}
+
+.editor-tab-dot {
+  display: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.editor-tab-x {
+  display: none;
+}
+
+.editor-tab:hover .editor-tab-x,
+.editor-tab.active .editor-tab-x {
+  display: block;
+}
+
+.editor-tab-close.dirty .editor-tab-dot {
+  display: block;
+}
+
+.editor-tab-close.dirty .editor-tab-x {
+  display: none;
+}
+
+.editor-tab-close.dirty:hover .editor-tab-dot {
+  display: none;
+}
+
+.editor-tab-close.dirty:hover .editor-tab-x {
+  display: block;
+}

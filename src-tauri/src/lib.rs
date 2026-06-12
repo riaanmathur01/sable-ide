@@ -16,6 +16,8 @@ pub fn run() {
         .manage(watcher::WatcherState(Mutex::new(None)))
         .invoke_handler(tauri::generate_handler![
             commands::fs::read_directory,
+            commands::fs::read_file,
+            commands::fs::write_file,
             commands::fs::is_directory,
             commands::fs::create_file,
             commands::fs::create_directory,
