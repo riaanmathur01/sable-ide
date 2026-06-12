@@ -8,6 +8,13 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(async () => ({
   plugins: [react()],
 
+  // Monaco is lazy-loaded at runtime; pre-bundle it so Vite doesn't
+  // discover it mid-session, re-optimize, and hard-reload the page
+  // (which would wipe all app state the first time a file is opened).
+  optimizeDeps: {
+    include: ["monaco-editor", "@monaco-editor/react"],
+  },
+
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors
