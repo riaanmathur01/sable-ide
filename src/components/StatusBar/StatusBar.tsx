@@ -1,3 +1,4 @@
+import { SquareTerminal } from "lucide-react";
 import { useUiStore } from "../../store/uiStore";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import { useTabsStore } from "../../store/tabsStore";
@@ -12,11 +13,25 @@ export function StatusBar() {
   const lastError = useUiStore((state) => state.lastError);
   const setLastError = useUiStore((state) => state.setLastError);
   const cursorPosition = useUiStore((state) => state.cursorPosition);
+  const terminalVisible = useUiStore((state) => state.terminalVisible);
+  const toggleTerminal = useUiStore((state) => state.toggleTerminal);
   const hasActiveTab = useTabsStore((state) => state.activePath !== null);
 
   return (
     <footer className="status-bar">
       <div className="status-bar-group">
+        <button
+          className={
+            terminalVisible
+              ? "status-bar-button active"
+              : "status-bar-button"
+          }
+          title="Toggle Terminal (⌘`)"
+          onClick={toggleTerminal}
+        >
+          <SquareTerminal size={13} strokeWidth={1.5} />
+          Terminal
+        </button>
         <span className="status-bar-item">
           {rootName ?? "No folder opened"}
         </span>

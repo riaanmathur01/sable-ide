@@ -20,6 +20,31 @@
   white-space: nowrap;
 }
 
+.status-bar-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 6px;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-status);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.status-bar-button:hover {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.status-bar-button.active {
+  color: var(--accent);
+}
+
 .status-bar-error {
   overflow: hidden;
   padding: 0;
