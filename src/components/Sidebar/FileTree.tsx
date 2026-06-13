@@ -136,6 +136,24 @@ export function FileTree() {
     return output;
   }, [rootPath, childrenByPath, expandedPaths]);
 
+  // A folder shows the error dot if any file inside it has errors, so
+  // problems in collapsed folders are still visible. Errors are few, so
+  // the prefix scan is cheap.
+  const erroredPaths = useMemo(
+    () => Object.keys(errorCountByPath),
+    [errorCountByPath],
+  );
+  const entryHasError = (entry: FsEntry): boolean => {
+    if (!entry.isDirectory) {
+      return (errorCountByPath[entry.path] ?? 0) > 0;
+    }
+    return erroredPaths.some(
+      (errored) =>
+        errored.startsWith(`${entry.path}/`) ||
+        errored.startsWith(`${entry.path}\\`),
+    );
+  };
+
   // Drive an in-progress drag from window-level mouse events, so it
   // keeps working when the pointer leaves the sidebar.
   useEffect(() => {
@@ -363,10 +381,7 @@ export function FileTree() {
                 depth={depth}
                 isExpanded={expandedPaths.has(entry.path)}
                 isRenaming={renamingPath === entry.path}
-                hasError={
-                  !entry.isDirectory &&
-                  (errorCountByPath[entry.path] ?? 0) > 0
-                }
+                hasError={entryHasError(entry)}
                 isDropTarget={
                   entry.isDirectory && entry.path === dropTargetDirectory
                 }

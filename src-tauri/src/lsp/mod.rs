@@ -20,7 +20,8 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use tauri::{AppHandle, Emitter, State};
 use tokio::io::BufReader;
-use tokio::process::{Child, ChildStdin, Command};
+use tokio::process::{Child, Command};
+use tokio::sync::mpsc;
 use tokio::sync::Mutex as AsyncMutex;
 
 /// JSON-RPC id used for the internal `initialize` request. A string id
@@ -54,13 +55,14 @@ fn server_for_extension(extension: &str) -> Option<ServerSpec> {
 }
 
 /// Live server handle, held behind the manager's mutex. Holding `child`
-/// keeps the process alive; `stdin` is written under the same lock so
-/// outgoing frames never interleave.
+/// keeps the process alive. All outgoing frames go through `writer` — a
+/// channel drained by a single writer task that owns the child's stdin —
+/// so the command path and the reader loop (which must answer the
+/// server's own requests) never fight over stdin.
 struct LspHandle {
     #[allow(dead_code)] // kept alive intentionally; killed on shutdown
     child: Child,
-    #[allow(dead_code)] // written to starting in phase 6b (didOpen/didChange)
-    stdin: ChildStdin,
+    writer: mpsc::UnboundedSender<String>,
     extension: String,
 }
 
@@ -142,6 +144,14 @@ fn initialize_params(root_path: &str) -> Value {
         "rootUri": root_uri,
         "workspaceFolders": [{ "uri": root_uri, "name": "workspace" }],
         "capabilities": {
+            "workspace": {
+                // Declaring these lets the server pull settings from us via
+                // `workspace/configuration` — which is how we switch Pyright
+                // into whole-workspace analysis (diagnostics for every file,
+                // not just open ones).
+                "configuration": true,
+                "didChangeConfiguration": { "dynamicRegistration": true }
+            },
             "textDocument": {
                 "synchronization": {
                     "dynamicRegistration": false,
@@ -162,6 +172,61 @@ fn initialize_params(root_path: &str) -> Value {
             }
         }
     })
+}
+
+/// The settings Sable feeds Pyright. `diagnosticMode: "workspace"` is the
+/// key — it makes Pyright analyze and report on every file in the
+/// project, so errors surface in the explorer before a file is opened.
+fn python_settings() -> Value {
+    json!({
+        "analysis": {
+            "diagnosticMode": "workspace",
+            "typeCheckingMode": "basic",
+            "useLibraryCodeForTypes": true
+        }
+    })
+}
+
+/// Answer to a `workspace/configuration` request, which asks for settings
+/// per "section". We return our Python settings for the python sections
+/// and null (server default) for anything else.
+fn config_for_section(section: &str) -> Value {
+    match section {
+        "python" => json!({ "analysis": python_settings()["analysis"] }),
+        "python.analysis" => python_settings()["analysis"].clone(),
+        _ => Value::Null,
+    }
+}
+
+/// Handle a server→client request (it has both an `id` and a `method`)
+/// and produce the `result` value to reply with. Unknown requests get a
+/// null result so the server never stalls waiting on us.
+fn server_request_result(method: &str, message: &Value) -> Value {
+    match method {
+        "workspace/configuration" => {
+            let items = message
+                .get("params")
+                .and_then(|params| params.get("items"))
+                .and_then(Value::as_array);
+            let results = items
+                .map(|items| {
+                    items
+                        .iter()
+                        .map(|item| {
+                            let section = item
+                                .get("section")
+                                .and_then(Value::as_str)
+                                .unwrap_or("");
+                            config_for_section(section)
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            Value::Array(results)
+        }
+        // registerCapability, workDoneProgress/create, etc. — just ack.
+        _ => Value::Null,
+    }
 }
 
 /// Start (or no-op if already running for this language) the language
@@ -261,15 +326,69 @@ pub async fn start_language_server(
         .await
         .map_err(|error| format!("Failed to send initialized: {error}"))?;
 
-    // Persistent reader: from here, every server message becomes an event.
+    // Writer task: the sole owner of the child's stdin. Everything that
+    // sends to the server (feature requests, document sync, and the
+    // reader's own request replies) funnels through this channel, so
+    // frames never interleave.
+    let (writer_tx, mut writer_rx) = mpsc::unbounded_channel::<String>();
+    tauri::async_runtime::spawn(async move {
+        let mut stdin = stdin;
+        while let Some(payload) = writer_rx.recv().await {
+            if framing::write_message(&mut stdin, &payload).await.is_err() {
+                break; // server's stdin closed
+            }
+        }
+    });
+
+    // Push our settings so Pyright switches to workspace-wide analysis.
+    // (It will also pull them back via workspace/configuration, which the
+    // reader answers below — belt and suspenders.)
+    let _ = writer_tx.send(
+        json!({
+            "jsonrpc": "2.0",
+            "method": "workspace/didChangeConfiguration",
+            "params": { "settings": { "python": python_settings() } },
+        })
+        .to_string(),
+    );
+
+    // Persistent reader. It distinguishes three kinds of message:
+    //   - server→client REQUEST  (has id AND method): we must reply.
+    //   - response               (has id, no method): forward to frontend.
+    //   - notification           (method, no id): forward to frontend.
     let reader_app = app.clone();
+    let reader_tx = writer_tx.clone();
     tauri::async_runtime::spawn(async move {
         let mut reader = reader;
         loop {
             match framing::read_message(&mut reader).await {
                 Ok(Some(payload)) => {
-                    if let Ok(message) = serde_json::from_str::<Value>(&payload) {
-                        let _ = reader_app.emit("lsp:message", message);
+                    let Ok(message) = serde_json::from_str::<Value>(&payload)
+                    else {
+                        continue;
+                    };
+                    let method =
+                        message.get("method").and_then(Value::as_str);
+                    let id = message.get("id").cloned();
+                    match (id, method) {
+                        (Some(id), Some(method)) => {
+                            // Server is asking us something — reply by id.
+                            let result =
+                                server_request_result(method, &message);
+                            let _ = reader_tx.send(
+                                json!({
+                                    "jsonrpc": "2.0",
+                                    "id": id,
+                                    "result": result,
+                                })
+                                .to_string(),
+                            );
+                        }
+                        _ => {
+                            // Response or notification — let the frontend
+                            // correlate / dispatch it.
+                            let _ = reader_app.emit("lsp:message", message);
+                        }
                     }
                 }
                 Ok(None) | Err(_) => {
@@ -285,7 +404,7 @@ pub async fn start_language_server(
 
     *guard = Some(LspHandle {
         child,
-        stdin,
+        writer: writer_tx,
         extension,
     });
 
@@ -309,8 +428,8 @@ pub async fn lsp_notify(
     method: String,
     params: Value,
 ) -> Result<(), String> {
-    let mut guard = manager.inner.lock().await;
-    let Some(handle) = guard.as_mut() else {
+    let guard = manager.inner.lock().await;
+    let Some(handle) = guard.as_ref() else {
         return Ok(()); // no server yet — nothing to notify
     };
     let message = json!({
@@ -318,8 +437,9 @@ pub async fn lsp_notify(
         "method": method,
         "params": params,
     });
-    framing::write_message(&mut handle.stdin, &message.to_string())
-        .await
+    handle
+        .writer
+        .send(message.to_string())
         .map_err(|error| format!("Failed to send {method}: {error}"))?;
     Ok(())
 }
