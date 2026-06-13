@@ -4,6 +4,7 @@ import { ask as confirmNative } from "@tauri-apps/plugin-dialog";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import { useTabsStore } from "../../store/tabsStore";
 import { useUiStore } from "../../store/uiStore";
+import { useDiagnosticsStore } from "../../store/diagnosticsStore";
 import { iconForFile } from "../../lib/fileIcons";
 import {
   createDirectory,
@@ -93,6 +94,9 @@ export function FileTree() {
   const refreshDirectory = useWorkspaceStore((state) => state.refreshDirectory);
   const openFile = useTabsStore((state) => state.openFile);
   const setLastError = useUiStore((state) => state.setLastError);
+  const errorCountByPath = useDiagnosticsStore(
+    (state) => state.errorCountByPath,
+  );
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
@@ -359,6 +363,10 @@ export function FileTree() {
                 depth={depth}
                 isExpanded={expandedPaths.has(entry.path)}
                 isRenaming={renamingPath === entry.path}
+                hasError={
+                  !entry.isDirectory &&
+                  (errorCountByPath[entry.path] ?? 0) > 0
+                }
                 isDropTarget={
                   entry.isDirectory && entry.path === dropTargetDirectory
                 }
@@ -420,6 +428,7 @@ interface TreeRowProps {
   depth: number;
   isExpanded: boolean;
   isRenaming: boolean;
+  hasError: boolean;
   isDropTarget: boolean;
   renameValue: string;
   onRenameChange: (value: string) => void;
@@ -435,6 +444,7 @@ function TreeRow({
   depth,
   isExpanded,
   isRenaming,
+  hasError,
   isDropTarget,
   renameValue,
   onRenameChange,
@@ -465,6 +475,7 @@ function TreeRow({
       <span className="tree-row-chevron">
         {entry.isDirectory && <Chevron size={13} strokeWidth={1.5} />}
       </span>
+      {hasError && <span className="tree-row-error-dot" />}
       <FileIcon size={14} strokeWidth={1.5} className="tree-row-icon" />
       {isRenaming ? (
         <input
@@ -488,7 +499,9 @@ function TreeRow({
           }}
         />
       ) : (
-        <span className="tree-row-name">{entry.name}</span>
+        <span className={hasError ? "tree-row-name error" : "tree-row-name"}>
+          {entry.name}
+        </span>
       )}
     </div>
   );

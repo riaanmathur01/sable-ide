@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import { useUiStore } from "../../store/uiStore";
+import { useDiagnosticsStore } from "../../store/diagnosticsStore";
 import { parentDirectoryOf } from "../ipc";
 import { applyDiagnostics, type LspDiagnostic } from "../editorRegistry";
 
@@ -161,7 +162,14 @@ export function initLspListeners(): void {
   }>("lsp:message", (event) => {
     const message = event.payload;
     if (message.method === "textDocument/publishDiagnostics" && message.params) {
-      applyDiagnostics(uriToPath(message.params.uri), message.params.diagnostics);
+      const path = uriToPath(message.params.uri);
+      const diagnostics = message.params.diagnostics;
+      applyDiagnostics(path, diagnostics);
+      // Count error-severity (1) diagnostics for the explorer's red dot.
+      const errorCount = diagnostics.filter(
+        (diagnostic) => (diagnostic.severity ?? 1) === 1,
+      ).length;
+      useDiagnosticsStore.getState().setFileErrorCount(path, errorCount);
     }
   });
 }
