@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { ask as confirmNative } from "@tauri-apps/plugin-dialog";
 import { readFile, writeFile } from "../lib/ipc";
-import { ensureLanguageServerForFile } from "../lib/lsp/lspClient";
+import { closeDocument, openDocument } from "../lib/lsp/lspClient";
 import {
   disposeModel,
   getEditor,
@@ -88,8 +88,8 @@ export const useTabsStore = create<TabsState>((set, get) => ({
           [path]: contents,
         },
       }));
-      // Start a language server for this file's language if one exists.
-      void ensureLanguageServerForFile(path);
+      // Start a language server (if any) and tell it this doc is open.
+      void openDocument(path, contents);
     } catch (error) {
       useUiStore.getState().setLastError(String(error));
     }
@@ -156,6 +156,9 @@ export const useTabsStore = create<TabsState>((set, get) => ({
         const contents = await readFile(updatedPath);
         cancelAutoSave(tab.path);
         disposeModel(tab.path);
+        // Re-register the document with the language server at its new path.
+        void closeDocument(tab.path);
+        void openDocument(updatedPath, contents);
         set((state) => {
           const initialContentByPath = { ...state.initialContentByPath };
           delete initialContentByPath[tab.path];
@@ -188,6 +191,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
 
     // A pending auto-save must not fire against a disposed model.
     cancelAutoSave(path);
+    void closeDocument(path);
 
     if (closingTab.isDirty) {
       const discard = await confirmNative(

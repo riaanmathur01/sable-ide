@@ -299,3 +299,27 @@ pub async fn start_language_server(
     );
     Ok(())
 }
+
+/// Send a JSON-RPC *notification* (no id, no response) to the running
+/// server — used for document-sync messages (`didOpen`, `didChange`,
+/// `didClose`). A no-op if no server is running.
+#[tauri::command]
+pub async fn lsp_notify(
+    manager: State<'_, LspManager>,
+    method: String,
+    params: Value,
+) -> Result<(), String> {
+    let mut guard = manager.inner.lock().await;
+    let Some(handle) = guard.as_mut() else {
+        return Ok(()); // no server yet — nothing to notify
+    };
+    let message = json!({
+        "jsonrpc": "2.0",
+        "method": method,
+        "params": params,
+    });
+    framing::write_message(&mut handle.stdin, &message.to_string())
+        .await
+        .map_err(|error| format!("Failed to send {method}: {error}"))?;
+    Ok(())
+}

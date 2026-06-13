@@ -93,6 +93,59 @@ export function revealPosition(path: string, lineNumber: number) {
   tryReveal();
 }
 
+/** One diagnostic as it arrives from the language server (LSP shape). */
+export interface LspDiagnostic {
+  range: {
+    start: { line: number; character: number };
+    end: { line: number; character: number };
+  };
+  severity?: number; // 1 Error, 2 Warning, 3 Info, 4 Hint
+  message: string;
+  source?: string;
+  code?: string | number;
+}
+
+/**
+ * Render a file's diagnostics as Monaco markers (the red/yellow
+ * squiggles). LSP positions are 0-based; Monaco's are 1-based, so every
+ * line and column is shifted by one. Called whenever the server pushes
+ * `publishDiagnostics` for a document.
+ */
+export function applyDiagnostics(path: string, diagnostics: LspDiagnostic[]) {
+  if (!monacoInstance) return;
+  const model = modelForPath(path);
+  if (!model) return; // file isn't open in the editor
+
+  const severityMap = monacoInstance.MarkerSeverity;
+  const lspSeverityToMonaco = (severity?: number) => {
+    switch (severity) {
+      case 1:
+        return severityMap.Error;
+      case 2:
+        return severityMap.Warning;
+      case 3:
+        return severityMap.Info;
+      case 4:
+        return severityMap.Hint;
+      default:
+        return severityMap.Error;
+    }
+  };
+
+  const markers = diagnostics.map((diagnostic) => ({
+    severity: lspSeverityToMonaco(diagnostic.severity),
+    message: diagnostic.message,
+    source: diagnostic.source ?? "pyright",
+    code: diagnostic.code != null ? String(diagnostic.code) : undefined,
+    startLineNumber: diagnostic.range.start.line + 1,
+    startColumn: diagnostic.range.start.character + 1,
+    endLineNumber: diagnostic.range.end.line + 1,
+    endColumn: diagnostic.range.end.character + 1,
+  }));
+
+  monacoInstance.editor.setModelMarkers(model, "pyright", markers);
+}
+
 /** Dispose the model on tab close so reopening reloads from disk. */
 export function disposeModel(path: string) {
   const model = modelForPath(path);

@@ -38,6 +38,7 @@ pub fn run() {
             commands::terminal::kill_terminal,
             commands::search::search_workspace,
             lsp::start_language_server,
+            lsp::lsp_notify,
             watcher::watch_workspace,
         ])
         .run(tauri::generate_context!())

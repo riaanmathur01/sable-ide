@@ -2,6 +2,7 @@ import Editor, { type OnMount } from "@monaco-editor/react";
 import { useTabsStore } from "../../store/tabsStore";
 import { useUiStore } from "../../store/uiStore";
 import { registerEditor } from "../../lib/editorRegistry";
+import { changeDocument } from "../../lib/lsp/lspClient";
 import "../../lib/monacoSetup";
 
 /**
@@ -48,10 +49,13 @@ export default function MonacoPane() {
       path={activePath}
       defaultValue={initialContentByPath[activePath] ?? ""}
       onMount={handleMount}
-      onChange={() => {
+      onChange={(value) => {
         syncDirtyState(activePath);
         // Auto-save: content hits the disk shortly after typing stops.
         scheduleAutoSave(activePath);
+        // Keep the language server's buffer current so diagnostics and
+        // completions reflect what's on screen.
+        void changeDocument(activePath, value ?? "");
       }}
       saveViewState
       options={{
