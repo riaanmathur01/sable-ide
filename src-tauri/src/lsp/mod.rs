@@ -174,14 +174,19 @@ fn initialize_params(root_path: &str) -> Value {
     })
 }
 
-/// The settings Sable feeds Pyright. `diagnosticMode: "workspace"` is the
-/// key — it makes Pyright analyze and report on every file in the
-/// project, so errors surface in the explorer before a file is opened.
+/// The settings Sable feeds Pyright.
+///   - `diagnosticMode: "workspace"` makes Pyright analyze every file in
+///     the project, so errors surface in the explorer before a file is
+///     opened.
+///   - `typeCheckingMode: "off"` (VS Code's default) reports genuine
+///     breakage — syntax errors, undefined names, bad imports — without
+///     the type-inference noise that flags working dynamic code or calls
+///     into untyped third-party libraries.
 fn python_settings() -> Value {
     json!({
         "analysis": {
             "diagnosticMode": "workspace",
-            "typeCheckingMode": "basic",
+            "typeCheckingMode": "off",
             "useLibraryCodeForTypes": true
         }
     })
