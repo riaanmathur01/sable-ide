@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { ask as confirmNative } from "@tauri-apps/plugin-dialog";
 import { readFile, writeFile } from "../lib/ipc";
 import { closeDocument, openDocument } from "../lib/lsp/lspClient";
+import { useGitStore } from "./gitStore";
 import {
   disposeModel,
   getEditor,
@@ -127,6 +128,8 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       await writeFile(path, value);
       markSaved(path);
       get().syncDirtyState(path);
+      // A save changes git status (modified/untracked); refresh it.
+      useGitStore.getState().refresh();
     } catch (error) {
       useUiStore.getState().setLastError(String(error));
     }

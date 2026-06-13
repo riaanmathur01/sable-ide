@@ -5,6 +5,8 @@ import { useWorkspaceStore } from "../../store/workspaceStore";
 import { useTabsStore } from "../../store/tabsStore";
 import { useUiStore } from "../../store/uiStore";
 import { useDiagnosticsStore } from "../../store/diagnosticsStore";
+import { useGitStore } from "../../store/gitStore";
+import type { GitFileStatus } from "../../lib/ipc";
 import { iconForFile } from "../../lib/fileIcons";
 import {
   createDirectory,
@@ -97,6 +99,7 @@ export function FileTree() {
   const errorCountByPath = useDiagnosticsStore(
     (state) => state.errorCountByPath,
   );
+  const gitStatusByPath = useGitStore((state) => state.statusByPath);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
@@ -382,6 +385,9 @@ export function FileTree() {
                 isExpanded={expandedPaths.has(entry.path)}
                 isRenaming={renamingPath === entry.path}
                 hasError={entryHasError(entry)}
+                gitStatus={
+                  entry.isDirectory ? undefined : gitStatusByPath[entry.path]
+                }
                 isDropTarget={
                   entry.isDirectory && entry.path === dropTargetDirectory
                 }
@@ -444,6 +450,7 @@ interface TreeRowProps {
   isExpanded: boolean;
   isRenaming: boolean;
   hasError: boolean;
+  gitStatus?: GitFileStatus;
   isDropTarget: boolean;
   renameValue: string;
   onRenameChange: (value: string) => void;
@@ -460,6 +467,7 @@ function TreeRow({
   isExpanded,
   isRenaming,
   hasError,
+  gitStatus,
   isDropTarget,
   renameValue,
   onRenameChange,
@@ -475,6 +483,13 @@ function TreeRow({
       : Folder
     : iconForFile(entry.name);
   const Chevron = isExpanded ? ChevronDown : ChevronRight;
+  const gitBadge = gitStatus ? GIT_BADGES[gitStatus] : undefined;
+  // Error color wins over git tint on the name; the git letter still shows.
+  const nameClass = hasError
+    ? "tree-row-name error"
+    : gitBadge
+      ? `tree-row-name ${gitBadge.colorClass}`
+      : "tree-row-name";
 
   return (
     <div
@@ -514,10 +529,25 @@ function TreeRow({
           }}
         />
       ) : (
-        <span className={hasError ? "tree-row-name error" : "tree-row-name"}>
-          {entry.name}
+        <span className={nameClass}>{entry.name}</span>
+      )}
+      {!isRenaming && gitBadge && (
+        <span className={`tree-row-git ${gitBadge.colorClass}`}>
+          {gitBadge.letter}
         </span>
       )}
     </div>
   );
 }
+
+/** Single-letter git indicator + color, shown at the right of a row. */
+const GIT_BADGES: Record<
+  GitFileStatus,
+  { letter: string; colorClass: string }
+> = {
+  modified: { letter: "M", colorClass: "git-modified" },
+  added: { letter: "A", colorClass: "git-added" },
+  untracked: { letter: "U", colorClass: "git-added" },
+  deleted: { letter: "D", colorClass: "git-deleted" },
+  renamed: { letter: "R", colorClass: "git-modified" },
+};

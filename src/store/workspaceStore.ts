@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { readDirectory, watchWorkspace, type FsEntry } from "../lib/ipc";
 import { useUiStore } from "./uiStore";
+import { useGitStore } from "./gitStore";
 
 /**
  * Workspace state: the open folder and a lazily-loaded directory tree.
@@ -47,6 +48,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       });
       // Keep the tree in sync with Finder/other apps from here on.
       await watchWorkspace(path);
+      // Load git status for the newly opened folder (no-op if not a repo).
+      useGitStore.getState().refresh();
     } catch (error) {
       reportError(error);
     }

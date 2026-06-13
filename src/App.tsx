@@ -8,6 +8,7 @@ import { StatusBar } from "./components/StatusBar/StatusBar";
 import { useUiStore } from "./store/uiStore";
 import { useWorkspaceStore } from "./store/workspaceStore";
 import { useSearchStore } from "./store/searchStore";
+import { useGitStore } from "./store/gitStore";
 import { isDirectory, type SearchMatch } from "./lib/ipc";
 import { useGlobalKeybindings } from "./lib/useGlobalKeybindings";
 import { initLspListeners } from "./lib/lsp/lspClient";
@@ -37,9 +38,11 @@ function App() {
   // The Rust watcher reports which directories changed on disk (already
   // debounced); refresh whichever of them the tree has loaded.
   useEffect(() => {
-    const unlistenPromise = listen<string[]>("fs:changed", (event) =>
-      applyExternalChanges(event.payload),
-    );
+    const unlistenPromise = listen<string[]>("fs:changed", (event) => {
+      applyExternalChanges(event.payload);
+      // Disk changes (incl. external commits) can change git status.
+      useGitStore.getState().refresh();
+    });
     return () => {
       unlistenPromise.then((unlisten) => unlisten());
     };

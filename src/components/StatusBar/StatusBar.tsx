@@ -1,7 +1,8 @@
-import { SquareTerminal } from "lucide-react";
+import { GitBranch, SquareTerminal } from "lucide-react";
 import { useUiStore } from "../../store/uiStore";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import { useTabsStore } from "../../store/tabsStore";
+import { useGitStore } from "../../store/gitStore";
 import "./StatusBar.css";
 
 /**
@@ -17,6 +18,8 @@ export function StatusBar() {
   const terminalVisible = useUiStore((state) => state.terminalVisible);
   const toggleTerminal = useUiStore((state) => state.toggleTerminal);
   const hasActiveTab = useTabsStore((state) => state.activePath !== null);
+  const isRepo = useGitStore((state) => state.isRepo);
+  const branch = useGitStore((state) => state.branch);
 
   return (
     <footer className="status-bar">
@@ -36,6 +39,12 @@ export function StatusBar() {
         <span className="status-bar-item">
           {rootName ?? "No folder opened"}
         </span>
+        {isRepo && branch && (
+          <span className="status-bar-item status-bar-branch">
+            <GitBranch size={13} strokeWidth={1.5} />
+            {branch}
+          </span>
+        )}
       </div>
       {lastError && (
         <button

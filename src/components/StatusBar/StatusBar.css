@@ -20,6 +20,12 @@
   white-space: nowrap;
 }
 
+.status-bar-branch {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .status-bar-button {
   display: flex;
   align-items: center;

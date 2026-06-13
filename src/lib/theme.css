@@ -15,6 +15,12 @@
   --accent: #7c93ff; /* active states, focus rings, caret */
   --danger: #f87171; /* delete / errors */
 
+  /* Git status — a deliberate, limited exception to the one-accent rule.
+   * Kept muted to fit the minimal dark theme. */
+  --git-modified: #d6a55c; /* amber */
+  --git-added: #6cc070; /* green (added / untracked) */
+  --git-deleted: #d66c6c; /* red */
+
   /* Typography */
   --font-ui: -apple-system, "Segoe UI", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", monospace;

@@ -37,6 +37,7 @@ pub fn run() {
             commands::terminal::resize_terminal,
             commands::terminal::kill_terminal,
             commands::search::search_workspace,
+            commands::git::git_status,
             lsp::start_language_server,
             lsp::lsp_notify,
             watcher::watch_workspace,

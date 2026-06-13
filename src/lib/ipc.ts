@@ -83,6 +83,26 @@ export function killTerminal(id: string): Promise<void> {
   return invoke<void>("kill_terminal", { id });
 }
 
+export type GitFileStatus =
+  | "modified"
+  | "added"
+  | "untracked"
+  | "deleted"
+  | "renamed";
+
+export interface GitStatus {
+  isRepo: boolean;
+  /** Branch name, short hash (detached HEAD), or null (empty repo). */
+  branch: string | null;
+  /** Absolute file path → status, matching file-tree node keys. */
+  files: Record<string, GitFileStatus>;
+}
+
+/** Read git status for the workspace; non-repo folders return isRepo:false. */
+export function gitStatus(path: string): Promise<GitStatus> {
+  return invoke<GitStatus>("git_status", { path });
+}
+
 export interface SearchMatch {
   path: string;
   /** 0 for file/folder-name matches. */
