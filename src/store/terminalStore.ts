@@ -1,9 +1,5 @@
 import { create } from "zustand";
-import {
-  createTerminal,
-  killTerminal,
-  writeTerminal,
-} from "../lib/ipc";
+import { createTerminal, killTerminal } from "../lib/ipc";
 import { useWorkspaceStore } from "./workspaceStore";
 import { useUiStore } from "./uiStore";
 
@@ -18,10 +14,17 @@ interface TerminalSessionState {
   /** Current session id; changes on each restart. */
   terminalId: string;
   isSessionRunning: boolean;
+  /**
+   * A command line waiting to be typed into the shell. Set by "Run"; the
+   * terminal view flushes it once it's mounted and listening, so output
+   * is never missed even when the panel was closed (it lazy-loads).
+   */
+  pendingCommand: string | null;
   /** Create the PTY if needed (idempotent). cwd = workspace root. */
   ensureSession: () => Promise<void>;
-  /** Type a full command line into the shell (with Enter). */
-  sendCommandLine: (commandLine: string) => Promise<void>;
+  /** Queue a command for the terminal view to run when ready. */
+  enqueueCommand: (commandLine: string) => void;
+  clearPendingCommand: () => void;
   /** Kill the shell and start a fresh one. */
   restartSession: () => Promise<void>;
   markSessionEnded: () => void;
@@ -30,6 +33,7 @@ interface TerminalSessionState {
 export const useTerminalStore = create<TerminalSessionState>((set, get) => ({
   terminalId: "main-0",
   isSessionRunning: false,
+  pendingCommand: null,
 
   ensureSession: async () => {
     if (get().isSessionRunning) return;
@@ -44,15 +48,8 @@ export const useTerminalStore = create<TerminalSessionState>((set, get) => ({
     }
   },
 
-  sendCommandLine: async (commandLine) => {
-    await get().ensureSession();
-    if (!get().isSessionRunning) return;
-    try {
-      await writeTerminal(get().terminalId, `${commandLine}\r`);
-    } catch (error) {
-      useUiStore.getState().setLastError(String(error));
-    }
-  },
+  enqueueCommand: (commandLine) => set({ pendingCommand: commandLine }),
+  clearPendingCommand: () => set({ pendingCommand: null }),
 
   restartSession: async () => {
     // Kill the old PTY, then mint a new id. The terminal view is keyed

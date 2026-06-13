@@ -45,5 +45,7 @@ export async function runActiveFile(): Promise<void> {
 
   await saveTab(activePath); // run what's on screen, not a stale file
   setTerminalVisible(true);
-  await useTerminalStore.getState().sendCommandLine(buildCommand(activePath));
+  // Queue the command; the terminal view runs it once mounted and
+  // listening (the panel lazy-loads, so it may not exist yet).
+  useTerminalStore.getState().enqueueCommand(buildCommand(activePath));
 }

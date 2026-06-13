@@ -113,5 +113,21 @@ export default function TerminalView({ terminalId }: TerminalViewProps) {
     }
   }, [terminalVisible]);
 
+  // Flush a queued "Run" command. This runs only after the mount effect
+  // above has attached the output listener, so the command's output is
+  // never missed — the fix for Cmd+R losing output when the panel was
+  // closed and lazy-loaded.
+  const pendingCommand = useTerminalStore((state) => state.pendingCommand);
+  useEffect(() => {
+    if (!pendingCommand) return;
+    const { ensureSession, clearPendingCommand } =
+      useTerminalStore.getState();
+    void (async () => {
+      await ensureSession();
+      await writeTerminal(terminalId, `${pendingCommand}\r`).catch(() => {});
+      clearPendingCommand();
+    })();
+  }, [pendingCommand, terminalId]);
+
   return <div ref={containerRef} className="terminal-view" />;
 }
