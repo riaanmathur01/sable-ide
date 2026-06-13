@@ -5,6 +5,7 @@
 // the OS directly; it calls these commands via `invoke()`.
 
 mod commands;
+mod lsp;
 mod watcher;
 
 use std::collections::HashMap;
@@ -20,6 +21,7 @@ pub fn run() {
             HashMap::new(),
         )))
         .manage(commands::search::SearchState(Arc::new(AtomicU64::new(0))))
+        .manage(lsp::LspManager::default())
         .invoke_handler(tauri::generate_handler![
             commands::fs::read_directory,
             commands::fs::read_file,
@@ -35,6 +37,7 @@ pub fn run() {
             commands::terminal::resize_terminal,
             commands::terminal::kill_terminal,
             commands::search::search_workspace,
+            lsp::start_language_server,
             watcher::watch_workspace,
         ])
         .run(tauri::generate_context!())

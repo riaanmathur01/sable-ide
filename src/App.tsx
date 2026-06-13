@@ -10,6 +10,7 @@ import { useWorkspaceStore } from "./store/workspaceStore";
 import { useSearchStore } from "./store/searchStore";
 import { isDirectory, type SearchMatch } from "./lib/ipc";
 import { useGlobalKeybindings } from "./lib/useGlobalKeybindings";
+import { initLspListeners } from "./lib/lsp/lspClient";
 import "./App.css";
 
 /**
@@ -27,6 +28,11 @@ function App() {
   const [isDropTarget, setIsDropTarget] = useState(false);
 
   useGlobalKeybindings();
+
+  // Register LSP event listeners once for the app's lifetime.
+  useEffect(() => {
+    initLspListeners();
+  }, []);
 
   // The Rust watcher reports which directories changed on disk (already
   // debounced); refresh whichever of them the tree has loaded.

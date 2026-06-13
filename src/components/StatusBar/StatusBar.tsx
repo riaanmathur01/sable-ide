@@ -13,6 +13,7 @@ export function StatusBar() {
   const lastError = useUiStore((state) => state.lastError);
   const setLastError = useUiStore((state) => state.setLastError);
   const cursorPosition = useUiStore((state) => state.cursorPosition);
+  const lspStatus = useUiStore((state) => state.lspStatus);
   const terminalVisible = useUiStore((state) => state.terminalVisible);
   const toggleTerminal = useUiStore((state) => state.toggleTerminal);
   const hasActiveTab = useTabsStore((state) => state.activePath !== null);
@@ -51,6 +52,7 @@ export function StatusBar() {
             Ln {cursorPosition.line}, Col {cursorPosition.column}
           </span>
         )}
+        {lspStatus && <span className="status-bar-item">{lspStatus}</span>}
         {hasActiveTab && <span className="status-bar-item">Auto Save</span>}
         <span className="status-bar-item">Sable 0.1.0</span>
       </div>
