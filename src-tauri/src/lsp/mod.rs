@@ -178,6 +178,10 @@ fn initialize_params(root_path: &str) -> Value {
 ///   - `diagnosticMode: "workspace"` makes Pyright analyze every file in
 ///     the project, so errors surface in the explorer before a file is
 ///     opened.
+///   - `exclude` keeps that workspace scan off heavy/irrelevant trees.
+///     Without it, a project with a `.venv` makes Pyright analyze the
+///     hundreds of installed-package files on every change — pegging the
+///     CPU and starving the rest of the app (terminal included).
 ///   - `typeCheckingMode: "off"` (VS Code's default) reports genuine
 ///     breakage — syntax errors, undefined names, bad imports — without
 ///     the type-inference noise that flags working dynamic code or calls
@@ -187,7 +191,17 @@ fn python_settings() -> Value {
         "analysis": {
             "diagnosticMode": "workspace",
             "typeCheckingMode": "off",
-            "useLibraryCodeForTypes": true
+            "useLibraryCodeForTypes": true,
+            "exclude": [
+                "**/.*",
+                "**/node_modules",
+                "**/__pycache__",
+                "**/venv",
+                "**/env",
+                "**/site-packages",
+                "**/dist",
+                "**/build"
+            ]
         }
     })
 }
