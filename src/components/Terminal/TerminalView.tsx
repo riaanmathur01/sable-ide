@@ -2,13 +2,16 @@ import { useEffect, useRef } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { listen } from "@tauri-apps/api/event";
-import {
-  MAIN_TERMINAL_ID,
-  useTerminalStore,
-} from "../../store/terminalStore";
+import { useTerminalStore } from "../../store/terminalStore";
 import { resizeTerminal, writeTerminal } from "../../lib/ipc";
 import { useUiStore } from "../../store/uiStore";
 import "@xterm/xterm/css/xterm.css";
+
+interface TerminalViewProps {
+  /** Session id this view is bound to. Remounting with a new id (via the
+   * parent's key) starts a fresh shell. */
+  terminalId: string;
+}
 
 /**
  * The xterm.js surface, bridged to the Rust PTY:
@@ -19,7 +22,7 @@ import "@xterm/xterm/css/xterm.css";
  * time the panel opens. The component stays mounted while the panel is
  * hidden, so the shell session survives toggling.
  */
-export default function TerminalView() {
+export default function TerminalView({ terminalId }: TerminalViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const terminalVisible = useUiStore((state) => state.terminalVisible);
@@ -57,27 +60,25 @@ export default function TerminalView() {
     // PTY starts (or already exists) before any listener misses output:
     // create first, then sync the real size.
     ensureSession().then(() => {
-      resizeTerminal(
-        MAIN_TERMINAL_ID,
-        terminal.cols,
-        terminal.rows,
-      ).catch(() => {});
+      resizeTerminal(terminalId, terminal.cols, terminal.rows).catch(
+        () => {},
+      );
     });
 
     const inputDisposable = terminal.onData((data) => {
-      writeTerminal(MAIN_TERMINAL_ID, data).catch(() => {});
+      writeTerminal(terminalId, data).catch(() => {});
     });
 
     const unlistenOutput = listen<{ id: string; data: string }>(
       "terminal:output",
       (event) => {
-        if (event.payload.id === MAIN_TERMINAL_ID) {
+        if (event.payload.id === terminalId) {
           terminal.write(event.payload.data);
         }
       },
     );
     const unlistenExit = listen<string>("terminal:exit", (event) => {
-      if (event.payload === MAIN_TERMINAL_ID) {
+      if (event.payload === terminalId) {
         markSessionEnded();
         terminal.write("\r\n\x1b[2m[session ended]\x1b[0m\r\n");
       }
@@ -88,7 +89,7 @@ export default function TerminalView() {
     const resizeObserver = new ResizeObserver(() => {
       if (container.clientHeight === 0) return; // hidden
       fitAddon.fit();
-      resizeTerminal(MAIN_TERMINAL_ID, terminal.cols, terminal.rows).catch(
+      resizeTerminal(terminalId, terminal.cols, terminal.rows).catch(
         () => {},
       );
     });
@@ -101,7 +102,9 @@ export default function TerminalView() {
       unlistenExit.then((unlisten) => unlisten());
       terminal.dispose();
     };
-  }, []);
+    // terminalId is fixed per mount (the parent keys this component on it,
+    // so a new session id means a fresh component instance).
+  }, [terminalId]);
 
   // Hidden panels have zero size; refit and focus when shown again.
   useEffect(() => {
