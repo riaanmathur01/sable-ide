@@ -6,7 +6,11 @@ import { EditorArea } from "./components/Editor/EditorArea";
 import { TerminalPanel } from "./components/Terminal/TerminalPanel";
 import { StatusBar } from "./components/StatusBar/StatusBar";
 import { useUiStore } from "./store/uiStore";
-import { useWorkspaceStore } from "./store/workspaceStore";
+import {
+  useWorkspaceStore,
+  lastOpenedFolder,
+  clearLastOpenedFolder,
+} from "./store/workspaceStore";
 import { useSearchStore } from "./store/searchStore";
 import { useGitStore } from "./store/gitStore";
 import { isDirectory, type SearchMatch } from "./lib/ipc";
@@ -34,6 +38,19 @@ function App() {
   useEffect(() => {
     initLspListeners();
   }, []);
+
+  // Session restore: reopen the folder from last launch. If it's gone
+  // (moved/deleted), forget it silently instead of erroring.
+  useEffect(() => {
+    const last = lastOpenedFolder();
+    if (!last) return;
+    isDirectory(last)
+      .then((exists) => {
+        if (exists) return openWorkspace(last);
+        clearLastOpenedFolder();
+      })
+      .catch(() => clearLastOpenedFolder());
+  }, [openWorkspace]);
 
   // The Rust watcher reports which directories changed on disk (already
   // debounced); refresh whichever of them the tree has loaded.

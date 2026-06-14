@@ -33,6 +33,18 @@ function reportError(error: unknown) {
   useUiStore.getState().setLastError(String(error));
 }
 
+/** localStorage key for the last opened folder (session restore). */
+const LAST_FOLDER_KEY = "sable.lastFolder";
+
+/** Path of the folder open at last exit, if any. */
+export function lastOpenedFolder(): string | null {
+  return localStorage.getItem(LAST_FOLDER_KEY);
+}
+
+export function clearLastOpenedFolder(): void {
+  localStorage.removeItem(LAST_FOLDER_KEY);
+}
+
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   rootPath: null,
   rootName: null,
@@ -57,6 +69,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         childrenByPath: { [path]: rootChildren },
         expandedPaths: new Set([path]),
       });
+      // Remember this folder so the next launch reopens it.
+      localStorage.setItem(LAST_FOLDER_KEY, path);
       // Keep the tree in sync with Finder/other apps from here on.
       await watchWorkspace(path);
       // Load git status for the newly opened folder (no-op if not a repo).
