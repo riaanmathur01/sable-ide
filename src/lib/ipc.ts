@@ -133,6 +133,50 @@ export function gitSetIdentity(name: string, email: string): Promise<void> {
   return invoke<void>("git_set_identity", { name, email });
 }
 
+export interface BranchInfo {
+  name: string;
+  isCurrent: boolean;
+}
+
+export interface AheadBehind {
+  ahead: number;
+  behind: number;
+  hasUpstream: boolean;
+  hasRemote: boolean;
+}
+
+export function gitBranches(root: string): Promise<BranchInfo[]> {
+  return invoke<BranchInfo[]>("git_branches", { root });
+}
+
+export function gitCreateBranch(root: string, name: string): Promise<void> {
+  return invoke<void>("git_create_branch", { root, name });
+}
+
+export function gitSwitchBranch(root: string, name: string): Promise<void> {
+  return invoke<void>("git_switch_branch", { root, name });
+}
+
+export function gitDeleteBranch(root: string, name: string): Promise<void> {
+  return invoke<void>("git_delete_branch", { root, name });
+}
+
+export function gitAheadBehind(root: string): Promise<AheadBehind> {
+  return invoke<AheadBehind>("git_ahead_behind", { root });
+}
+
+export function gitFetch(root: string): Promise<string> {
+  return invoke<string>("git_fetch", { root });
+}
+
+export function gitPull(root: string): Promise<string> {
+  return invoke<string>("git_pull", { root });
+}
+
+export function gitPush(root: string): Promise<string> {
+  return invoke<string>("git_push", { root });
+}
+
 export interface Interpreter {
   path: string;
   label: string;

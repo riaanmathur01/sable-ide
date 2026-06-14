@@ -11,7 +11,10 @@
 //! Everything in this file is the local (`git2`) half. The future
 //! network half goes in its own functions below the marked boundary.
 
-use git2::{IndexAddOption, ObjectType, Repository, Status, StatusOptions};
+use git2::build::CheckoutBuilder;
+use git2::{
+    BranchType, IndexAddOption, ObjectType, Repository, Status, StatusOptions,
+};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -375,11 +378,248 @@ pub fn git_set_identity(name: String, email: String) -> Result<(), String> {
     Ok(())
 }
 
+// === Branch management (local, git2) ======================================
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BranchInfo {
+    name: String,
+    is_current: bool,
+}
+
+/// List local branches, marking the current one.
+#[tauri::command]
+pub fn git_branches(root: String) -> Result<Vec<BranchInfo>, String> {
+    let repo = open_repo(&root)?;
+    let branches = repo
+        .branches(Some(BranchType::Local))
+        .map_err(|error| format!("Could not list branches: {error}"))?;
+
+    let mut result = Vec::new();
+    for branch in branches {
+        let (branch, _) = branch
+            .map_err(|error| format!("Could not read branch: {error}"))?;
+        let is_current = branch.is_head();
+        if let Ok(Some(name)) = branch.name() {
+            result.push(BranchInfo {
+                name: name.to_string(),
+                is_current,
+            });
+        }
+    }
+    result.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(result)
+}
+
+/// Checkout a local branch with the SAFE strategy: libgit2 refuses if
+/// uncommitted working-tree changes would be overwritten, so we never
+/// silently discard work. set_head only runs after a clean checkout.
+fn checkout_branch(repo: &Repository, name: &str) -> Result<(), String> {
+    let refname = format!("refs/heads/{name}");
+    let object = repo
+        .revparse_single(&refname)
+        .map_err(|error| format!("Branch '{name}' not found: {error}"))?;
+
+    let mut options = CheckoutBuilder::new();
+    options.safe();
+    repo.checkout_tree(&object, Some(&mut options)).map_err(|error| {
+        // A SAFE checkout fails precisely when local changes collide with
+        // the target — surface the actionable message.
+        if error.message().to_lowercase().contains("conflict") {
+            "You have uncommitted changes that would be overwritten. \
+             Commit or stash them first."
+                .to_string()
+        } else {
+            format!("Could not switch branch: {error}")
+        }
+    })?;
+    repo.set_head(&refname)
+        .map_err(|error| format!("Could not set HEAD: {error}"))
+}
+
+/// Create a branch from the current HEAD and switch to it.
+#[tauri::command]
+pub fn git_create_branch(root: String, name: String) -> Result<(), String> {
+    let repo = open_repo(&root)?;
+    let head_commit = repo
+        .head()
+        .and_then(|head| head.peel_to_commit())
+        .map_err(|_| "Make a commit before creating a branch".to_string())?;
+    repo.branch(&name, &head_commit, false)
+        .map_err(|error| format!("Could not create branch: {error}"))?;
+    checkout_branch(&repo, &name)
+}
+
+/// Switch to an existing local branch (safe — see checkout_branch).
+#[tauri::command]
+pub fn git_switch_branch(root: String, name: String) -> Result<(), String> {
+    let repo = open_repo(&root)?;
+    checkout_branch(&repo, &name)
+}
+
+/// Delete a local branch. Refuses to delete the branch you're on.
+#[tauri::command]
+pub fn git_delete_branch(root: String, name: String) -> Result<(), String> {
+    let repo = open_repo(&root)?;
+    let mut branch = repo
+        .find_branch(&name, BranchType::Local)
+        .map_err(|_| format!("Branch '{name}' not found"))?;
+    if branch.is_head() {
+        return Err("Cannot delete the branch you're currently on".to_string());
+    }
+    branch
+        .delete()
+        .map_err(|error| format!("Could not delete branch: {error}"))
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AheadBehind {
+    ahead: usize,
+    behind: usize,
+    /// Whether the current branch tracks an upstream.
+    has_upstream: bool,
+    /// Whether the repo has any remote configured (gates push/pull in UI).
+    has_remote: bool,
+}
+
+/// Compute how far the current branch is ahead/behind its upstream.
+///
+/// The upstream is the tracking branch configured for the current branch
+/// (e.g. origin/main). `graph_ahead_behind(local, upstream)` returns the
+/// number of commits each has that the other doesn't. No upstream (or a
+/// detached/empty HEAD) yields zero counts and has_upstream:false.
+#[tauri::command]
+pub fn git_ahead_behind(root: String) -> Result<AheadBehind, String> {
+    let repo = open_repo(&root)?;
+    let has_remote = repo.remotes().map(|r| r.len() > 0).unwrap_or(false);
+
+    let mut ahead = 0;
+    let mut behind = 0;
+    let mut has_upstream = false;
+
+    if let Ok(head) = repo.head() {
+        if let (Some(local_oid), Ok(branch_name)) =
+            (head.target(), head.shorthand())
+        {
+            if let Ok(branch) =
+                repo.find_branch(branch_name, BranchType::Local)
+            {
+                if let Ok(upstream) = branch.upstream() {
+                    has_upstream = true;
+                    if let Some(upstream_oid) = upstream.get().target() {
+                        if let Ok((a, b)) =
+                            repo.graph_ahead_behind(local_oid, upstream_oid)
+                        {
+                            ahead = a;
+                            behind = b;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(AheadBehind {
+        ahead,
+        behind,
+        has_upstream,
+        has_remote,
+    })
+}
+
 // ---------------------------------------------------------------------------
 // NETWORK BOUNDARY
 //
-// push/pull and other remote operations (a later stage) go BELOW this
-// line and shell out to the `git` CLI — not git2 — so they reuse the
-// user's SSH keys and credential helpers. Nothing above this line should
-// depend on anything below it.
+// Everything BELOW shells out to the `git` CLI — not git2 — so it reuses
+// the user's SSH keys and credential helpers. GIT_TERMINAL_PROMPT=0 keeps
+// a missing credential from hanging the app on a hidden prompt. All git2
+// work above must finish (and the Repository drop) before any `.await`,
+// since Repository isn't Send.
 // ---------------------------------------------------------------------------
+
+/// The repo working directory — the cwd we run `git` in.
+fn repo_workdir(root: &str) -> Result<String, String> {
+    let repo = open_repo(root)?;
+    let workdir = repo
+        .workdir()
+        .ok_or_else(|| "Bare repositories are unsupported".to_string())?;
+    Ok(workdir.to_string_lossy().into_owned())
+}
+
+/// Run `git <args>` in the repo non-interactively, returning combined
+/// output on success or a friendly error (auth failures normalized).
+async fn run_git(cwd: &str, args: &[&str]) -> Result<String, String> {
+    let output = tokio::process::Command::new("git")
+        .args(args)
+        .current_dir(cwd)
+        .env("GIT_TERMINAL_PROMPT", "0") // never block on a credential prompt
+        .output()
+        .await
+        .map_err(|error| format!("Could not run git: {error}"))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if output.status.success() {
+        Ok(format!("{stdout}{stderr}").trim().to_string())
+    } else {
+        let combined = format!("{stderr}{stdout}");
+        let lowered = combined.to_lowercase();
+        if lowered.contains("authentication failed")
+            || lowered.contains("could not read username")
+            || lowered.contains("permission denied")
+            || lowered.contains("terminal prompts disabled")
+        {
+            Err("Authentication failed — check your credentials".to_string())
+        } else if lowered.contains("conflict")
+            || lowered.contains("automatic merge failed")
+        {
+            Err("Pull caused merge conflicts — resolve them before continuing"
+                .to_string())
+        } else {
+            Err(combined.trim().to_string())
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn git_fetch(root: String) -> Result<String, String> {
+    let workdir = repo_workdir(&root)?;
+    run_git(&workdir, &["fetch"]).await
+}
+
+#[tauri::command]
+pub async fn git_pull(root: String) -> Result<String, String> {
+    let workdir = repo_workdir(&root)?;
+    run_git(&workdir, &["pull"]).await
+}
+
+/// Push the current branch. If it has no upstream yet, push with
+/// `-u origin <branch>` to create and track it.
+#[tauri::command]
+pub async fn git_push(root: String) -> Result<String, String> {
+    // git2 reads (sync) fully complete and drop before we await.
+    let workdir = repo_workdir(&root)?;
+    let (branch, has_upstream) = {
+        let repo = open_repo(&root)?;
+        let head = repo
+            .head()
+            .map_err(|_| "No branch to push (empty or detached HEAD)".to_string())?;
+        let name = head
+            .shorthand()
+            .map_err(|_| "Detached HEAD — checkout a branch to push".to_string())?
+            .to_string();
+        let has_upstream = repo
+            .find_branch(&name, BranchType::Local)
+            .map(|branch| branch.upstream().is_ok())
+            .unwrap_or(false);
+        (name, has_upstream)
+    };
+
+    if has_upstream {
+        run_git(&workdir, &["push"]).await
+    } else {
+        // New branch: set the upstream as we push.
+        run_git(&workdir, &["push", "-u", "origin", &branch]).await
+    }
+}

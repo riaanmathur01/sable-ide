@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { GitBranch, SquareTerminal } from "lucide-react";
+import { GitBranch, RefreshCw, SquareTerminal } from "lucide-react";
 import { useUiStore } from "../../store/uiStore";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import { useTabsStore } from "../../store/tabsStore";
 import { useGitStore } from "../../store/gitStore";
 import { useInterpreterStore } from "../../store/interpreterStore";
 import { InterpreterPicker } from "./InterpreterPicker";
+import { BranchPicker } from "./BranchPicker";
 import "./StatusBar.css";
 
 /** Languages that show an interpreter selector in the status bar. */
@@ -27,10 +28,17 @@ export function StatusBar() {
   const hasActiveTab = activePath !== null;
   const isRepo = useGitStore((state) => state.isRepo);
   const branch = useGitStore((state) => state.branch);
+  const ahead = useGitStore((state) => state.ahead);
+  const behind = useGitStore((state) => state.behind);
+  const hasUpstream = useGitStore((state) => state.hasUpstream);
+  const hasRemote = useGitStore((state) => state.hasRemote);
+  const isSyncing = useGitStore((state) => state.isSyncing);
+  const sync = useGitStore((state) => state.sync);
 
   const interpreters = useInterpreterStore((state) => state.interpreters);
   const selectedPath = useInterpreterStore((state) => state.selectedPath);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [branchPickerOpen, setBranchPickerOpen] = useState(false);
 
   const activeExtension = activePath?.split(".").pop()?.toLowerCase() ?? "";
   const showInterpreter = INTERPRETER_EXTENSIONS.has(activeExtension);
@@ -60,10 +68,35 @@ export function StatusBar() {
           {rootName ?? "No folder opened"}
         </span>
         {isRepo && branch && (
-          <span className="status-bar-item status-bar-branch">
+          <button
+            className="status-bar-button"
+            title="Switch / manage branches"
+            onClick={() => setBranchPickerOpen((open) => !open)}
+          >
             <GitBranch size={13} strokeWidth={1.5} />
             {branch}
-          </span>
+            {hasUpstream && (ahead > 0 || behind > 0) && (
+              <span className="status-bar-aheadbehind">
+                {ahead > 0 && `↑${ahead}`}
+                {ahead > 0 && behind > 0 && " "}
+                {behind > 0 && `↓${behind}`}
+              </span>
+            )}
+          </button>
+        )}
+        {isRepo && hasRemote && (
+          <button
+            className="status-bar-button"
+            title="Sync (pull, then push)"
+            disabled={isSyncing}
+            onClick={() => sync()}
+          >
+            <RefreshCw
+              size={13}
+              strokeWidth={1.5}
+              className={isSyncing ? "spinning" : undefined}
+            />
+          </button>
         )}
       </div>
       {lastError && (
@@ -96,6 +129,9 @@ export function StatusBar() {
       </div>
       {pickerOpen && (
         <InterpreterPicker onClose={() => setPickerOpen(false)} />
+      )}
+      {branchPickerOpen && (
+        <BranchPicker onClose={() => setBranchPickerOpen(false)} />
       )}
     </footer>
   );

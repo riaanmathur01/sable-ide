@@ -26,6 +26,21 @@
   gap: 4px;
 }
 
+.status-bar-aheadbehind {
+  margin-left: 2px;
+  color: var(--text-muted);
+}
+
+.spinning {
+  animation: status-spin 0.9s linear infinite;
+}
+
+@keyframes status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .status-bar-button {
   display: flex;
   align-items: center;

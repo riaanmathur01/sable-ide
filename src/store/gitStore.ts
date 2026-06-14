@@ -1,12 +1,21 @@
 import { create } from "zustand";
 import {
+  gitAheadBehind,
+  gitBranches,
   gitCommit,
+  gitCreateBranch,
+  gitDeleteBranch,
+  gitFetch,
+  gitPull,
+  gitPush,
   gitSetIdentity,
   gitStage,
   gitStageAll,
   gitStatus,
+  gitSwitchBranch,
   gitUnstage,
   gitUnstageAll,
+  type BranchInfo,
   type GitFileEntry,
   type GitFileStatus,
 } from "../lib/ipc";
@@ -34,6 +43,16 @@ interface GitState {
   isRepo: boolean;
   branch: string | null;
   statusByPath: Record<string, GitFileEntry>;
+  // Sync state vs upstream.
+  ahead: number;
+  behind: number;
+  hasUpstream: boolean;
+  hasRemote: boolean;
+  // Branch management.
+  branches: BranchInfo[];
+  // Network op in flight + last result message (transient).
+  isSyncing: boolean;
+  syncMessage: string | null;
   /** Debounced re-query (watcher / save driven). */
   refresh: () => void;
   /** Immediate re-query (after a deliberate git action). */
@@ -45,6 +64,14 @@ interface GitState {
   unstageAll: () => Promise<void>;
   commit: (message: string) => Promise<CommitOutcome>;
   setIdentity: (name: string, email: string) => Promise<boolean>;
+  loadBranches: () => Promise<void>;
+  switchBranch: (name: string) => Promise<void>;
+  createBranch: (name: string) => Promise<void>;
+  deleteBranch: (name: string) => Promise<void>;
+  fetch: () => Promise<void>;
+  pull: () => Promise<void>;
+  push: () => Promise<void>;
+  sync: () => Promise<void>;
 }
 
 const REFRESH_DEBOUNCE_MS = 250;
@@ -55,7 +82,16 @@ async function queryStatus(
 ): Promise<void> {
   const rootPath = useWorkspaceStore.getState().rootPath;
   if (!rootPath) {
-    set({ isRepo: false, branch: null, statusByPath: {} });
+    set({
+      isRepo: false,
+      branch: null,
+      statusByPath: {},
+      ahead: 0,
+      behind: 0,
+      hasUpstream: false,
+      hasRemote: false,
+      branches: [],
+    });
     return;
   }
   try {
@@ -65,6 +101,21 @@ async function queryStatus(
       branch: status.branch,
       statusByPath: status.files,
     });
+    if (status.isRepo) {
+      // Ahead/behind is a separate, cheap query; failures shouldn't wipe
+      // the status we just got.
+      try {
+        const sync = await gitAheadBehind(rootPath);
+        set({
+          ahead: sync.ahead,
+          behind: sync.behind,
+          hasUpstream: sync.hasUpstream,
+          hasRemote: sync.hasRemote,
+        });
+      } catch {
+        /* leave previous sync state */
+      }
+    }
   } catch {
     // Keep the last good state rather than flashing empty.
   }
@@ -74,6 +125,13 @@ export const useGitStore = create<GitState>((set, get) => ({
   isRepo: false,
   branch: null,
   statusByPath: {},
+  ahead: 0,
+  behind: 0,
+  hasUpstream: false,
+  hasRemote: false,
+  branches: [],
+  isSyncing: false,
+  syncMessage: null,
 
   refresh: () => {
     clearTimeout(refreshTimer);
@@ -84,7 +142,17 @@ export const useGitStore = create<GitState>((set, get) => ({
 
   reset: () => {
     clearTimeout(refreshTimer);
-    set({ isRepo: false, branch: null, statusByPath: {} });
+    set({
+      isRepo: false,
+      branch: null,
+      statusByPath: {},
+      ahead: 0,
+      behind: 0,
+      hasUpstream: false,
+      hasRemote: false,
+      branches: [],
+      syncMessage: null,
+    });
   },
 
   stage: async (file) => {
@@ -155,4 +223,85 @@ export const useGitStore = create<GitState>((set, get) => ({
       return false;
     }
   },
+
+  loadBranches: async () => {
+    const root = useWorkspaceStore.getState().rootPath;
+    if (!root) return;
+    try {
+      const branches = await gitBranches(root);
+      set({ branches });
+    } catch (error) {
+      useUiStore.getState().setLastError(String(error));
+    }
+  },
+
+  switchBranch: async (name) => {
+    const root = useWorkspaceStore.getState().rootPath;
+    if (!root) return;
+    try {
+      await gitSwitchBranch(root, name);
+      await get().refreshNow();
+      await get().loadBranches();
+    } catch (error) {
+      // e.g. "commit or stash first" — surface, don't lose work.
+      useUiStore.getState().setLastError(String(error));
+    }
+  },
+
+  createBranch: async (name) => {
+    const root = useWorkspaceStore.getState().rootPath;
+    if (!root) return;
+    try {
+      await gitCreateBranch(root, name);
+      await get().refreshNow();
+      await get().loadBranches();
+    } catch (error) {
+      useUiStore.getState().setLastError(String(error));
+    }
+  },
+
+  deleteBranch: async (name) => {
+    const root = useWorkspaceStore.getState().rootPath;
+    if (!root) return;
+    try {
+      await gitDeleteBranch(root, name);
+      await get().loadBranches();
+    } catch (error) {
+      useUiStore.getState().setLastError(String(error));
+    }
+  },
+
+  fetch: () => runNetwork(set, get, gitFetch, "Fetched"),
+  pull: () => runNetwork(set, get, gitPull, "Pulled"),
+  push: () => runNetwork(set, get, gitPush, "Pushed"),
+
+  sync: async () => {
+    // VS Code-style sync: pull then push.
+    await runNetwork(set, get, gitPull, "Pulled");
+    if (!get().syncMessage?.startsWith("Error")) {
+      await runNetwork(set, get, gitPush, "Pushed");
+    }
+  },
 }));
+
+/** Shared runner for network ops: pending state, result message, refresh. */
+async function runNetwork(
+  set: (partial: Partial<GitState>) => void,
+  get: () => GitState,
+  op: (root: string) => Promise<string>,
+  successVerb: string,
+): Promise<void> {
+  const root = useWorkspaceStore.getState().rootPath;
+  if (!root) return;
+  set({ isSyncing: true, syncMessage: null });
+  try {
+    const output = await op(root);
+    set({ syncMessage: output ? `${successVerb}: ${output}` : successVerb });
+  } catch (error) {
+    set({ syncMessage: `Error: ${String(error)}` });
+  } finally {
+    set({ isSyncing: false });
+    await get().refreshNow();
+    await get().loadBranches();
+  }
+}
