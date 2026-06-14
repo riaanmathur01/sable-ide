@@ -53,6 +53,8 @@ interface InterpreterState {
   select: (path: string) => void;
   /** Create a .venv from a base interpreter and select it. */
   createVenv: (basePath: string) => Promise<void>;
+  /** Clear discovered interpreters and selection (on workspace switch). */
+  reset: () => void;
 }
 
 export const useInterpreterStore = create<InterpreterState>((set, get) => ({
@@ -111,4 +113,6 @@ export const useInterpreterStore = create<InterpreterState>((set, get) => ({
       set({ isCreating: false });
     }
   },
+
+  reset: () => set({ interpreters: [], selectedPath: null }),
 }));

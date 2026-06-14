@@ -3,6 +3,9 @@ import { readDirectory, watchWorkspace, type FsEntry } from "../lib/ipc";
 import { useUiStore } from "./uiStore";
 import { useGitStore } from "./gitStore";
 import { useInterpreterStore } from "./interpreterStore";
+import { useTabsStore } from "./tabsStore";
+import { useSearchStore } from "./searchStore";
+import { useDiagnosticsStore } from "./diagnosticsStore";
 
 /**
  * Workspace state: the open folder and a lazily-loaded directory tree.
@@ -37,6 +40,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   expandedPaths: new Set(),
 
   openWorkspace: async (path) => {
+    // Switching folders: clear all prior workspace-scoped state so the
+    // new folder starts clean (tabs, git, search, diagnostics, interp).
+    useTabsStore.getState().resetTabs();
+    useSearchStore.getState().reset();
+    useDiagnosticsStore.getState().clear();
+    useGitStore.getState().reset();
+    useInterpreterStore.getState().reset();
     try {
       const rootChildren = await readDirectory(path);
       // Both separators so Windows paths split correctly too.

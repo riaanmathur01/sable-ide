@@ -7,11 +7,11 @@ import {
   GitBranch,
   Search,
 } from "lucide-react";
-import { open as openNativeDialog } from "@tauri-apps/plugin-dialog";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import { useUiStore } from "../../store/uiStore";
 import { useGitStore } from "../../store/gitStore";
 import { createDirectory, createFile } from "../../lib/ipc";
+import { openFolderDialog } from "../../lib/openFolder";
 import { FileTree } from "./FileTree";
 import { SearchPanel } from "./SearchPanel";
 import { SourceControlPanel } from "./SourceControlPanel";
@@ -26,7 +26,6 @@ type PendingCreate = "file" | "folder" | null;
 export function Sidebar() {
   const rootPath = useWorkspaceStore((state) => state.rootPath);
   const rootName = useWorkspaceStore((state) => state.rootName);
-  const openWorkspace = useWorkspaceStore((state) => state.openWorkspace);
   const refreshDirectory = useWorkspaceStore((state) => state.refreshDirectory);
   const setLastError = useUiStore((state) => state.setLastError);
   const sidebarView = useUiStore((state) => state.sidebarView);
@@ -37,16 +36,6 @@ export function Sidebar() {
 
   const [pendingCreate, setPendingCreate] = useState<PendingCreate>(null);
   const [pendingName, setPendingName] = useState("");
-
-  async function pickFolder() {
-    const selectedPath = await openNativeDialog({
-      directory: true,
-      title: "Open Folder",
-    });
-    if (typeof selectedPath === "string") {
-      await openWorkspace(selectedPath);
-    }
-  }
 
   async function confirmCreate() {
     const name = pendingName.trim();
@@ -132,6 +121,13 @@ export function Sidebar() {
               >
                 <FolderPlus size={15} strokeWidth={1.5} />
               </button>
+              <button
+                className="icon-button"
+                title="Open Folder… (⌘O)"
+                onClick={openFolderDialog}
+              >
+                <FolderOpen size={15} strokeWidth={1.5} />
+              </button>
             </>
           )}
         </span>
@@ -162,7 +158,10 @@ export function Sidebar() {
           <div className="sidebar-empty">
             <FolderOpen size={28} strokeWidth={1.25} aria-hidden />
             <p>No folder opened</p>
-            <button className="sidebar-open-button" onClick={pickFolder}>
+            <button
+              className="sidebar-open-button"
+              onClick={openFolderDialog}
+            >
               Open Folder
             </button>
             <p className="sidebar-empty-hint">

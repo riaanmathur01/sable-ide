@@ -11,6 +11,7 @@ interface DiagnosticsState {
   /** Absolute path → number of error-severity diagnostics (>0 only). */
   errorCountByPath: Record<string, number>;
   setFileErrorCount: (path: string, count: number) => void;
+  clear: () => void;
 }
 
 export const useDiagnosticsStore = create<DiagnosticsState>((set) => ({
@@ -27,4 +28,6 @@ export const useDiagnosticsStore = create<DiagnosticsState>((set) => ({
       }
       return { errorCountByPath };
     }),
+
+  clear: () => set({ errorCountByPath: {} }),
 }));

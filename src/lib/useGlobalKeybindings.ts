@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useTabsStore } from "../store/tabsStore";
 import { useUiStore } from "../store/uiStore";
 import { runActiveFile } from "./runFile";
+import { openFolderDialog } from "./openFolder";
 
 /**
  * App-wide keyboard shortcuts, registered once at the App level so they
@@ -15,6 +16,7 @@ import { runActiveFile } from "./runFile";
  *   Cmd/Ctrl+`  toggle terminal (works when the OS lets it through)
  *   Cmd/Ctrl+B  toggle sidebar
  *   Cmd/Ctrl+W  close active tab
+ *   Cmd/Ctrl+O  open / switch folder
  *   Cmd/Ctrl+Shift+F  search in workspace
  *   Cmd/Ctrl+Shift+G  source control
  */
@@ -62,6 +64,11 @@ export function useGlobalKeybindings() {
           event.preventDefault();
           const { activePath, closeTab } = useTabsStore.getState();
           if (activePath) closeTab(activePath);
+          break;
+        }
+        case "o": {
+          event.preventDefault(); // override the webview's open dialog
+          void openFolderDialog();
           break;
         }
       }

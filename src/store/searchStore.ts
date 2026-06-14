@@ -18,6 +18,7 @@ interface SearchStoreState {
   runSearch: () => Promise<void>;
   receiveBatch: (searchId: number, batch: SearchMatch[]) => void;
   finishSearch: (searchId: number, limitHit: boolean) => void;
+  reset: () => void;
 }
 
 let searchIdCounter = 0;
@@ -66,4 +67,13 @@ export const useSearchStore = create<SearchStoreState>((set, get) => ({
     if (searchId !== get().activeSearchId) return;
     set({ isSearching: false, limitHit });
   },
+
+  reset: () =>
+    set({
+      query: "",
+      activeSearchId: null,
+      matches: [],
+      isSearching: false,
+      limitHit: false,
+    }),
 }));

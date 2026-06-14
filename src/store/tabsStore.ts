@@ -37,6 +37,8 @@ interface TabsState {
   closeTab: (path: string) => Promise<void>;
   /** After a move on disk, repoint affected tabs at their new paths. */
   remapMovedPaths: (oldPath: string, newPath: string) => Promise<void>;
+  /** Close everything (used when switching workspaces). */
+  resetTabs: () => void;
 }
 
 /** True if `path` is `prefix` itself or lives underneath it. */
@@ -97,6 +99,15 @@ export const useTabsStore = create<TabsState>((set, get) => ({
   },
 
   setActive: (path) => set({ activePath: path }),
+
+  resetTabs: () => {
+    for (const tab of get().tabs) {
+      cancelAutoSave(tab.path);
+      disposeModel(tab.path);
+      void closeDocument(tab.path);
+    }
+    set({ tabs: [], activePath: null, initialContentByPath: {} });
+  },
 
   syncDirtyState: (path) => {
     const isDirty = isModelDirty(path);
