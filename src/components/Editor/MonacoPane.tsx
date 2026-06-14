@@ -15,7 +15,9 @@ import "../../lib/monacoSetup";
  * bundle is only fetched when the first file opens.
  */
 export default function MonacoPane() {
-  const activePath = useTabsStore((state) => state.activePath);
+  // The editor follows the last active *file* tab; diff tabs render in a
+  // separate DiffView, so MonacoPane keeps its model when one is active.
+  const activePath = useTabsStore((state) => state.lastFilePath);
   const initialContentByPath = useTabsStore(
     (state) => state.initialContentByPath,
   );

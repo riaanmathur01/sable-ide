@@ -10,8 +10,14 @@
 }
 
 .editor-surface {
+  position: relative;
   flex: 1;
   min-height: 0;
+}
+
+.editor-layer {
+  position: absolute;
+  inset: 0;
 }
 
 .editor-empty {

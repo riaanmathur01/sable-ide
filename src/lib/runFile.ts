@@ -38,24 +38,28 @@ const RUNNERS_BY_EXTENSION: Record<string, (path: string) => string> = {
 };
 
 export async function runActiveFile(): Promise<void> {
-  const { activePath, saveTab } = useTabsStore.getState();
+  const { activePath, lastFilePath, tabs, saveTab } = useTabsStore.getState();
   const { setLastError, setTerminalVisible } = useUiStore.getState();
 
-  if (!activePath) {
+  // Run the active file; if a diff tab is active, fall back to the last
+  // real file (diff views aren't runnable).
+  const activeTab = tabs.find((tab) => tab.path === activePath);
+  const filePath = activeTab?.kind === "diff" ? lastFilePath : activePath;
+  if (!filePath) {
     setLastError("No file to run — open one first");
     return;
   }
 
-  const extension = activePath.split(".").pop()?.toLowerCase() ?? "";
+  const extension = filePath.split(".").pop()?.toLowerCase() ?? "";
   const buildCommand = RUNNERS_BY_EXTENSION[extension];
   if (!buildCommand) {
     setLastError(`Don't know how to run .${extension} files`);
     return;
   }
 
-  await saveTab(activePath); // run what's on screen, not a stale file
+  await saveTab(filePath); // run what's on screen, not a stale file
   setTerminalVisible(true);
   // Queue the command; the terminal view runs it once mounted and
   // listening (the panel lazy-loads, so it may not exist yet).
-  useTerminalStore.getState().enqueueCommand(buildCommand(activePath));
+  useTerminalStore.getState().enqueueCommand(buildCommand(filePath));
 }

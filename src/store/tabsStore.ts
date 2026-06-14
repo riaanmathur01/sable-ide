@@ -14,9 +14,18 @@ import {
 import { useUiStore } from "./uiStore";
 
 export interface EditorTab {
+  /** Stable key. File tabs use the file path; diff tabs use a synthetic key. */
   path: string;
   name: string;
   isDirty: boolean;
+  kind: "file" | "diff";
+  /** Present on diff tabs: which file and whether to diff the staged side. */
+  diff?: { filePath: string; staged: boolean };
+}
+
+/** Synthetic tab key for a diff so it never collides with a file tab. */
+function diffKey(filePath: string, staged: boolean): string {
+  return `diff:${staged ? "s" : "u"}:${filePath}`;
 }
 
 /**
@@ -26,9 +35,13 @@ export interface EditorTab {
 interface TabsState {
   tabs: EditorTab[];
   activePath: string | null;
+  /** The most recent file (non-diff) tab — what MonacoPane renders. */
+  lastFilePath: string | null;
   /** Initial content for models Monaco hasn't created yet. */
   initialContentByPath: Record<string, string>;
   openFile: (path: string) => Promise<void>;
+  /** Open a read-only diff for a changed file as its own tab. */
+  openDiff: (filePath: string, staged: boolean) => void;
   setActive: (path: string) => void;
   /** Re-check the active model's dirty state (called on editor change). */
   syncDirtyState: (path: string) => void;
@@ -51,9 +64,16 @@ function persistSession(tabs: EditorTab[], activePath: string | null) {
   const root = useWorkspaceStore.getState().rootPath;
   if (!root) return;
   try {
+    // Only file tabs persist; diff tabs are transient (and have synthetic
+    // keys that aren't openable paths).
+    const openPaths = tabs
+      .filter((tab) => tab.kind === "file")
+      .map((tab) => tab.path);
+    const persistActive =
+      activePath && openPaths.includes(activePath) ? activePath : null;
     localStorage.setItem(
       SESSION_KEY_PREFIX + root,
-      JSON.stringify({ openPaths: tabs.map((tab) => tab.path), activePath }),
+      JSON.stringify({ openPaths, activePath: persistActive }),
     );
   } catch {
     /* ignore storage quota errors */
@@ -89,12 +109,13 @@ function fileNameOf(path: string): string {
 export const useTabsStore = create<TabsState>((set, get) => ({
   tabs: [],
   activePath: null,
+  lastFilePath: null,
   initialContentByPath: {},
 
   openFile: async (path) => {
     const { tabs } = get();
     if (tabs.some((tab) => tab.path === path)) {
-      set({ activePath: path });
+      set({ activePath: path, lastFilePath: path });
       persistSession(get().tabs, path);
       return;
     }
@@ -103,9 +124,10 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       set((state) => ({
         tabs: [
           ...state.tabs,
-          { path, name: fileNameOf(path), isDirty: false },
+          { path, name: fileNameOf(path), isDirty: false, kind: "file" },
         ],
         activePath: path,
+        lastFilePath: path,
         initialContentByPath: {
           ...state.initialContentByPath,
           [path]: contents,
@@ -119,9 +141,31 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     }
   },
 
+  openDiff: (filePath, staged) => {
+    const key = diffKey(filePath, staged);
+    if (get().tabs.some((tab) => tab.path === key)) {
+      set({ activePath: key });
+      return;
+    }
+    const name = `${fileNameOf(filePath)} (${staged ? "Staged" : "Changes"})`;
+    set((state) => ({
+      tabs: [
+        ...state.tabs,
+        { path: key, name, isDirty: false, kind: "diff", diff: { filePath, staged } },
+      ],
+      activePath: key,
+    }));
+  },
+
   setActive: (path) => {
-    set({ activePath: path });
-    persistSession(get().tabs, path);
+    const tab = get().tabs.find((candidate) => candidate.path === path);
+    // Only file tabs drive what MonacoPane shows; diff tabs leave it be.
+    if (tab?.kind === "file") {
+      set({ activePath: path, lastFilePath: path });
+    } else {
+      set({ activePath: path });
+    }
+    persistSession(get().tabs, get().activePath);
   },
 
   restoreSession: async () => {
@@ -154,7 +198,12 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       disposeModel(tab.path);
       void closeDocument(tab.path);
     }
-    set({ tabs: [], activePath: null, initialContentByPath: {} });
+    set({
+      tabs: [],
+      activePath: null,
+      lastFilePath: null,
+      initialContentByPath: {},
+    });
   },
 
   syncDirtyState: (path) => {
@@ -169,6 +218,9 @@ export const useTabsStore = create<TabsState>((set, get) => ({
   },
 
   saveTab: async (path) => {
+    // Diff tabs are read-only — never write to their synthetic key.
+    const tab = get().tabs.find((candidate) => candidate.path === path);
+    if (tab && tab.kind !== "file") return;
     cancelAutoSave(path);
     // Read from the model; fall back to the live editor for the active
     // tab. If neither works something is genuinely wrong — say so
@@ -232,11 +284,16 @@ export const useTabsStore = create<TabsState>((set, get) => ({
                     path: updatedPath,
                     name: fileNameOf(updatedPath),
                     isDirty: false,
+                    kind: "file" as const,
                   }
                 : openTab,
             ),
             activePath:
               state.activePath === tab.path ? updatedPath : state.activePath,
+            lastFilePath:
+              state.lastFilePath === tab.path
+                ? updatedPath
+                : state.lastFilePath,
             initialContentByPath,
           };
         });
@@ -278,7 +335,14 @@ export const useTabsStore = create<TabsState>((set, get) => ({
           remainingTabs[Math.min(closedIndex, remainingTabs.length - 1)]
             ?.path ?? null;
       }
-      return { tabs: remainingTabs, activePath, initialContentByPath };
+      // Keep lastFilePath pointing at a still-open file tab.
+      let lastFilePath = state.lastFilePath;
+      if (lastFilePath === path) {
+        lastFilePath =
+          remainingTabs.filter((tab) => tab.kind === "file").pop()?.path ??
+          null;
+      }
+      return { tabs: remainingTabs, activePath, lastFilePath, initialContentByPath };
     });
     persistSession(get().tabs, get().activePath);
   },

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Check, Minus, Plus } from "lucide-react";
 import { useGitStore } from "../../store/gitStore";
+import { useTabsStore } from "../../store/tabsStore";
 import { iconForFile } from "../../lib/fileIcons";
 import type { GitFileStatus } from "../../lib/ipc";
 import "./SourceControlPanel.css";
@@ -38,6 +39,7 @@ export function SourceControlPanel() {
   const unstageAll = useGitStore((state) => state.unstageAll);
   const commit = useGitStore((state) => state.commit);
   const setIdentity = useGitStore((state) => state.setIdentity);
+  const openDiff = useTabsStore((state) => state.openDiff);
 
   const [message, setMessage] = useState("");
   const [isCommitting, setIsCommitting] = useState(false);
@@ -169,6 +171,7 @@ export function SourceControlPanel() {
         onAction={unstage}
         onActionAll={staged.length > 0 ? unstageAll : undefined}
         actionAllTitle="Unstage all"
+        onOpenDiff={(path) => openDiff(path, true)}
       />
       <ChangeSection
         title="Changes"
@@ -178,6 +181,7 @@ export function SourceControlPanel() {
         onAction={stage}
         onActionAll={unstaged.length > 0 ? stageAll : undefined}
         actionAllTitle="Stage all"
+        onOpenDiff={(path) => openDiff(path, false)}
       />
 
       {staged.length === 0 && unstaged.length === 0 && (
@@ -195,6 +199,7 @@ interface ChangeSectionProps {
   onAction: (path: string) => void;
   onActionAll?: () => void;
   actionAllTitle: string;
+  onOpenDiff: (path: string) => void;
 }
 
 function ChangeSection({
@@ -205,6 +210,7 @@ function ChangeSection({
   onAction,
   onActionAll,
   actionAllTitle,
+  onOpenDiff,
 }: ChangeSectionProps) {
   if (rows.length === 0) return null;
   return (
@@ -227,7 +233,12 @@ function ChangeSection({
         const badge = STATUS_BADGE[row.status];
         const FileIcon = iconForFile(row.name);
         return (
-          <div className="scm-row" key={`${title}:${row.path}`} title={row.path}>
+          <div
+            className="scm-row"
+            key={`${title}:${row.path}`}
+            title={`${row.path} — click to view diff`}
+            onClick={() => onOpenDiff(row.path)}
+          >
             <FileIcon size={14} strokeWidth={1.5} className="scm-row-icon" />
             <span className={`scm-row-name ${badge.colorClass}`}>
               {row.name}
@@ -235,7 +246,10 @@ function ChangeSection({
             <button
               className="scm-row-action"
               title={actionTitle}
-              onClick={() => onAction(row.path)}
+              onClick={(event) => {
+                event.stopPropagation();
+                onAction(row.path);
+              }}
             >
               {actionIcon}
             </button>

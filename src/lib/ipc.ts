@@ -109,6 +109,21 @@ export function gitStatus(path: string): Promise<GitStatus> {
   return invoke<GitStatus>("git_status", { path });
 }
 
+export interface FileDiff {
+  original: string;
+  modified: string;
+  isBinary: boolean;
+}
+
+/** The two versions of a file to diff (staged: index vs HEAD). */
+export function gitFileDiff(
+  root: string,
+  file: string,
+  staged: boolean,
+): Promise<FileDiff> {
+  return invoke<FileDiff>("git_file_diff", { root, file, staged });
+}
+
 export function gitStage(root: string, file: string): Promise<void> {
   return invoke<void>("git_stage", { root, file });
 }

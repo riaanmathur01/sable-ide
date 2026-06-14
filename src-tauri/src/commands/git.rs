@@ -378,6 +378,127 @@ pub fn git_set_identity(name: String, email: String) -> Result<(), String> {
     Ok(())
 }
 
+// === Diff (local, git2) ====================================================
+
+/// The content of one side of a diff, resolved from a blob or disk.
+enum Content {
+    /// UTF-8 text we can diff.
+    Text(String),
+    /// Exists but isn't valid UTF-8 (an image, etc.) — not diffable.
+    Binary,
+    /// Doesn't exist on this side (new file's original / deleted file's
+    /// modified) — shown as an empty pane.
+    Absent,
+}
+
+/// Read a blob's bytes as text, or flag it binary.
+fn blob_content(repo: &Repository, oid: git2::Oid) -> Content {
+    match repo.find_blob(oid) {
+        Ok(blob) => match std::str::from_utf8(blob.content()) {
+            Ok(text) => Content::Text(text.to_string()),
+            Err(_) => Content::Binary,
+        },
+        Err(_) => Content::Absent,
+    }
+}
+
+/// The file's content in the HEAD commit. Resolving a path to a blob:
+/// HEAD → its tree → `get_path` walks the tree to the file's tree entry →
+/// the entry's id is the blob. Absent if there's no HEAD or the path
+/// isn't in it (a new file).
+fn head_content(repo: &Repository, relative: &Path) -> Content {
+    let tree = match repo.head().and_then(|head| head.peel_to_tree()) {
+        Ok(tree) => tree,
+        Err(_) => return Content::Absent,
+    };
+    match tree.get_path(relative) {
+        Ok(entry) => blob_content(repo, entry.id()),
+        Err(_) => Content::Absent, // not tracked in HEAD
+    }
+}
+
+/// The file's staged content from the index (stage 0 = the normal entry).
+fn index_content(repo: &Repository, relative: &Path) -> Content {
+    let index = match repo.index() {
+        Ok(index) => index,
+        Err(_) => return Content::Absent,
+    };
+    match index.get_path(relative, 0) {
+        Some(entry) => blob_content(repo, entry.id),
+        None => Content::Absent,
+    }
+}
+
+/// The working-tree content (the file on disk). Absent if it's gone
+/// (a deletion), Binary if not UTF-8.
+fn worktree_content(absolute: &str) -> Content {
+    match std::fs::read(absolute) {
+        Ok(bytes) => match String::from_utf8(bytes) {
+            Ok(text) => Content::Text(text),
+            Err(_) => Content::Binary,
+        },
+        Err(_) => Content::Absent,
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileDiff {
+    original: String,
+    modified: String,
+    is_binary: bool,
+}
+
+/// Produce the two versions of a file to diff.
+///   - staged   → original = HEAD, modified = index.
+///   - unstaged → original = index (or HEAD if unstaged-only), modified =
+///                working tree.
+/// New files leave the original empty; deletions leave the modified empty.
+#[tauri::command]
+pub fn git_file_diff(
+    root: String,
+    file: String,
+    staged: bool,
+) -> Result<FileDiff, String> {
+    let repo = open_repo(&root)?;
+    let relative = relative_to_workdir(&repo, &file)?;
+
+    let (original, modified) = if staged {
+        (
+            head_content(&repo, &relative),
+            index_content(&repo, &relative),
+        )
+    } else {
+        // Unstaged compares against the index if the file is staged,
+        // otherwise against HEAD — matching `git diff`.
+        let original = match index_content(&repo, &relative) {
+            Content::Absent => head_content(&repo, &relative),
+            other => other,
+        };
+        (original, worktree_content(&file))
+    };
+
+    // If either side is binary, don't attempt a text diff.
+    if matches!(original, Content::Binary) || matches!(modified, Content::Binary)
+    {
+        return Ok(FileDiff {
+            original: String::new(),
+            modified: String::new(),
+            is_binary: true,
+        });
+    }
+
+    let to_string = |content: Content| match content {
+        Content::Text(text) => text,
+        _ => String::new(), // Absent → empty pane
+    };
+    Ok(FileDiff {
+        original: to_string(original),
+        modified: to_string(modified),
+        is_binary: false,
+    })
+}
+
 // === Branch management (local, git2) ======================================
 
 #[derive(Serialize)]
