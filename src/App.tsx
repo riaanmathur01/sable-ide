@@ -5,7 +5,8 @@ import { Sidebar } from "./components/Sidebar/Sidebar";
 import { EditorArea } from "./components/Editor/EditorArea";
 import { TerminalPanel } from "./components/Terminal/TerminalPanel";
 import { StatusBar } from "./components/StatusBar/StatusBar";
-import { useUiStore } from "./store/uiStore";
+import { useUiStore, lastTerminalVisible } from "./store/uiStore";
+import { useTabsStore } from "./store/tabsStore";
 import {
   useWorkspaceStore,
   lastOpenedFolder,
@@ -39,15 +40,23 @@ function App() {
     initLspListeners();
   }, []);
 
-  // Session restore: reopen the folder from last launch. If it's gone
+  // Session restore: reopen the folder from last launch, then its tabs
+  // (and the terminal panel if it was open). If the folder is gone
   // (moved/deleted), forget it silently instead of erroring.
   useEffect(() => {
     const last = lastOpenedFolder();
     if (!last) return;
     isDirectory(last)
-      .then((exists) => {
-        if (exists) return openWorkspace(last);
-        clearLastOpenedFolder();
+      .then(async (exists) => {
+        if (!exists) {
+          clearLastOpenedFolder();
+          return;
+        }
+        await openWorkspace(last);
+        await useTabsStore.getState().restoreSession();
+        if (lastTerminalVisible()) {
+          useUiStore.getState().setTerminalVisible(true);
+        }
       })
       .catch(() => clearLastOpenedFolder());
   }, [openWorkspace]);

@@ -28,6 +28,13 @@ interface UiState {
   setLspStatus: (status: string | null) => void;
 }
 
+/** Persisted across launches so the terminal panel reopens if it was open. */
+const TERMINAL_VISIBLE_KEY = "sable.terminalVisible";
+
+export function lastTerminalVisible(): boolean {
+  return localStorage.getItem(TERMINAL_VISIBLE_KEY) === "true";
+}
+
 let errorDismissTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const useUiStore = create<UiState>((set) => ({
@@ -44,8 +51,15 @@ export const useUiStore = create<UiState>((set) => ({
   toggleSidebar: () =>
     set((state) => ({ sidebarVisible: !state.sidebarVisible })),
   toggleTerminal: () =>
-    set((state) => ({ terminalVisible: !state.terminalVisible })),
-  setTerminalVisible: (visible) => set({ terminalVisible: visible }),
+    set((state) => {
+      const terminalVisible = !state.terminalVisible;
+      localStorage.setItem(TERMINAL_VISIBLE_KEY, String(terminalVisible));
+      return { terminalVisible };
+    }),
+  setTerminalVisible: (visible) => {
+    localStorage.setItem(TERMINAL_VISIBLE_KEY, String(visible));
+    set({ terminalVisible: visible });
+  },
   setLastError: (message) => {
     set({ lastError: message });
     // Errors are transient: auto-dismiss so the status bar stays calm.

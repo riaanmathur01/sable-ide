@@ -3,6 +3,7 @@ import { ask as confirmNative } from "@tauri-apps/plugin-dialog";
 import { readFile, writeFile } from "../lib/ipc";
 import { closeDocument, openDocument } from "../lib/lsp/lspClient";
 import { useGitStore } from "./gitStore";
+import { useWorkspaceStore } from "./workspaceStore";
 import {
   disposeModel,
   getEditor,
@@ -39,6 +40,24 @@ interface TabsState {
   remapMovedPaths: (oldPath: string, newPath: string) => Promise<void>;
   /** Close everything (used when switching workspaces). */
   resetTabs: () => void;
+  /** Reopen the saved tabs for the current workspace (session restore). */
+  restoreSession: () => Promise<void>;
+}
+
+/** Persisted open-tab session, keyed per workspace folder. */
+const SESSION_KEY_PREFIX = "sable.session:";
+
+function persistSession(tabs: EditorTab[], activePath: string | null) {
+  const root = useWorkspaceStore.getState().rootPath;
+  if (!root) return;
+  try {
+    localStorage.setItem(
+      SESSION_KEY_PREFIX + root,
+      JSON.stringify({ openPaths: tabs.map((tab) => tab.path), activePath }),
+    );
+  } catch {
+    /* ignore storage quota errors */
+  }
 }
 
 /** True if `path` is `prefix` itself or lives underneath it. */
@@ -76,6 +95,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     const { tabs } = get();
     if (tabs.some((tab) => tab.path === path)) {
       set({ activePath: path });
+      persistSession(get().tabs, path);
       return;
     }
     try {
@@ -91,6 +111,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
           [path]: contents,
         },
       }));
+      persistSession(get().tabs, path);
       // Start a language server (if any) and tell it this doc is open.
       void openDocument(path, contents);
     } catch (error) {
@@ -98,7 +119,34 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     }
   },
 
-  setActive: (path) => set({ activePath: path }),
+  setActive: (path) => {
+    set({ activePath: path });
+    persistSession(get().tabs, path);
+  },
+
+  restoreSession: async () => {
+    const root = useWorkspaceStore.getState().rootPath;
+    if (!root) return;
+    const raw = localStorage.getItem(SESSION_KEY_PREFIX + root);
+    if (!raw) return;
+    let session: { openPaths?: string[]; activePath?: string | null };
+    try {
+      session = JSON.parse(raw);
+    } catch {
+      return;
+    }
+    // Reopen tabs in their saved order; openFile tolerates deleted files.
+    for (const path of session.openPaths ?? []) {
+      await get().openFile(path);
+    }
+    // Restore the exact active tab (openFile left the last one active).
+    if (
+      session.activePath &&
+      get().tabs.some((tab) => tab.path === session.activePath)
+    ) {
+      get().setActive(session.activePath);
+    }
+  },
 
   resetTabs: () => {
     for (const tab of get().tabs) {
@@ -192,6 +240,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
             initialContentByPath,
           };
         });
+        persistSession(get().tabs, get().activePath);
       } catch (error) {
         useUiStore.getState().setLastError(String(error));
       }
@@ -231,5 +280,6 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       }
       return { tabs: remainingTabs, activePath, initialContentByPath };
     });
+    persistSession(get().tabs, get().activePath);
   },
 }));
