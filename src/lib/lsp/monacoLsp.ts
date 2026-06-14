@@ -68,7 +68,68 @@ function lspKindToMonaco(
   return kind != null ? (byLspKind[kind] ?? Kind.Text) : Kind.Text;
 }
 
+/** LSP Hover contents can take several shapes; normalize to Monaco. */
+type LspMarkedString = string | { language: string; value: string };
+interface LspHover {
+  contents:
+    | { kind: string; value: string } // MarkupContent
+    | LspMarkedString
+    | LspMarkedString[];
+  range?: {
+    start: { line: number; character: number };
+    end: { line: number; character: number };
+  };
+}
+
+/** One LSP hover content piece → a Monaco markdown string. */
+function markedStringToMarkdown(
+  content: LspMarkedString | { kind: string; value: string },
+): { value: string } {
+  if (typeof content === "string") return { value: content };
+  // MarkupContent ({kind, value}) is already markdown/plaintext text.
+  if ("kind" in content) return { value: content.value };
+  // MarkedString ({language, value}) → a fenced code block.
+  return { value: "```" + content.language + "\n" + content.value + "\n```" };
+}
+
 export function registerLspProviders(monaco: Monaco): void {
+  monaco.languages.registerHoverProvider("python", {
+    async provideHover(model, position) {
+      const path = model.uri.path;
+      await changeDocument(path, model.getValue());
+
+      const hover = (await sendRequest("textDocument/hover", {
+        textDocument: { uri: pathToUri(path) },
+        position: {
+          line: position.lineNumber - 1,
+          character: position.column - 1,
+        },
+      })) as LspHover | null;
+
+      if (!hover || !hover.contents) return null;
+
+      const pieces = Array.isArray(hover.contents)
+        ? hover.contents
+        : [hover.contents];
+      const contents = pieces
+        .map(markedStringToMarkdown)
+        .filter((piece) => piece.value.trim().length > 0);
+      if (contents.length === 0) return null;
+
+      // Optional range highlights the hovered symbol (LSP 0-based → Monaco).
+      const range = hover.range
+        ? {
+            startLineNumber: hover.range.start.line + 1,
+            startColumn: hover.range.start.character + 1,
+            endLineNumber: hover.range.end.line + 1,
+            endColumn: hover.range.end.character + 1,
+          }
+        : undefined;
+
+      return { contents, range };
+    },
+  });
+
   monaco.languages.registerCompletionItemProvider("python", {
     // Re-query on "." (member access) in addition to identifier typing.
     triggerCharacters: ["."],
