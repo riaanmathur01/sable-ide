@@ -5,6 +5,7 @@ import { Sidebar } from "./components/Sidebar/Sidebar";
 import { EditorArea } from "./components/Editor/EditorArea";
 import { TerminalPanel } from "./components/Terminal/TerminalPanel";
 import { StatusBar } from "./components/StatusBar/StatusBar";
+import { CommandPalette } from "./components/CommandPalette/CommandPalette";
 import { useUiStore, lastTerminalVisible } from "./store/uiStore";
 import { useTabsStore } from "./store/tabsStore";
 import {
@@ -137,6 +138,7 @@ function App() {
       {isDropTarget && (
         <div className="drop-overlay">Drop folder to open</div>
       )}
+      <CommandPalette />
     </div>
   );
 }

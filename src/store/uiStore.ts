@@ -10,6 +10,7 @@ interface CursorPosition {
 }
 
 export type SidebarView = "files" | "search" | "git";
+export type PaletteMode = "commands" | "files";
 
 interface UiState {
   sidebarVisible: boolean;
@@ -19,6 +20,8 @@ interface UiState {
   cursorPosition: CursorPosition | null;
   /** Name of the connected language server, shown in the status bar. */
   lspStatus: string | null;
+  /** Open command/quick-open palette, or null when closed. */
+  paletteMode: PaletteMode | null;
   toggleSidebar: () => void;
   setSidebarView: (view: SidebarView) => void;
   toggleTerminal: () => void;
@@ -26,6 +29,8 @@ interface UiState {
   setLastError: (message: string | null) => void;
   setCursorPosition: (position: CursorPosition | null) => void;
   setLspStatus: (status: string | null) => void;
+  openPalette: (mode: PaletteMode) => void;
+  closePalette: () => void;
 }
 
 /** Persisted across launches so the terminal panel reopens if it was open. */
@@ -48,6 +53,9 @@ export const useUiStore = create<UiState>((set) => ({
   setCursorPosition: (position) => set({ cursorPosition: position }),
   lspStatus: null,
   setLspStatus: (status) => set({ lspStatus: status }),
+  paletteMode: null,
+  openPalette: (mode) => set({ paletteMode: mode }),
+  closePalette: () => set({ paletteMode: null }),
   toggleSidebar: () =>
     set((state) => ({ sidebarVisible: !state.sidebarVisible })),
   toggleTerminal: () =>

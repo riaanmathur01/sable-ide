@@ -37,6 +37,7 @@ pub fn run() {
             commands::terminal::resize_terminal,
             commands::terminal::kill_terminal,
             commands::search::search_workspace,
+            commands::search::list_workspace_files,
             commands::git::git_status,
             commands::git::git_file_diff,
             commands::git::git_stage,

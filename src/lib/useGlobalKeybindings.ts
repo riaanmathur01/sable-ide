@@ -19,6 +19,8 @@ import { openFolderDialog } from "./openFolder";
  *   Cmd/Ctrl+O  open / switch folder
  *   Cmd/Ctrl+Shift+F  search in workspace
  *   Cmd/Ctrl+Shift+G  source control
+ *   Cmd/Ctrl+Shift+P  command palette
+ *   Cmd/Ctrl+P        quick open file
  */
 export function useGlobalKeybindings() {
   useEffect(() => {
@@ -36,8 +38,18 @@ export function useGlobalKeybindings() {
         useUiStore.getState().setSidebarView("git");
         return;
       }
+      if (event.shiftKey && event.key.toLowerCase() === "p") {
+        event.preventDefault();
+        useUiStore.getState().openPalette("commands");
+        return;
+      }
 
       switch (event.key) {
+        case "p": {
+          event.preventDefault();
+          useUiStore.getState().openPalette("files");
+          break;
+        }
         case "s": {
           event.preventDefault();
           const { activePath, saveTab } = useTabsStore.getState();

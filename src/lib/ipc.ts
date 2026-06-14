@@ -221,6 +221,11 @@ export interface SearchMatch {
   kind: "file" | "folder" | "content";
 }
 
+/** List all files in the workspace (for quick-open / Cmd+P). */
+export function listWorkspaceFiles(root: string): Promise<string[]> {
+  return invoke<string[]>("list_workspace_files", { root });
+}
+
 /**
  * Start a streaming workspace search. The caller supplies a fresh,
  * monotonically increasing id (see searchStore) so it can tag results

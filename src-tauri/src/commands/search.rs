@@ -62,6 +62,25 @@ struct SearchDone {
     limit_hit: bool,
 }
 
+/// List every file in the workspace for quick-open (Cmd+P). Uses the
+/// same gitignore-aware walk as search (skips hidden dirs, node_modules,
+/// etc.), returning absolute paths. Capped so a huge repo can't stall.
+#[tauri::command]
+pub fn list_workspace_files(root: String) -> Result<Vec<String>, String> {
+    const FILE_LIMIT: usize = 20000;
+    let mut files = Vec::new();
+    for result in WalkBuilder::new(&root).build() {
+        if files.len() >= FILE_LIMIT {
+            break;
+        }
+        let Ok(entry) = result else { continue };
+        if entry.file_type().is_some_and(|kind| kind.is_file()) {
+            files.push(entry.path().to_string_lossy().into_owned());
+        }
+    }
+    Ok(files)
+}
+
 /// The query is treated as literal text, not a regex.
 fn escape_regex(literal: &str) -> String {
     let mut escaped = String::with_capacity(literal.len() * 2);
