@@ -40,7 +40,7 @@ function languageIdFor(path: string): string | null {
 }
 
 /** Build the `file://` URI for a path (mirrors the Rust side). */
-function pathToUri(path: string): string {
+export function pathToUri(path: string): string {
   const normalized = path.replace(/\\/g, "/");
   const encoded = normalized
     .replace(/%/g, "%25")
@@ -135,6 +135,39 @@ export async function closeDocument(path: string): Promise<void> {
   }).catch(() => {});
 }
 
+/** In-flight LSP requests, keyed by the id we minted, awaiting a response. */
+interface PendingRequest {
+  resolve: (result: unknown) => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+const pendingRequests = new Map<number, PendingRequest>();
+let requestIdCounter = 0;
+const REQUEST_TIMEOUT_MS = 4000;
+
+/**
+ * Send an LSP *request* and await its result. Resolves with the server's
+ * `result` (or null on error/timeout — providers then show nothing
+ * rather than hanging the editor).
+ */
+export function sendRequest(
+  method: string,
+  params: unknown,
+): Promise<unknown> {
+  const id = ++requestIdCounter;
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      pendingRequests.delete(id);
+      resolve(null);
+    }, REQUEST_TIMEOUT_MS);
+    pendingRequests.set(id, { resolve, timer });
+    invoke("lsp_request", { method, params, id }).catch(() => {
+      clearTimeout(timer);
+      pendingRequests.delete(id);
+      resolve(null);
+    });
+  });
+}
+
 let listenersReady = false;
 
 /** Register the Rust→frontend event listeners exactly once. */
@@ -154,13 +187,28 @@ export function initLspListeners(): void {
     },
   );
 
-  // Server→client messages: responses (handled in 6c/6d) and unprompted
-  // notifications. Diagnostics are the notification we care about now.
+  // Server→client messages: responses (correlated by id) and unprompted
+  // notifications (dispatched by method, e.g. diagnostics).
   listen<{
+    id?: number;
+    result?: unknown;
+    error?: unknown;
     method?: string;
     params?: { uri: string; diagnostics: LspDiagnostic[] };
   }>("lsp:message", (event) => {
     const message = event.payload;
+
+    // A response to one of our requests (has id, no method).
+    if (message.id != null && message.method == null) {
+      const pending = pendingRequests.get(message.id);
+      if (pending) {
+        clearTimeout(pending.timer);
+        pendingRequests.delete(message.id);
+        pending.resolve(message.error ? null : message.result);
+      }
+      return;
+    }
+
     if (message.method === "textDocument/publishDiagnostics" && message.params) {
       const path = uriToPath(message.params.uri);
       const diagnostics = message.params.diagnostics;

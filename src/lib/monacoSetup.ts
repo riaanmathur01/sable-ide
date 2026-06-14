@@ -15,6 +15,7 @@
 import * as monaco from "monaco-editor";
 import { loader } from "@monaco-editor/react";
 import { markSavedByUri } from "./editorRegistry";
+import { registerLspProviders } from "./lsp/monacoLsp";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 import cssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
@@ -50,6 +51,9 @@ loader.config({ monaco });
 monaco.editor.onDidCreateModel((model) => {
   markSavedByUri(model.uri.toString(), model.getAlternativeVersionId());
 });
+
+// Wire LSP-backed language features (completions, hover) onto Monaco.
+registerLspProviders(monaco);
 
 // Syntax palette: calm and desaturated so the UI accent stays the only
 // loud color. Keywords borrow the accent; everything else is muted.

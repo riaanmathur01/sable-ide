@@ -40,6 +40,7 @@ pub fn run() {
             commands::git::git_status,
             lsp::start_language_server,
             lsp::lsp_notify,
+            lsp::lsp_request,
             watcher::watch_workspace,
         ])
         .run(tauri::generate_context!())

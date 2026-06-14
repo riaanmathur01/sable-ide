@@ -462,3 +462,31 @@ pub async fn lsp_notify(
         .map_err(|error| format!("Failed to send {method}: {error}"))?;
     Ok(())
 }
+
+/// Send a JSON-RPC *request* (has an id, expects a response) to the
+/// server. The id is minted by the frontend; the server's response comes
+/// back through the reader loop as an `lsp:message` event, which the
+/// frontend correlates by that id.
+#[tauri::command]
+pub async fn lsp_request(
+    manager: State<'_, LspManager>,
+    method: String,
+    params: Value,
+    id: i64,
+) -> Result<(), String> {
+    let guard = manager.inner.lock().await;
+    let Some(handle) = guard.as_ref() else {
+        return Err("No language server running".to_string());
+    };
+    let message = json!({
+        "jsonrpc": "2.0",
+        "id": id,
+        "method": method,
+        "params": params,
+    });
+    handle
+        .writer
+        .send(message.to_string())
+        .map_err(|error| format!("Failed to send {method}: {error}"))?;
+    Ok(())
+}
