@@ -133,6 +133,26 @@ export function gitSetIdentity(name: string, email: string): Promise<void> {
   return invoke<void>("git_set_identity", { name, email });
 }
 
+export interface Interpreter {
+  path: string;
+  label: string;
+  version: string;
+  kind: string; // "pypy" | "cpython" | "venv"
+}
+
+export function discoverPythonInterpreters(
+  root: string | null,
+): Promise<Interpreter[]> {
+  return invoke<Interpreter[]>("discover_python_interpreters", { root });
+}
+
+export function createPythonVenv(
+  base: string,
+  targetDir: string,
+): Promise<Interpreter> {
+  return invoke<Interpreter>("create_python_venv", { base, targetDir });
+}
+
 export interface SearchMatch {
   path: string;
   /** 0 for file/folder-name matches. */

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { readDirectory, watchWorkspace, type FsEntry } from "../lib/ipc";
 import { useUiStore } from "./uiStore";
 import { useGitStore } from "./gitStore";
+import { useInterpreterStore } from "./interpreterStore";
 
 /**
  * Workspace state: the open folder and a lazily-loaded directory tree.
@@ -50,6 +51,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       await watchWorkspace(path);
       // Load git status for the newly opened folder (no-op if not a repo).
       useGitStore.getState().refresh();
+      // Discover Python interpreters (workspace venv + system).
+      void useInterpreterStore.getState().discover();
     } catch (error) {
       reportError(error);
     }

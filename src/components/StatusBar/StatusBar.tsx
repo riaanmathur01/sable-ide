@@ -1,9 +1,15 @@
+import { useState } from "react";
 import { GitBranch, SquareTerminal } from "lucide-react";
 import { useUiStore } from "../../store/uiStore";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import { useTabsStore } from "../../store/tabsStore";
 import { useGitStore } from "../../store/gitStore";
+import { useInterpreterStore } from "../../store/interpreterStore";
+import { InterpreterPicker } from "./InterpreterPicker";
 import "./StatusBar.css";
+
+/** Languages that show an interpreter selector in the status bar. */
+const INTERPRETER_EXTENSIONS = new Set(["py", "pyi"]);
 
 /**
  * Status bar pinned to the bottom of the window: workspace name on the
@@ -17,9 +23,23 @@ export function StatusBar() {
   const lspStatus = useUiStore((state) => state.lspStatus);
   const terminalVisible = useUiStore((state) => state.terminalVisible);
   const toggleTerminal = useUiStore((state) => state.toggleTerminal);
-  const hasActiveTab = useTabsStore((state) => state.activePath !== null);
+  const activePath = useTabsStore((state) => state.activePath);
+  const hasActiveTab = activePath !== null;
   const isRepo = useGitStore((state) => state.isRepo);
   const branch = useGitStore((state) => state.branch);
+
+  const interpreters = useInterpreterStore((state) => state.interpreters);
+  const selectedPath = useInterpreterStore((state) => state.selectedPath);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const activeExtension = activePath?.split(".").pop()?.toLowerCase() ?? "";
+  const showInterpreter = INTERPRETER_EXTENSIONS.has(activeExtension);
+  const selected = interpreters.find((i) => i.path === selectedPath);
+  const interpreterLabel =
+    selected?.label ??
+    (selectedPath
+      ? (selectedPath.split("/").pop() ?? "Python")
+      : "Select Interpreter");
 
   return (
     <footer className="status-bar">
@@ -61,10 +81,22 @@ export function StatusBar() {
             Ln {cursorPosition.line}, Col {cursorPosition.column}
           </span>
         )}
+        {showInterpreter && (
+          <button
+            className="status-bar-button"
+            title="Select Python Interpreter (used by Run)"
+            onClick={() => setPickerOpen((open) => !open)}
+          >
+            {interpreterLabel}
+          </button>
+        )}
         {lspStatus && <span className="status-bar-item">{lspStatus}</span>}
         {hasActiveTab && <span className="status-bar-item">Auto Save</span>}
         <span className="status-bar-item">Sable 0.1.0</span>
       </div>
+      {pickerOpen && (
+        <InterpreterPicker onClose={() => setPickerOpen(false)} />
+      )}
     </footer>
   );
 }

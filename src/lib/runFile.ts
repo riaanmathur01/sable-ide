@@ -1,14 +1,24 @@
 import { useTabsStore } from "../store/tabsStore";
 import { useTerminalStore } from "../store/terminalStore";
 import { useUiStore } from "../store/uiStore";
+import { useInterpreterStore } from "../store/interpreterStore";
 
 /**
  * "Run" (▶ button / Cmd+R): force-save the active file, open the
- * terminal, and execute it with an interpreter picked by extension.
+ * terminal, and execute it with an interpreter picked by extension. For
+ * Python, the interpreter is the user's selection (see interpreterStore).
  */
 
+/** The Python command uses the selected interpreter, falling back to python3. */
+function pythonCommand(path: string): string {
+  const selected = useInterpreterStore.getState().selectedPath;
+  const interpreter = selected ?? "python3";
+  return `"${interpreter}" "${path}"`;
+}
+
 const RUNNERS_BY_EXTENSION: Record<string, (path: string) => string> = {
-  py: (path) => `python3 "${path}"`,
+  py: pythonCommand,
+  pyi: pythonCommand,
   js: (path) => `node "${path}"`,
   mjs: (path) => `node "${path}"`,
   cjs: (path) => `node "${path}"`,

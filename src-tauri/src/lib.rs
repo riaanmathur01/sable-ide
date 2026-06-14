@@ -44,6 +44,8 @@ pub fn run() {
             commands::git::git_unstage_all,
             commands::git::git_commit,
             commands::git::git_set_identity,
+            commands::interpreter::discover_python_interpreters,
+            commands::interpreter::create_python_venv,
             lsp::start_language_server,
             lsp::lsp_notify,
             lsp::lsp_request,
