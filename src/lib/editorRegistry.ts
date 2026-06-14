@@ -64,10 +64,17 @@ export function markSaved(path: string) {
 export function isModelDirty(path: string): boolean {
   const model = modelForPath(path);
   if (!model) return false;
-  return (
-    model.getAlternativeVersionId() !==
-    savedVersionIds.get(model.uri.toString())
-  );
+  const key = model.uri.toString();
+  const baseline = savedVersionIds.get(key);
+  if (baseline === undefined) {
+    // No recorded save-point yet (e.g. a model created during session
+    // restore before its baseline was set). Adopt the current state as
+    // clean rather than reporting a phantom "dirty" — a file you haven't
+    // edited must not block its own tab from closing.
+    savedVersionIds.set(key, model.getAlternativeVersionId());
+    return false;
+  }
+  return model.getAlternativeVersionId() !== baseline;
 }
 
 /**
