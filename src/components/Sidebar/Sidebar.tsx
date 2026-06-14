@@ -4,14 +4,17 @@ import {
   Files,
   FolderOpen,
   FolderPlus,
+  GitBranch,
   Search,
 } from "lucide-react";
 import { open as openNativeDialog } from "@tauri-apps/plugin-dialog";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import { useUiStore } from "../../store/uiStore";
+import { useGitStore } from "../../store/gitStore";
 import { createDirectory, createFile } from "../../lib/ipc";
 import { FileTree } from "./FileTree";
 import { SearchPanel } from "./SearchPanel";
+import { SourceControlPanel } from "./SourceControlPanel";
 import "./Sidebar.css";
 
 type PendingCreate = "file" | "folder" | null;
@@ -28,6 +31,9 @@ export function Sidebar() {
   const setLastError = useUiStore((state) => state.setLastError);
   const sidebarView = useUiStore((state) => state.sidebarView);
   const setSidebarView = useUiStore((state) => state.setSidebarView);
+  const changeCount = useGitStore(
+    (state) => Object.keys(state.statusByPath).length,
+  );
 
   const [pendingCreate, setPendingCreate] = useState<PendingCreate>(null);
   const [pendingName, setPendingName] = useState("");
@@ -72,7 +78,11 @@ export function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar-header">
         <span className="sidebar-title">
-          {sidebarView === "search" ? "Search" : (rootName ?? "Explorer")}
+          {sidebarView === "search"
+            ? "Search"
+            : sidebarView === "git"
+              ? "Source Control"
+              : (rootName ?? "Explorer")}
         </span>
         <span className="sidebar-actions">
           <button
@@ -92,6 +102,18 @@ export function Sidebar() {
             onClick={() => setSidebarView("search")}
           >
             <Search size={15} strokeWidth={1.5} />
+          </button>
+          <button
+            className={
+              sidebarView === "git" ? "icon-button active" : "icon-button"
+            }
+            title="Source Control (⇧⌘G)"
+            onClick={() => setSidebarView("git")}
+          >
+            <GitBranch size={15} strokeWidth={1.5} />
+            {changeCount > 0 && (
+              <span className="sidebar-change-count">{changeCount}</span>
+            )}
           </button>
           {rootPath && sidebarView === "files" && (
             <>
@@ -116,6 +138,7 @@ export function Sidebar() {
       </div>
 
       {sidebarView === "search" && <SearchPanel />}
+      {sidebarView === "git" && <SourceControlPanel />}
 
       {sidebarView === "files" && pendingCreate && (
         <input

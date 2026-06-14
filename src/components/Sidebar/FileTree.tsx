@@ -5,7 +5,7 @@ import { useWorkspaceStore } from "../../store/workspaceStore";
 import { useTabsStore } from "../../store/tabsStore";
 import { useUiStore } from "../../store/uiStore";
 import { useDiagnosticsStore } from "../../store/diagnosticsStore";
-import { useGitStore } from "../../store/gitStore";
+import { useGitStore, treeStatusOf } from "../../store/gitStore";
 import type { GitFileStatus } from "../../lib/ipc";
 import { iconForFile } from "../../lib/fileIcons";
 import {
@@ -386,7 +386,11 @@ export function FileTree() {
                 isRenaming={renamingPath === entry.path}
                 hasError={entryHasError(entry)}
                 gitStatus={
-                  entry.isDirectory ? undefined : gitStatusByPath[entry.path]
+                  entry.isDirectory
+                    ? undefined
+                    : gitStatusByPath[entry.path]
+                      ? treeStatusOf(gitStatusByPath[entry.path])
+                      : undefined
                 }
                 isDropTarget={
                   entry.isDirectory && entry.path === dropTargetDirectory

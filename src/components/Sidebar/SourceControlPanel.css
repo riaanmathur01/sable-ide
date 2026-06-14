@@ -1,0 +1,222 @@
+.scm-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.scm-empty,
+.scm-clean {
+  padding: 14px 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.scm-commit-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.scm-message {
+  resize: vertical;
+  min-height: 36px;
+  padding: 6px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-ui);
+  outline: none;
+  user-select: text;
+}
+
+.scm-message:focus {
+  border-color: var(--accent);
+}
+
+.scm-commit-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--accent);
+  border: none;
+  border-radius: 4px;
+  color: #0d0d0f;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-ui);
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.scm-commit-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.scm-confirmation {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.scm-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  margin: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.scm-identity-title {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.scm-identity-input {
+  padding: 5px 8px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-ui);
+  outline: none;
+  user-select: text;
+}
+
+.scm-identity-input:focus {
+  border-color: var(--accent);
+}
+
+.scm-identity-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.scm-mini-button {
+  padding: 4px 10px;
+  background: var(--accent);
+  border: none;
+  border-radius: 4px;
+  color: #0d0d0f;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.scm-mini-button.ghost {
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.scm-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.scm-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 4px 16px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.scm-count {
+  display: inline-block;
+  margin-left: 2px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  font-size: 10px;
+}
+
+.scm-section-action,
+.scm-row-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.scm-section-action:hover,
+.scm-row-action:hover {
+  background: var(--bg-base);
+  color: var(--text);
+}
+
+.scm-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px 0 16px;
+  white-space: nowrap;
+}
+
+.scm-row:hover {
+  background: var(--bg-elevated);
+}
+
+.scm-row-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.scm-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+/* The per-row action hides until hover, like VS Code. */
+.scm-row-action {
+  opacity: 0;
+}
+
+.scm-row:hover .scm-row-action {
+  opacity: 1;
+}
+
+.scm-row-badge {
+  width: 14px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.scm-row-name.git-modified,
+.scm-row-badge.git-modified {
+  color: var(--git-modified);
+}
+.scm-row-name.git-added,
+.scm-row-badge.git-added {
+  color: var(--git-added);
+}
+.scm-row-name.git-deleted,
+.scm-row-badge.git-deleted {
+  color: var(--git-deleted);
+}

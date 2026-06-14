@@ -90,17 +90,47 @@ export type GitFileStatus =
   | "deleted"
   | "renamed";
 
+/** A file's status split into staged (index) and unstaged (working tree). */
+export interface GitFileEntry {
+  staged: GitFileStatus | null;
+  unstaged: GitFileStatus | null;
+}
+
 export interface GitStatus {
   isRepo: boolean;
   /** Branch name, short hash (detached HEAD), or null (empty repo). */
   branch: string | null;
-  /** Absolute file path → status, matching file-tree node keys. */
-  files: Record<string, GitFileStatus>;
+  /** Absolute file path → split status, matching file-tree node keys. */
+  files: Record<string, GitFileEntry>;
 }
 
 /** Read git status for the workspace; non-repo folders return isRepo:false. */
 export function gitStatus(path: string): Promise<GitStatus> {
   return invoke<GitStatus>("git_status", { path });
+}
+
+export function gitStage(root: string, file: string): Promise<void> {
+  return invoke<void>("git_stage", { root, file });
+}
+
+export function gitUnstage(root: string, file: string): Promise<void> {
+  return invoke<void>("git_unstage", { root, file });
+}
+
+export function gitStageAll(root: string): Promise<void> {
+  return invoke<void>("git_stage_all", { root });
+}
+
+export function gitUnstageAll(root: string): Promise<void> {
+  return invoke<void>("git_unstage_all", { root });
+}
+
+export function gitCommit(root: string, message: string): Promise<void> {
+  return invoke<void>("git_commit", { root, message });
+}
+
+export function gitSetIdentity(name: string, email: string): Promise<void> {
+  return invoke<void>("git_set_identity", { name, email });
 }
 
 export interface SearchMatch {

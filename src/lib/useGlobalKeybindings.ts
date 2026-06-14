@@ -16,6 +16,7 @@ import { runActiveFile } from "./runFile";
  *   Cmd/Ctrl+B  toggle sidebar
  *   Cmd/Ctrl+W  close active tab
  *   Cmd/Ctrl+Shift+F  search in workspace
+ *   Cmd/Ctrl+Shift+G  source control
  */
 export function useGlobalKeybindings() {
   useEffect(() => {
@@ -26,6 +27,11 @@ export function useGlobalKeybindings() {
       if (event.shiftKey && event.key.toLowerCase() === "f") {
         event.preventDefault();
         useUiStore.getState().setSidebarView("search");
+        return;
+      }
+      if (event.shiftKey && event.key.toLowerCase() === "g") {
+        event.preventDefault();
+        useUiStore.getState().setSidebarView("git");
         return;
       }
 

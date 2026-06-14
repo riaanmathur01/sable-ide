@@ -9,7 +9,7 @@ interface CursorPosition {
   column: number;
 }
 
-export type SidebarView = "files" | "search";
+export type SidebarView = "files" | "search" | "git";
 
 interface UiState {
   sidebarVisible: boolean;

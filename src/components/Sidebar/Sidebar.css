@@ -53,6 +53,26 @@
   color: var(--accent);
 }
 
+.icon-button {
+  position: relative;
+}
+
+.sidebar-change-count {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  min-width: 13px;
+  height: 13px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #0d0d0f;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 13px;
+  text-align: center;
+}
+
 .sidebar-actions-divider {
   width: 1px;
   height: 14px;
