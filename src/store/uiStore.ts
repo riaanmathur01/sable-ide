@@ -22,6 +22,8 @@ interface UiState {
   lspStatus: string | null;
   /** Open command/quick-open palette, or null when closed. */
   paletteMode: PaletteMode | null;
+  /** Whether git blame annotations are shown in the editor. */
+  blameEnabled: boolean;
   toggleSidebar: () => void;
   setSidebarView: (view: SidebarView) => void;
   toggleTerminal: () => void;
@@ -31,6 +33,7 @@ interface UiState {
   setLspStatus: (status: string | null) => void;
   openPalette: (mode: PaletteMode) => void;
   closePalette: () => void;
+  toggleBlame: () => void;
 }
 
 /** Persisted across launches so the terminal panel reopens if it was open. */
@@ -56,6 +59,8 @@ export const useUiStore = create<UiState>((set) => ({
   paletteMode: null,
   openPalette: (mode) => set({ paletteMode: mode }),
   closePalette: () => set({ paletteMode: null }),
+  blameEnabled: false,
+  toggleBlame: () => set((state) => ({ blameEnabled: !state.blameEnabled })),
   toggleSidebar: () =>
     set((state) => ({ sidebarVisible: !state.sidebarVisible })),
   toggleTerminal: () =>

@@ -669,6 +669,84 @@ pub fn git_commit_file_diff(
     })
 }
 
+// === Blame (local, git2, read-only) ========================================
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct BlameLine {
+    short_hash: String,
+    author: String,
+    timestamp: i64,
+    summary: String,
+}
+
+/// Per-line blame for a file: the commit that last touched each line.
+/// Returns one entry per line in file order. A new/untracked file (or a
+/// binary one) yields an empty list rather than an error.
+#[tauri::command]
+pub fn git_blame(root: String, file: String) -> Result<Vec<BlameLine>, String> {
+    let repo = open_repo(&root)?;
+    let relative = relative_to_workdir(&repo, &file)?;
+
+    let mut options = git2::BlameOptions::new();
+    let blame = match repo.blame_file(&relative, Some(&mut options)) {
+        Ok(blame) => blame,
+        Err(_) => return Ok(Vec::new()), // not tracked yet / no blame
+    };
+
+    // Cache commit lookups — adjacent lines usually share a commit.
+    let mut cache: HashMap<git2::Oid, BlameLine> = HashMap::new();
+    let mut lines: Vec<BlameLine> = Vec::new();
+
+    for hunk in blame.iter() {
+        let oid = hunk.final_commit_id();
+        let count = hunk.lines_in_hunk();
+        let entry = if oid.is_zero() {
+            BlameLine {
+                short_hash: String::new(),
+                author: "You".to_string(),
+                timestamp: 0,
+                summary: "Uncommitted change".to_string(),
+            }
+        } else {
+            cache
+                .entry(oid)
+                .or_insert_with(|| {
+                    let hash = oid.to_string();
+                    match repo.find_commit(oid) {
+                        Ok(commit) => BlameLine {
+                            short_hash: hash[..7.min(hash.len())].to_string(),
+                            author: commit
+                                .author()
+                                .name()
+                                .unwrap_or("")
+                                .to_string(),
+                            timestamp: commit.time().seconds(),
+                            summary: commit
+                                .summary()
+                                .ok()
+                                .flatten()
+                                .unwrap_or("")
+                                .to_string(),
+                        },
+                        Err(_) => BlameLine {
+                            short_hash: hash[..7.min(hash.len())].to_string(),
+                            author: String::new(),
+                            timestamp: 0,
+                            summary: String::new(),
+                        },
+                    }
+                })
+                .clone()
+        };
+        // Hunks cover contiguous line ranges; expand to one entry per line.
+        for _ in 0..count {
+            lines.push(entry.clone());
+        }
+    }
+    Ok(lines)
+}
+
 // === Branch management (local, git2) ======================================
 
 #[derive(Serialize)]

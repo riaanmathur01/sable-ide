@@ -1,8 +1,10 @@
+import { useEffect } from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
 import { useTabsStore } from "../../store/tabsStore";
 import { useUiStore } from "../../store/uiStore";
 import { registerEditor } from "../../lib/editorRegistry";
 import { changeDocument } from "../../lib/lsp/lspClient";
+import { refreshBlame, clearBlame } from "../../lib/blame";
 import "../../lib/monacoSetup";
 
 /**
@@ -24,6 +26,17 @@ export default function MonacoPane() {
   const syncDirtyState = useTabsStore((state) => state.syncDirtyState);
   const scheduleAutoSave = useTabsStore((state) => state.scheduleAutoSave);
   const setCursorPosition = useUiStore((state) => state.setCursorPosition);
+  const blameEnabled = useUiStore((state) => state.blameEnabled);
+
+  // Show/refresh git blame for the active file when blame is on.
+  useEffect(() => {
+    if (!blameEnabled || !activePath) {
+      clearBlame();
+      return;
+    }
+    void refreshBlame(activePath);
+    return () => clearBlame();
+  }, [blameEnabled, activePath]);
 
   if (!activePath) return null;
 

@@ -153,6 +153,74 @@ export function applyDiagnostics(path: string, diagnostics: LspDiagnostic[]) {
   monacoInstance.editor.setModelMarkers(model, "pyright", markers);
 }
 
+/** One blame entry per line (mirrors the Rust BlameLine, plus a label). */
+export interface BlameAnnotation {
+  shortHash: string;
+  author: string;
+  timestamp: number;
+  summary: string;
+}
+
+/** Compact relative time for the inline blame label. */
+function blameWhen(timestamp: number): string {
+  if (timestamp === 0) return "now";
+  const days = Math.floor(Date.now() / 1000 - timestamp) / 86400;
+  if (days < 1) return "today";
+  if (days < 30) return `${Math.floor(days)}d ago`;
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+  return `${Math.floor(days / 365)}y ago`;
+}
+
+let blameDecorations: string[] = [];
+let blamePath: string | null = null;
+
+/** Clear any blame annotations from the model they're on. */
+export function clearBlame() {
+  if (!monacoInstance || blamePath === null) return;
+  const model = modelForPath(blamePath);
+  if (model) blameDecorations = model.deltaDecorations(blameDecorations, []);
+  blameDecorations = [];
+  blamePath = null;
+}
+
+/**
+ * Render per-line blame as muted text at the end of each line (Monaco's
+ * `after` injected text), with the full commit summary on hover. One
+ * entry per committed line; lines past the committed length (unsaved
+ * additions) simply get none.
+ */
+export function setBlame(path: string, lines: BlameAnnotation[]) {
+  if (!monacoInstance) return;
+  const model = modelForPath(path);
+  if (!model) return;
+  clearBlame();
+
+  const lineCount = model.getLineCount();
+  const decorations = lines.slice(0, lineCount).map((line, index) => {
+    const lineNumber = index + 1;
+    const endColumn = model.getLineMaxColumn(lineNumber);
+    const label = line.shortHash
+      ? `${line.shortHash}  ${line.author}, ${blameWhen(line.timestamp)}`
+      : `${line.author}`;
+    return {
+      range: new monacoInstance!.Range(
+        lineNumber,
+        endColumn,
+        lineNumber,
+        endColumn,
+      ),
+      options: {
+        after: { content: `    ${label}`, inlineClassName: "blame-annotation" },
+        hoverMessage: line.summary
+          ? { value: `**${line.shortHash || "uncommitted"}** — ${line.summary}` }
+          : undefined,
+      },
+    };
+  });
+  blameDecorations = model.deltaDecorations([], decorations);
+  blamePath = path;
+}
+
 /** Dispose the model on tab close so reopening reloads from disk. */
 export function disposeModel(path: string) {
   const model = modelForPath(path);

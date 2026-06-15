@@ -43,6 +43,7 @@ pub fn run() {
             commands::git::git_log,
             commands::git::git_commit_files,
             commands::git::git_commit_file_diff,
+            commands::git::git_blame,
             commands::git::git_stage,
             commands::git::git_unstage,
             commands::git::git_stage_all,

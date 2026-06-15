@@ -224,6 +224,16 @@ function buildCommands(): PaletteItem[] {
       run: () => ui.setSidebarView("git"),
     },
     {
+      id: "history",
+      label: "Show History",
+      run: () => ui.setSidebarView("history"),
+    },
+    {
+      id: "toggle-blame",
+      label: "Toggle Git Blame",
+      run: () => ui.toggleBlame(),
+    },
+    {
       id: "open-folder",
       label: "Open Folder…",
       detail: "⌘O",

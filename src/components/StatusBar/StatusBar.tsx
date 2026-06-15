@@ -26,6 +26,8 @@ export function StatusBar() {
   const toggleTerminal = useUiStore((state) => state.toggleTerminal);
   const activePath = useTabsStore((state) => state.activePath);
   const hasActiveTab = activePath !== null;
+  const blameEnabled = useUiStore((state) => state.blameEnabled);
+  const toggleBlame = useUiStore((state) => state.toggleBlame);
   const isRepo = useGitStore((state) => state.isRepo);
   const branch = useGitStore((state) => state.branch);
   const ahead = useGitStore((state) => state.ahead);
@@ -121,6 +123,19 @@ export function StatusBar() {
             onClick={() => setPickerOpen((open) => !open)}
           >
             {interpreterLabel}
+          </button>
+        )}
+        {hasActiveTab && (
+          <button
+            className={
+              blameEnabled
+                ? "status-bar-button active"
+                : "status-bar-button"
+            }
+            title="Toggle Git Blame"
+            onClick={toggleBlame}
+          >
+            Blame
           </button>
         )}
         {lspStatus && <span className="status-bar-item">{lspStatus}</span>}

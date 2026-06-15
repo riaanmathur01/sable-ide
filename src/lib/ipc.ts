@@ -139,6 +139,18 @@ export interface CommitFile {
   status: GitFileStatus;
 }
 
+export interface BlameLine {
+  shortHash: string;
+  author: string;
+  timestamp: number; // Unix seconds; 0 for uncommitted
+  summary: string;
+}
+
+/** Per-line blame for a file (empty for new/untracked files). */
+export function gitBlame(root: string, file: string): Promise<BlameLine[]> {
+  return invoke<BlameLine[]>("git_blame", { root, file });
+}
+
 /** Paginated commit log from HEAD backward. */
 export function gitLog(
   root: string,

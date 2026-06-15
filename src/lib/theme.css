@@ -59,3 +59,10 @@ body {
   outline: 1px solid var(--accent);
   outline-offset: -1px;
 }
+
+/* Inline git blame annotation (Monaco injected text at line end). */
+.blame-annotation {
+  color: var(--text-muted) !important;
+  opacity: 0.6;
+  font-style: italic;
+}
