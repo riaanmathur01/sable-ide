@@ -6,6 +6,7 @@ import { useInterpreterStore } from "./interpreterStore";
 import { useTabsStore } from "./tabsStore";
 import { useSearchStore } from "./searchStore";
 import { useDiagnosticsStore } from "./diagnosticsStore";
+import { useTerminalStore } from "./terminalStore";
 
 /**
  * Workspace state: the open folder and a lazily-loaded directory tree.
@@ -77,6 +78,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       useGitStore.getState().refresh();
       // Discover Python interpreters (workspace venv + system).
       void useInterpreterStore.getState().discover();
+      // A running shell is still in the old folder — restart it so it
+      // picks up the new workspace as its cwd. (If none is running, the
+      // next time the terminal opens it already uses the new root.)
+      const terminal = useTerminalStore.getState();
+      if (terminal.isSessionRunning) void terminal.restartSession();
     } catch (error) {
       reportError(error);
     }
