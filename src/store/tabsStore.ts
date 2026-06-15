@@ -13,19 +13,33 @@ import {
 } from "../lib/editorRegistry";
 import { useUiStore } from "./uiStore";
 
+/** What a diff tab compares: working-tree changes, or a past commit. */
+export type DiffSource =
+  | { kind: "working"; filePath: string; staged: boolean }
+  | { kind: "commit"; filePath: string; hash: string; shortHash: string };
+
 export interface EditorTab {
   /** Stable key. File tabs use the file path; diff tabs use a synthetic key. */
   path: string;
   name: string;
   isDirty: boolean;
   kind: "file" | "diff";
-  /** Present on diff tabs: which file and whether to diff the staged side. */
-  diff?: { filePath: string; staged: boolean };
+  /** Present on diff tabs: what to compare. */
+  diff?: DiffSource;
 }
 
 /** Synthetic tab key for a diff so it never collides with a file tab. */
-function diffKey(filePath: string, staged: boolean): string {
-  return `diff:${staged ? "s" : "u"}:${filePath}`;
+function diffKey(source: DiffSource): string {
+  return source.kind === "working"
+    ? `diff:w:${source.staged ? "s" : "u"}:${source.filePath}`
+    : `diff:c:${source.hash}:${source.filePath}`;
+}
+
+function diffName(source: DiffSource): string {
+  const base = source.filePath.split(/[/\\]/).filter(Boolean).pop() ?? source.filePath;
+  return source.kind === "working"
+    ? `${base} (${source.staged ? "Staged" : "Changes"})`
+    : `${base} @ ${source.shortHash}`;
 }
 
 /**
@@ -40,8 +54,8 @@ interface TabsState {
   /** Initial content for models Monaco hasn't created yet. */
   initialContentByPath: Record<string, string>;
   openFile: (path: string) => Promise<void>;
-  /** Open a read-only diff for a changed file as its own tab. */
-  openDiff: (filePath: string, staged: boolean) => void;
+  /** Open a read-only diff (working change or commit) as its own tab. */
+  openDiff: (source: DiffSource) => void;
   setActive: (path: string) => void;
   /** Re-check the active model's dirty state (called on editor change). */
   syncDirtyState: (path: string) => void;
@@ -141,17 +155,22 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     }
   },
 
-  openDiff: (filePath, staged) => {
-    const key = diffKey(filePath, staged);
+  openDiff: (source) => {
+    const key = diffKey(source);
     if (get().tabs.some((tab) => tab.path === key)) {
       set({ activePath: key });
       return;
     }
-    const name = `${fileNameOf(filePath)} (${staged ? "Staged" : "Changes"})`;
     set((state) => ({
       tabs: [
         ...state.tabs,
-        { path: key, name, isDirty: false, kind: "diff", diff: { filePath, staged } },
+        {
+          path: key,
+          name: diffName(source),
+          isDirty: false,
+          kind: "diff",
+          diff: source,
+        },
       ],
       activePath: key,
     }));

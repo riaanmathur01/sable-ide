@@ -402,18 +402,21 @@ fn blob_content(repo: &Repository, oid: git2::Oid) -> Content {
     }
 }
 
-/// The file's content in the HEAD commit. Resolving a path to a blob:
-/// HEAD → its tree → `get_path` walks the tree to the file's tree entry →
-/// the entry's id is the blob. Absent if there's no HEAD or the path
-/// isn't in it (a new file).
-fn head_content(repo: &Repository, relative: &Path) -> Content {
-    let tree = match repo.head().and_then(|head| head.peel_to_tree()) {
-        Ok(tree) => tree,
-        Err(_) => return Content::Absent,
-    };
+/// The file's content within a given tree. Resolving a path to a blob:
+/// `get_path` walks the tree to the file's entry → the entry's id is the
+/// blob. Absent if the path isn't in the tree (a new file).
+fn tree_content(repo: &Repository, tree: &git2::Tree, relative: &Path) -> Content {
     match tree.get_path(relative) {
         Ok(entry) => blob_content(repo, entry.id()),
-        Err(_) => Content::Absent, // not tracked in HEAD
+        Err(_) => Content::Absent,
+    }
+}
+
+/// The file's content in the HEAD commit (or Absent if no HEAD).
+fn head_content(repo: &Repository, relative: &Path) -> Content {
+    match repo.head().and_then(|head| head.peel_to_tree()) {
+        Ok(tree) => tree_content(repo, &tree, relative),
+        Err(_) => Content::Absent,
     }
 }
 
@@ -491,6 +494,173 @@ pub fn git_file_diff(
     let to_string = |content: Content| match content {
         Content::Text(text) => text,
         _ => String::new(), // Absent → empty pane
+    };
+    Ok(FileDiff {
+        original: to_string(original),
+        modified: to_string(modified),
+        is_binary: false,
+    })
+}
+
+// === History (local, git2, read-only) =====================================
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitInfo {
+    hash: String,
+    short_hash: String,
+    author: String,
+    email: String,
+    /// Commit time, Unix seconds (the frontend formats "relative time").
+    timestamp: i64,
+    summary: String,
+    body: String,
+}
+
+/// Paginated commit log from HEAD backward. A revwalk yields commit oids
+/// newest-first; we `skip` past earlier pages and `take` one page so a
+/// repo with thousands of commits never loads all at once. An empty repo
+/// (no HEAD to push) returns an empty page.
+#[tauri::command]
+pub fn git_log(
+    root: String,
+    limit: usize,
+    skip: usize,
+) -> Result<Vec<CommitInfo>, String> {
+    let repo = open_repo(&root)?;
+    let mut revwalk = repo
+        .revwalk()
+        .map_err(|error| format!("Could not walk history: {error}"))?;
+    if revwalk.push_head().is_err() {
+        return Ok(Vec::new()); // unborn branch / empty repo
+    }
+    let _ = revwalk.set_sorting(git2::Sort::TIME);
+
+    let mut commits = Vec::new();
+    for oid in revwalk.skip(skip).take(limit) {
+        let Ok(oid) = oid else { continue };
+        let Ok(commit) = repo.find_commit(oid) else {
+            continue;
+        };
+        let author = commit.author();
+        // summary()/body() return Result<Option<&str>>; flatten to text.
+        let summary = commit.summary().ok().flatten().unwrap_or("").to_string();
+        let body = commit
+            .body()
+            .ok()
+            .flatten()
+            .unwrap_or("")
+            .trim()
+            .to_string();
+        let hash = oid.to_string();
+        commits.push(CommitInfo {
+            short_hash: hash[..7.min(hash.len())].to_string(),
+            hash,
+            author: author.name().unwrap_or("").to_string(),
+            email: author.email().unwrap_or("").to_string(),
+            timestamp: commit.time().seconds(),
+            summary,
+            body,
+        });
+    }
+    Ok(commits)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitFile {
+    path: String,
+    status: String,
+}
+
+/// Resolve a commit's tree and the tree to diff it against. The "before"
+/// side is the FIRST parent's tree — so the first commit (no parent)
+/// diffs against nothing (everything added) and a merge commit diffs
+/// against its first parent without crashing.
+fn commit_and_parent_tree<'repo>(
+    repo: &'repo Repository,
+    hash: &str,
+) -> Result<(git2::Tree<'repo>, Option<git2::Tree<'repo>>), String> {
+    let oid = git2::Oid::from_str(hash)
+        .map_err(|_| format!("Invalid commit hash: {hash}"))?;
+    let commit = repo
+        .find_commit(oid)
+        .map_err(|error| format!("Commit not found: {error}"))?;
+    let tree = commit
+        .tree()
+        .map_err(|error| format!("Could not read commit tree: {error}"))?;
+    let parent_tree = if commit.parent_count() > 0 {
+        commit.parent(0).and_then(|parent| parent.tree()).ok()
+    } else {
+        None
+    };
+    Ok((tree, parent_tree))
+}
+
+/// The files a commit changed (commit tree vs first-parent tree).
+#[tauri::command]
+pub fn git_commit_files(
+    root: String,
+    hash: String,
+) -> Result<Vec<CommitFile>, String> {
+    let repo = open_repo(&root)?;
+    let (tree, parent_tree) = commit_and_parent_tree(&repo, &hash)?;
+    let diff = repo
+        .diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), None)
+        .map_err(|error| format!("Could not diff commit: {error}"))?;
+
+    let mut files = Vec::new();
+    for delta in diff.deltas() {
+        let status = match delta.status() {
+            git2::Delta::Added => "added",
+            git2::Delta::Deleted => "deleted",
+            git2::Delta::Renamed => "renamed",
+            _ => "modified",
+        };
+        let path = delta
+            .new_file()
+            .path()
+            .or_else(|| delta.old_file().path())
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        files.push(CommitFile {
+            path,
+            status: status.to_string(),
+        });
+    }
+    Ok(files)
+}
+
+/// Before/after content of one file at a commit (parent tree vs commit
+/// tree), for the diff viewer. `file` is repo-relative (as returned by
+/// git_commit_files).
+#[tauri::command]
+pub fn git_commit_file_diff(
+    root: String,
+    hash: String,
+    file: String,
+) -> Result<FileDiff, String> {
+    let repo = open_repo(&root)?;
+    let (tree, parent_tree) = commit_and_parent_tree(&repo, &hash)?;
+    let relative = Path::new(&file);
+
+    let modified = tree_content(&repo, &tree, relative);
+    let original = match &parent_tree {
+        Some(parent) => tree_content(&repo, parent, relative),
+        None => Content::Absent, // first commit → all added
+    };
+
+    if matches!(original, Content::Binary) || matches!(modified, Content::Binary)
+    {
+        return Ok(FileDiff {
+            original: String::new(),
+            modified: String::new(),
+            is_binary: true,
+        });
+    }
+    let to_string = |content: Content| match content {
+        Content::Text(text) => text,
+        _ => String::new(),
     };
     Ok(FileDiff {
         original: to_string(original),

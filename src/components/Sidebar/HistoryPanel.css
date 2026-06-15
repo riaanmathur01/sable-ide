@@ -1,0 +1,110 @@
+.history-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.history-empty,
+.history-status {
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.history-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 6px 10px 6px 8px;
+  cursor: pointer;
+}
+
+.history-row:hover {
+  background: var(--bg-elevated);
+}
+
+.history-chevron {
+  margin-top: 2px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.history-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.history-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.history-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.history-hash {
+  margin-right: 6px;
+  font-family: var(--font-mono);
+  color: var(--accent);
+}
+
+.history-files {
+  padding: 2px 0 6px 24px;
+}
+
+.history-file {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 10px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.history-file:hover {
+  background: var(--bg-elevated);
+}
+
+.history-file-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.history-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+
+.history-file-badge {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.history-file-empty {
+  padding: 2px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Reuse the git status palette for the per-file badge. */
+.git-added {
+  color: var(--git-added);
+}
+.git-modified,
+.git-renamed {
+  color: var(--git-modified);
+}
+.git-deleted {
+  color: var(--git-deleted);
+}

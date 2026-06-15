@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Columns2, Rows2 } from "lucide-react";
-import { gitFileDiff } from "../../lib/ipc";
+import { gitCommitFileDiff, gitFileDiff } from "../../lib/ipc";
 import { useWorkspaceStore } from "../../store/workspaceStore";
+import type { DiffSource } from "../../store/tabsStore";
 import { monaco } from "../../lib/monacoSetup";
 import "./DiffView.css";
 
 interface DiffViewProps {
-  filePath: string;
-  staged: boolean;
+  source: DiffSource;
 }
 
 /** Pick a Monaco language id from a file's extension. */
@@ -24,7 +24,8 @@ function languageForPath(path: string): string {
  * built-in diff editor. Rust (git2) supplies the two versions; Monaco
  * computes and renders the diff itself.
  */
-export default function DiffView({ filePath, staged }: DiffViewProps) {
+export default function DiffView({ source }: DiffViewProps) {
+  const filePath = source.filePath;
   const containerRef = useRef<HTMLDivElement>(null);
   const [sideBySide, setSideBySide] = useState(true);
   const [message, setMessage] = useState<string | null>("Loading diff…");
@@ -45,7 +46,12 @@ export default function DiffView({ filePath, staged }: DiffViewProps) {
       null;
     let disposed = false;
 
-    gitFileDiff(root, filePath, staged)
+    const fetchDiff =
+      source.kind === "working"
+        ? gitFileDiff(root, source.filePath, source.staged)
+        : gitCommitFileDiff(root, source.hash, source.filePath);
+
+    fetchDiff
       .then((diff) => {
         if (disposed) return;
         if (diff.isBinary) {
@@ -88,8 +94,13 @@ export default function DiffView({ filePath, staged }: DiffViewProps) {
       modifiedModel?.dispose();
     };
     // Re-fetch only when the target changes; the toggle is handled below.
+    // (EditorArea also keys this component by the diff's tab id.)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filePath, staged]);
+  }, [
+    filePath,
+    source.kind,
+    source.kind === "working" ? source.staged : source.hash,
+  ]);
 
   // Apply the side-by-side / inline toggle without re-fetching.
   useEffect(() => {

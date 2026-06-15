@@ -124,6 +124,47 @@ export function gitFileDiff(
   return invoke<FileDiff>("git_file_diff", { root, file, staged });
 }
 
+export interface CommitInfo {
+  hash: string;
+  shortHash: string;
+  author: string;
+  email: string;
+  timestamp: number; // Unix seconds
+  summary: string;
+  body: string;
+}
+
+export interface CommitFile {
+  path: string; // repo-relative
+  status: GitFileStatus;
+}
+
+/** Paginated commit log from HEAD backward. */
+export function gitLog(
+  root: string,
+  limit: number,
+  skip: number,
+): Promise<CommitInfo[]> {
+  return invoke<CommitInfo[]>("git_log", { root, limit, skip });
+}
+
+/** Files changed by a commit (vs its first parent). */
+export function gitCommitFiles(
+  root: string,
+  hash: string,
+): Promise<CommitFile[]> {
+  return invoke<CommitFile[]>("git_commit_files", { root, hash });
+}
+
+/** Before/after of one file at a commit, for the diff viewer. */
+export function gitCommitFileDiff(
+  root: string,
+  hash: string,
+  file: string,
+): Promise<FileDiff> {
+  return invoke<FileDiff>("git_commit_file_diff", { root, hash, file });
+}
+
 export function gitStage(root: string, file: string): Promise<void> {
   return invoke<void>("git_stage", { root, file });
 }

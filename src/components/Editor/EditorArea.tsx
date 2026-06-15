@@ -52,11 +52,7 @@ export function EditorArea() {
         {diffActive && activeTab.diff && (
           <div className="editor-layer">
             <Suspense fallback={null}>
-              <DiffView
-                key={activeTab.path}
-                filePath={activeTab.diff.filePath}
-                staged={activeTab.diff.staged}
-              />
+              <DiffView key={activeTab.path} source={activeTab.diff} />
             </Suspense>
           </div>
         )}

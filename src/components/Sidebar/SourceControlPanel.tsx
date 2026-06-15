@@ -171,7 +171,9 @@ export function SourceControlPanel() {
         onAction={unstage}
         onActionAll={staged.length > 0 ? unstageAll : undefined}
         actionAllTitle="Unstage all"
-        onOpenDiff={(path) => openDiff(path, true)}
+        onOpenDiff={(path) =>
+          openDiff({ kind: "working", filePath: path, staged: true })
+        }
       />
       <ChangeSection
         title="Changes"
@@ -181,7 +183,9 @@ export function SourceControlPanel() {
         onAction={stage}
         onActionAll={unstaged.length > 0 ? stageAll : undefined}
         actionAllTitle="Stage all"
-        onOpenDiff={(path) => openDiff(path, false)}
+        onOpenDiff={(path) =>
+          openDiff({ kind: "working", filePath: path, staged: false })
+        }
       />
 
       {staged.length === 0 && unstaged.length === 0 && (
@@ -238,6 +242,7 @@ function ChangeSection({
             key={`${title}:${row.path}`}
             title={`${row.path} — click to view diff`}
             onClick={() => onOpenDiff(row.path)}
+            role="button"
           >
             <FileIcon size={14} strokeWidth={1.5} className="scm-row-icon" />
             <span className={`scm-row-name ${badge.colorClass}`}>

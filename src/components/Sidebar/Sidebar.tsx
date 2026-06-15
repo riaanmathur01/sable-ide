@@ -5,6 +5,7 @@ import {
   FolderOpen,
   FolderPlus,
   GitBranch,
+  History,
   Search,
 } from "lucide-react";
 import { useWorkspaceStore } from "../../store/workspaceStore";
@@ -15,6 +16,7 @@ import { openFolderDialog } from "../../lib/openFolder";
 import { FileTree } from "./FileTree";
 import { SearchPanel } from "./SearchPanel";
 import { SourceControlPanel } from "./SourceControlPanel";
+import { HistoryPanel } from "./HistoryPanel";
 import "./Sidebar.css";
 
 type PendingCreate = "file" | "folder" | null;
@@ -71,7 +73,9 @@ export function Sidebar() {
             ? "Search"
             : sidebarView === "git"
               ? "Source Control"
-              : (rootName ?? "Explorer")}
+              : sidebarView === "history"
+                ? "History"
+                : (rootName ?? "Explorer")}
         </span>
         <span className="sidebar-actions">
           <button
@@ -104,6 +108,15 @@ export function Sidebar() {
               <span className="sidebar-change-count">{changeCount}</span>
             )}
           </button>
+          <button
+            className={
+              sidebarView === "history" ? "icon-button active" : "icon-button"
+            }
+            title="History"
+            onClick={() => setSidebarView("history")}
+          >
+            <History size={15} strokeWidth={1.5} />
+          </button>
           {rootPath && sidebarView === "files" && (
             <>
               <span className="sidebar-actions-divider" />
@@ -135,6 +148,7 @@ export function Sidebar() {
 
       {sidebarView === "search" && <SearchPanel />}
       {sidebarView === "git" && <SourceControlPanel />}
+      {sidebarView === "history" && <HistoryPanel />}
 
       {sidebarView === "files" && pendingCreate && (
         <input
