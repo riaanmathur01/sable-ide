@@ -18,6 +18,7 @@ const INTERPRETER_EXTENSIONS = new Set(["py", "pyi"]);
  */
 export function StatusBar() {
   const rootName = useWorkspaceStore((state) => state.rootName);
+  const rootPath = useWorkspaceStore((state) => state.rootPath);
   const lastError = useUiStore((state) => state.lastError);
   const setLastError = useUiStore((state) => state.setLastError);
   const cursorPosition = useUiStore((state) => state.cursorPosition);
@@ -25,9 +26,8 @@ export function StatusBar() {
   const terminalVisible = useUiStore((state) => state.terminalVisible);
   const toggleTerminal = useUiStore((state) => state.toggleTerminal);
   const activePath = useTabsStore((state) => state.activePath);
+  const lastFilePath = useTabsStore((state) => state.lastFilePath);
   const hasActiveTab = activePath !== null;
-  const blameEnabled = useUiStore((state) => state.blameEnabled);
-  const toggleBlame = useUiStore((state) => state.toggleBlame);
   const isRepo = useGitStore((state) => state.isRepo);
   const branch = useGitStore((state) => state.branch);
   const ahead = useGitStore((state) => state.ahead);
@@ -44,6 +44,12 @@ export function StatusBar() {
 
   const activeExtension = activePath?.split(".").pop()?.toLowerCase() ?? "";
   const showInterpreter = INTERPRETER_EXTENSIONS.has(activeExtension);
+
+  // Path of the file currently in the editor, relative to the workspace.
+  const currentFilePath =
+    lastFilePath && rootPath && lastFilePath.startsWith(rootPath)
+      ? lastFilePath.slice(rootPath.length).replace(/^[/\\]/, "")
+      : lastFilePath;
   const selected = interpreters.find((i) => i.path === selectedPath);
   const interpreterLabel =
     selected?.label ??
@@ -101,6 +107,11 @@ export function StatusBar() {
           </button>
         )}
       </div>
+      {currentFilePath && (
+        <span className="status-bar-filepath" title={lastFilePath ?? undefined}>
+          {currentFilePath}
+        </span>
+      )}
       {lastError && (
         <button
           className="status-bar-error"
@@ -123,19 +134,6 @@ export function StatusBar() {
             onClick={() => setPickerOpen((open) => !open)}
           >
             {interpreterLabel}
-          </button>
-        )}
-        {hasActiveTab && (
-          <button
-            className={
-              blameEnabled
-                ? "status-bar-button active"
-                : "status-bar-button"
-            }
-            title="Toggle Git Blame"
-            onClick={toggleBlame}
-          >
-            Blame
           </button>
         )}
         {lspStatus && <span className="status-bar-item">{lspStatus}</span>}
