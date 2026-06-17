@@ -135,18 +135,25 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     }
     try {
       const contents = await readFile(path);
-      set((state) => ({
-        tabs: [
-          ...state.tabs,
-          { path, name: fileNameOf(path), isDirty: false, kind: "file" },
-        ],
-        activePath: path,
-        lastFilePath: path,
-        initialContentByPath: {
-          ...state.initialContentByPath,
-          [path]: contents,
-        },
-      }));
+      set((state) => {
+        // Re-check against the latest state: a concurrent open (e.g.
+        // session restore under StrictMode) may have added it already.
+        if (state.tabs.some((tab) => tab.path === path)) {
+          return { activePath: path, lastFilePath: path };
+        }
+        return {
+          tabs: [
+            ...state.tabs,
+            { path, name: fileNameOf(path), isDirty: false, kind: "file" },
+          ],
+          activePath: path,
+          lastFilePath: path,
+          initialContentByPath: {
+            ...state.initialContentByPath,
+            [path]: contents,
+          },
+        };
+      });
       persistSession(get().tabs, path);
       // Start a language server (if any) and tell it this doc is open.
       void openDocument(path, contents);

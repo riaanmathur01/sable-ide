@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { Sidebar } from "./components/Sidebar/Sidebar";
@@ -44,7 +44,12 @@ function App() {
   // Session restore: reopen the folder from last launch, then its tabs
   // (and the terminal panel if it was open). If the folder is gone
   // (moved/deleted), forget it silently instead of erroring.
+  const restoredRef = useRef(false);
   useEffect(() => {
+    // Run once — React StrictMode double-invokes effects in dev, and a
+    // second restore would race the async tab opens into duplicates.
+    if (restoredRef.current) return;
+    restoredRef.current = true;
     const last = lastOpenedFolder();
     if (!last) return;
     isDirectory(last)

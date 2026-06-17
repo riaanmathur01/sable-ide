@@ -17,34 +17,36 @@ export function TabBar() {
 
   return (
     <div className="tab-bar">
-      {tabs.map((tab) => (
-        <div
-          key={tab.path}
-          className={
-            tab.path === activePath ? "editor-tab active" : "editor-tab"
-          }
-          title={tab.path}
-          onClick={() => setActive(tab.path)}
-          onAuxClick={(event) => {
-            if (event.button === 1) closeTab(tab.path);
-          }}
-        >
-          <span className="editor-tab-name">{tab.name}</span>
-          <span
+      <div className="tab-bar-tabs">
+        {tabs.map((tab) => (
+          <div
+            key={tab.path}
             className={
-              tab.isDirty ? "editor-tab-close dirty" : "editor-tab-close"
+              tab.path === activePath ? "editor-tab active" : "editor-tab"
             }
-            title="Close"
-            onClick={(event) => {
-              event.stopPropagation();
-              closeTab(tab.path);
+            title={tab.path}
+            onClick={() => setActive(tab.path)}
+            onAuxClick={(event) => {
+              if (event.button === 1) closeTab(tab.path);
             }}
           >
-            <span className="editor-tab-dot" />
-            <X size={13} strokeWidth={1.5} className="editor-tab-x" />
-          </span>
-        </div>
-      ))}
+            <span className="editor-tab-name">{tab.name}</span>
+            <span
+              className={
+                tab.isDirty ? "editor-tab-close dirty" : "editor-tab-close"
+              }
+              title="Close"
+              onClick={(event) => {
+                event.stopPropagation();
+                closeTab(tab.path);
+              }}
+            >
+              <span className="editor-tab-dot" />
+              <X size={13} strokeWidth={1.5} className="editor-tab-x" />
+            </span>
+          </div>
+        ))}
+      </div>
       <div className="tab-bar-actions">
         <button
           className="tab-bar-run"

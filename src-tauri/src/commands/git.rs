@@ -642,7 +642,14 @@ pub fn git_commit_file_diff(
 ) -> Result<FileDiff, String> {
     let repo = open_repo(&root)?;
     let (tree, parent_tree) = commit_and_parent_tree(&repo, &hash)?;
-    let relative = Path::new(&file);
+    // Accept either a repo-relative path (from the history panel) or an
+    // absolute one (from a blame-line click).
+    let relative_buf = if Path::new(&file).is_absolute() {
+        relative_to_workdir(&repo, &file).unwrap_or_else(|_| file.clone().into())
+    } else {
+        file.clone().into()
+    };
+    let relative = relative_buf.as_path();
 
     let modified = tree_content(&repo, &tree, relative);
     let original = match &parent_tree {
@@ -674,6 +681,7 @@ pub fn git_commit_file_diff(
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct BlameLine {
+    hash: String,
     short_hash: String,
     author: String,
     timestamp: i64,
@@ -703,6 +711,7 @@ pub fn git_blame(root: String, file: String) -> Result<Vec<BlameLine>, String> {
         let count = hunk.lines_in_hunk();
         let entry = if oid.is_zero() {
             BlameLine {
+                hash: String::new(),
                 short_hash: String::new(),
                 author: "You".to_string(),
                 timestamp: 0,
@@ -713,9 +722,11 @@ pub fn git_blame(root: String, file: String) -> Result<Vec<BlameLine>, String> {
                 .entry(oid)
                 .or_insert_with(|| {
                     let hash = oid.to_string();
+                    let short_hash = hash[..7.min(hash.len())].to_string();
                     match repo.find_commit(oid) {
                         Ok(commit) => BlameLine {
-                            short_hash: hash[..7.min(hash.len())].to_string(),
+                            hash: hash.clone(),
+                            short_hash,
                             author: commit
                                 .author()
                                 .name()
@@ -730,7 +741,8 @@ pub fn git_blame(root: String, file: String) -> Result<Vec<BlameLine>, String> {
                                 .to_string(),
                         },
                         Err(_) => BlameLine {
-                            short_hash: hash[..7.min(hash.len())].to_string(),
+                            hash,
+                            short_hash,
                             author: String::new(),
                             timestamp: 0,
                             summary: String::new(),

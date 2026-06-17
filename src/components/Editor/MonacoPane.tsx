@@ -1,11 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
 import { useTabsStore } from "../../store/tabsStore";
 import { useUiStore } from "../../store/uiStore";
 import { registerEditor } from "../../lib/editorRegistry";
 import { changeDocument } from "../../lib/lsp/lspClient";
-import { refreshBlame, clearBlame } from "../../lib/blame";
+import { fetchBlame } from "../../lib/blame";
+import { BlameGutter } from "./BlameGutter";
+import type { BlameLine } from "../../lib/ipc";
 import "../../lib/monacoSetup";
+import "./MonacoPane.css";
 
 /**
  * The Monaco surface. One editor instance for all tabs: the `path` prop
@@ -27,18 +30,26 @@ export default function MonacoPane() {
   const scheduleAutoSave = useTabsStore((state) => state.scheduleAutoSave);
   const setCursorPosition = useUiStore((state) => state.setCursorPosition);
   const blameEnabled = useUiStore((state) => state.blameEnabled);
+  const [blameLines, setBlameLines] = useState<BlameLine[]>([]);
 
-  // Show/refresh git blame for the active file when blame is on.
+  // Fetch git blame for the active file when blame is on.
   useEffect(() => {
     if (!blameEnabled || !activePath) {
-      clearBlame();
+      setBlameLines([]);
       return;
     }
-    void refreshBlame(activePath);
-    return () => clearBlame();
+    let cancelled = false;
+    void fetchBlame(activePath).then((lines) => {
+      if (!cancelled) setBlameLines(lines);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [blameEnabled, activePath]);
 
   if (!activePath) return null;
+
+  const showBlame = blameEnabled && blameLines.length > 0;
 
   const handleMount: OnMount = (editor, monaco) => {
     registerEditor(editor, monaco);
@@ -59,37 +70,42 @@ export default function MonacoPane() {
   };
 
   return (
-    <Editor
-      theme="sable-dark"
-      path={activePath}
-      defaultValue={initialContentByPath[activePath] ?? ""}
-      onMount={handleMount}
-      onChange={(value) => {
-        syncDirtyState(activePath);
-        // Auto-save: content hits the disk shortly after typing stops.
-        scheduleAutoSave(activePath);
-        // Keep the language server's buffer current so diagnostics and
-        // completions reflect what's on screen.
-        void changeDocument(activePath, value ?? "");
-      }}
-      saveViewState
-      options={{
-        minimap: { enabled: false },
-        fontFamily:
-          '"JetBrains Mono", "SF Mono", "Cascadia Code", monospace',
-        fontSize: 13,
-        fontLigatures: true,
-        lineHeight: 1.6,
-        padding: { top: 12 },
-        scrollBeyondLastLine: false,
-        renderLineHighlight: "line",
-        cursorBlinking: "smooth",
-        smoothScrolling: true,
-        automaticLayout: true,
-        tabSize: 2,
-        guides: { indentation: true },
-        stickyScroll: { enabled: false },
-      }}
-    />
+    <div className="monaco-pane">
+      {showBlame && <BlameGutter lines={blameLines} filePath={activePath} />}
+      <div className="monaco-pane-editor">
+        <Editor
+          theme="sable-dark"
+          path={activePath}
+          defaultValue={initialContentByPath[activePath] ?? ""}
+          onMount={handleMount}
+          onChange={(value) => {
+            syncDirtyState(activePath);
+            // Auto-save: content hits the disk shortly after typing stops.
+            scheduleAutoSave(activePath);
+            // Keep the language server's buffer current so diagnostics and
+            // completions reflect what's on screen.
+            void changeDocument(activePath, value ?? "");
+          }}
+          saveViewState
+          options={{
+            minimap: { enabled: false },
+            fontFamily:
+              '"JetBrains Mono", "SF Mono", "Cascadia Code", monospace',
+            fontSize: 13,
+            fontLigatures: true,
+            lineHeight: 1.6,
+            padding: { top: 12 },
+            scrollBeyondLastLine: false,
+            renderLineHighlight: "line",
+            cursorBlinking: "smooth",
+            smoothScrolling: true,
+            automaticLayout: true,
+            tabSize: 2,
+            guides: { indentation: true },
+            stickyScroll: { enabled: false },
+          }}
+        />
+      </div>
+    </div>
   );
 }

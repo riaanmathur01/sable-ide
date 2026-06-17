@@ -1,35 +1,16 @@
-import { gitBlame } from "./ipc";
-import { setBlame, clearBlame } from "./editorRegistry";
+import { gitBlame, type BlameLine } from "./ipc";
 import { useWorkspaceStore } from "../store/workspaceStore";
-import { useUiStore } from "../store/uiStore";
 
 /**
- * Fetch git blame for a file and render it as per-line annotations.
- * Surfaces a clear status when there's nothing to show (not a repo, or
- * the file isn't committed) instead of silently doing nothing.
+ * Fetch git blame for a file. Returns one entry per committed line, or an
+ * empty array for a new/untracked file, a non-repo folder, or any error.
  */
-export async function refreshBlame(filePath: string): Promise<void> {
+export async function fetchBlame(filePath: string): Promise<BlameLine[]> {
   const root = useWorkspaceStore.getState().rootPath;
-  if (!root) {
-    clearBlame();
-    return;
-  }
+  if (!root) return [];
   try {
-    const lines = await gitBlame(root, filePath);
-    if (lines.length === 0) {
-      clearBlame();
-      useUiStore
-        .getState()
-        .setLastError(
-          "No git blame for this file (not committed, or not a Git repo).",
-        );
-      return;
-    }
-    setBlame(filePath, lines);
-  } catch (error) {
-    clearBlame();
-    useUiStore.getState().setLastError(`Blame failed: ${String(error)}`);
+    return await gitBlame(root, filePath);
+  } catch {
+    return [];
   }
 }
-
-export { clearBlame };

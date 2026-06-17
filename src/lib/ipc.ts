@@ -140,6 +140,7 @@ export interface CommitFile {
 }
 
 export interface BlameLine {
+  hash: string; // full commit hash; "" for uncommitted
   shortHash: string;
   author: string;
   timestamp: number; // Unix seconds; 0 for uncommitted

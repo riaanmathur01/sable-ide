@@ -3,18 +3,29 @@
   height: 34px;
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* The scrollable strip of tabs. Tabs shrink to share width, then this
+   scrolls horizontally once they hit their minimum size. */
+.tab-bar-tabs {
+  display: flex;
+  flex: 1;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
-  flex-shrink: 0;
+}
+
+.tab-bar-tabs::-webkit-scrollbar {
+  height: 0;
 }
 
 .tab-bar-actions {
   display: flex;
   align-items: center;
-  margin-left: auto;
+  flex-shrink: 0;
   padding: 0 8px;
-  position: sticky;
-  right: 0;
+  border-left: 1px solid var(--border);
   background: var(--bg-panel);
 }
 
@@ -41,7 +52,11 @@
   align-items: center;
   gap: 6px;
   padding: 0 8px 0 12px;
-  max-width: 180px;
+  /* Share available width and shrink as more tabs open, down to a floor;
+     past that, the strip scrolls. */
+  flex: 0 1 160px;
+  min-width: 88px;
+  max-width: 200px;
   border-right: 1px solid var(--border);
   color: var(--text-muted);
   font-size: var(--font-size-ui);
