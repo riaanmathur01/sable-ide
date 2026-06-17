@@ -5,6 +5,7 @@
 // the OS directly; it calls these commands via `invoke()`.
 
 mod commands;
+mod debug;
 mod lsp;
 mod watcher;
 
@@ -22,6 +23,7 @@ pub fn run() {
         )))
         .manage(commands::search::SearchState(Arc::new(AtomicU64::new(0))))
         .manage(lsp::LspManager::default())
+        .manage(debug::DebugManager::default())
         .invoke_handler(tauri::generate_handler![
             commands::fs::read_directory,
             commands::fs::read_file,
@@ -63,6 +65,9 @@ pub fn run() {
             lsp::start_language_server,
             lsp::lsp_notify,
             lsp::lsp_request,
+            debug::start_debug,
+            debug::debug_request,
+            debug::debug_stop,
             watcher::watch_workspace,
         ])
         .run(tauri::generate_context!())

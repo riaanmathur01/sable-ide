@@ -9,3 +9,27 @@
   min-width: 0;
   height: 100%;
 }
+
+/* Breakpoint dot in the glyph margin. */
+.debug-breakpoint::before {
+  content: "";
+  display: block;
+  width: 10px;
+  height: 10px;
+  margin: 4px 0 0 5px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+/* The line where execution is paused. */
+.debug-stopped-line {
+  background: rgba(214, 165, 92, 0.16);
+}
+
+.debug-stopped-arrow::before {
+  content: "▶";
+  display: block;
+  margin-left: 4px;
+  color: var(--git-modified);
+  font-size: 11px;
+}

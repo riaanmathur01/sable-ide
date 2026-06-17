@@ -13,7 +13,9 @@
 //! Everything except `server_for_extension` is language-agnostic, so
 //! adding a language (phase 6e) is a single entry in that function.
 
-mod framing;
+// Shared with the DAP debug module — the Content-Length framing is
+// protocol-agnostic (LSP and DAP use the same wire format).
+pub(crate) mod framing;
 
 use serde_json::{json, Value};
 use std::path::PathBuf;

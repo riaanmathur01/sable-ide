@@ -2,13 +2,19 @@ import { useEffect, useState } from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
 import { useTabsStore } from "../../store/tabsStore";
 import { useUiStore } from "../../store/uiStore";
-import { registerEditor } from "../../lib/editorRegistry";
+import { useBreakpointsStore } from "../../store/breakpointsStore";
+import { useDebugStore } from "../../store/debugStore";
+import { registerEditor, getEditor } from "../../lib/editorRegistry";
 import { changeDocument } from "../../lib/lsp/lspClient";
 import { fetchBlame } from "../../lib/blame";
 import { BlameGutter } from "./BlameGutter";
+import { monaco } from "../../lib/monacoSetup";
+import type * as MonacoTypes from "monaco-editor";
 import type { BlameLine } from "../../lib/ipc";
 import "../../lib/monacoSetup";
 import "./MonacoPane.css";
+
+const NO_BREAKPOINTS: number[] = [];
 
 /**
  * The Monaco surface. One editor instance for all tabs: the `path` prop
@@ -31,6 +37,47 @@ export default function MonacoPane() {
   const setCursorPosition = useUiStore((state) => state.setCursorPosition);
   const blameEnabled = useUiStore((state) => state.blameEnabled);
   const [blameLines, setBlameLines] = useState<BlameLine[]>([]);
+  const [editorReady, setEditorReady] = useState(false);
+
+  // Breakpoints for this file, and the line where the debugger is paused
+  // (only when it's paused in *this* file).
+  const breakpointLines = useBreakpointsStore(
+    (state) =>
+      (activePath && state.breakpointsByFile[activePath]) || NO_BREAKPOINTS,
+  );
+  const stoppedLine = useDebugStore((state) =>
+    state.stoppedFile === activePath ? state.stoppedLine : null,
+  );
+
+  // Render breakpoint glyphs + the paused-line highlight as decorations
+  // (className/glyph-based decorations render reliably in this build).
+  useEffect(() => {
+    if (!editorReady) return;
+    const editor = getEditor();
+    if (!editor) return;
+
+    const decorations: MonacoTypes.editor.IModelDeltaDecoration[] =
+      breakpointLines.map((line) => ({
+        range: new monaco.Range(line, 1, line, 1),
+        options: {
+          glyphMarginClassName: "debug-breakpoint",
+          glyphMarginHoverMessage: { value: "Breakpoint" },
+        },
+      }));
+    if (stoppedLine != null) {
+      decorations.push({
+        range: new monaco.Range(stoppedLine, 1, stoppedLine, 1),
+        options: {
+          isWholeLine: true,
+          className: "debug-stopped-line",
+          glyphMarginClassName: "debug-stopped-arrow",
+        },
+      });
+      editor.revealLineInCenter(stoppedLine);
+    }
+    const collection = editor.createDecorationsCollection(decorations);
+    return () => collection.clear();
+  }, [breakpointLines, stoppedLine, activePath, editorReady]);
 
   // Fetch git blame for the active file when blame is on.
   useEffect(() => {
@@ -53,6 +100,23 @@ export default function MonacoPane() {
 
   const handleMount: OnMount = (editor, monaco) => {
     registerEditor(editor, monaco);
+    setEditorReady(true);
+
+    // Click the glyph margin to toggle a breakpoint on that line.
+    editor.onMouseDown((event) => {
+      if (
+        event.target.type ===
+          monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN &&
+        event.target.position
+      ) {
+        const path = useTabsStore.getState().lastFilePath;
+        if (path) {
+          useBreakpointsStore
+            .getState()
+            .toggle(path, event.target.position.lineNumber);
+        }
+      }
+    });
 
     // Cmd/Ctrl+S inside the editor. (A window-level listener in
     // EditorArea covers saves while focus is elsewhere.)
@@ -89,6 +153,7 @@ export default function MonacoPane() {
           saveViewState
           options={{
             minimap: { enabled: false },
+            glyphMargin: true, // breakpoint dots live here
             fontFamily:
               '"JetBrains Mono", "SF Mono", "Cascadia Code", monospace',
             fontSize: 13,

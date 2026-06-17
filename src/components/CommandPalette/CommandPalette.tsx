@@ -8,6 +8,7 @@ import { listWorkspaceFiles } from "../../lib/ipc";
 import { fuzzyScore } from "../../lib/fuzzy";
 import { runActiveFile } from "../../lib/runFile";
 import { openFolderDialog } from "../../lib/openFolder";
+import { useDebugStore } from "../../store/debugStore";
 import "./CommandPalette.css";
 
 interface PaletteItem {
@@ -189,6 +190,16 @@ function buildCommands(): PaletteItem[] {
       },
     },
     { id: "run", label: "Run File", detail: "⌘R", run: () => runActiveFile() },
+    {
+      id: "debug-start",
+      label: "Start Debugging",
+      run: () => void useDebugStore.getState().start(),
+    },
+    {
+      id: "debug-stop",
+      label: "Stop Debugging",
+      run: () => void useDebugStore.getState().stop(),
+    },
     {
       id: "toggle-terminal",
       label: "Toggle Terminal",

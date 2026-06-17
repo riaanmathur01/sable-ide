@@ -18,6 +18,7 @@ import { useGitStore } from "./store/gitStore";
 import { isDirectory, type SearchMatch } from "./lib/ipc";
 import { useGlobalKeybindings } from "./lib/useGlobalKeybindings";
 import { initLspListeners } from "./lib/lsp/lspClient";
+import { initDebugListeners } from "./lib/debug/debugClient";
 import "./App.css";
 
 /**
@@ -36,9 +37,10 @@ function App() {
 
   useGlobalKeybindings();
 
-  // Register LSP event listeners once for the app's lifetime.
+  // Register LSP + debug event listeners once for the app's lifetime.
   useEffect(() => {
     initLspListeners();
+    initDebugListeners();
   }, []);
 
   // Session restore: reopen the folder from last launch, then its tabs
