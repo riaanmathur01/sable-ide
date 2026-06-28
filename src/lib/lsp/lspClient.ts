@@ -19,10 +19,12 @@ import { applyDiagnostics, type LspDiagnostic } from "../editorRegistry";
  *   close → textDocument/didClose
  */
 
-/** Extensions Sable starts a server for, mapped to their LSP languageId. */
+/** Extensions Sable starts a server for, mapped to their LSP languageId.
+ *  (Must mirror server_id_for_extension on the Rust side.) */
 const LANGUAGE_IDS: Record<string, string> = {
   py: "python",
   pyi: "python",
+  java: "java",
 };
 
 /** Languages we've already asked Rust to start, so we don't spam it. */
@@ -91,6 +93,7 @@ export async function openDocument(path: string, text: string): Promise<void> {
 
   documentVersions.set(path, 1);
   await invoke("lsp_notify", {
+    extension: extensionOf(path),
     method: "textDocument/didOpen",
     params: {
       textDocument: {
@@ -117,6 +120,7 @@ export async function changeDocument(
   const nextVersion = version + 1;
   documentVersions.set(path, nextVersion);
   await invoke("lsp_notify", {
+    extension: extensionOf(path),
     method: "textDocument/didChange",
     params: {
       textDocument: { uri: pathToUri(path), version: nextVersion },
@@ -130,6 +134,7 @@ export async function closeDocument(path: string): Promise<void> {
   if (!documentVersions.has(path)) return;
   documentVersions.delete(path);
   await invoke("lsp_notify", {
+    extension: extensionOf(path),
     method: "textDocument/didClose",
     params: { textDocument: { uri: pathToUri(path) } },
   }).catch(() => {});
@@ -150,6 +155,7 @@ const REQUEST_TIMEOUT_MS = 4000;
  * rather than hanging the editor).
  */
 export function sendRequest(
+  extension: string,
   method: string,
   params: unknown,
 ): Promise<unknown> {
@@ -160,7 +166,7 @@ export function sendRequest(
       resolve(null);
     }, REQUEST_TIMEOUT_MS);
     pendingRequests.set(id, { resolve, timer });
-    invoke("lsp_request", { method, params, id }).catch(() => {
+    invoke("lsp_request", { extension, method, params, id }).catch(() => {
       clearTimeout(timer);
       pendingRequests.delete(id);
       resolve(null);
@@ -175,11 +181,19 @@ export function initLspListeners(): void {
   if (listenersReady) return;
   listenersReady = true;
 
-  listen<{ state: string; server?: string; capabilities?: unknown }>(
+  listen<{
+    state: string;
+    server?: string;
+    capabilities?: unknown;
+  }>(
     "lsp:status",
     (event) => {
       const { state, server } = event.payload;
-      if (state === "connected") {
+      if (state === "starting") {
+        // Heavy servers (jdtls, rust-analyzer) index for a while; say so
+        // rather than looking dead.
+        useUiStore.getState().setLspStatus(`${server ?? "Language server"}…`);
+      } else if (state === "connected") {
         useUiStore.getState().setLspStatus(server ?? "Language server");
       } else if (state === "disconnected") {
         useUiStore.getState().setLspStatus(null);

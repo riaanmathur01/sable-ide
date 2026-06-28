@@ -102,13 +102,14 @@ export default function MonacoPane() {
     registerEditor(editor, monaco);
     setEditorReady(true);
 
-    // Click the glyph margin to toggle a breakpoint on that line.
+    // Click the gutter (glyph margin OR line-number area) to toggle a
+    // breakpoint on that line — the glyph margin alone is easy to miss.
     editor.onMouseDown((event) => {
-      if (
-        event.target.type ===
-          monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN &&
-        event.target.position
-      ) {
+      const targetType = event.target.type;
+      const inGutter =
+        targetType === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN ||
+        targetType === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS;
+      if (inGutter && event.target.position) {
         const path = useTabsStore.getState().lastFilePath;
         if (path) {
           useBreakpointsStore

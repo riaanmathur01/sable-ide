@@ -18,10 +18,11 @@
 pub(crate) mod framing;
 
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Stdio;
 use tauri::{AppHandle, Emitter, State};
-use tokio::io::BufReader;
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
 use tokio::sync::Mutex as AsyncMutex;
@@ -33,45 +34,100 @@ const INITIALIZE_ID: &str = "sable-initialize";
 
 /// How to launch the server for a language.
 struct ServerSpec {
+    /// Stable id used as the per-language key in the manager's map, so
+    /// several servers (e.g. Pyright + jdtls) run side by side. Multiple
+    /// extensions can share one id (ts/tsx/js → "typescript").
+    id: String,
     /// Human name for status messages.
-    name: &'static str,
-    /// Binary to launch (resolved against PATH and npm-global dirs).
-    binary: &'static str,
-    args: &'static [&'static str],
+    name: String,
+    /// Binary to launch (resolved against PATH and common dirs).
+    binary: String,
+    args: Vec<String>,
     /// Install hint shown if the binary is missing.
-    install_hint: &'static str,
+    install_hint: String,
 }
 
-/// The one place that maps a file extension to a language server. Phase
-/// 6e adds languages here and nowhere else.
-fn server_for_extension(extension: &str) -> Option<ServerSpec> {
+/// Map a file extension to its server id (the routing key). This is the
+/// one place languages are registered; everything else is generic.
+fn server_id_for_extension(extension: &str) -> Option<&'static str> {
     match extension {
-        "py" | "pyi" => Some(ServerSpec {
-            name: "Pyright",
-            binary: "pyright-langserver",
-            args: &["--stdio"],
-            install_hint: "Pyright not found — run `npm install -g pyright`",
-        }),
+        "py" | "pyi" => Some("pyright"),
+        "java" => Some("java"),
+        // JS/TS intelligence is provided by Monaco's built-in language
+        // service; a typescript-language-server entry can be added here
+        // when we want full LSP for it.
         _ => None,
     }
 }
 
-/// Live server handle, held behind the manager's mutex. Holding `child`
-/// keeps the process alive. All outgoing frames go through `writer` — a
-/// channel drained by a single writer task that owns the child's stdin —
-/// so the command path and the reader loop (which must answer the
-/// server's own requests) never fight over stdin.
+/// jdtls needs a writable, per-project workspace data directory (it caches
+/// its index there). Derive a stable one under the OS temp dir from the
+/// project root.
+fn jdtls_data_dir(root: &str) -> String {
+    let sanitized: String = root
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '_' })
+        .collect();
+    let dir = std::env::temp_dir().join("sable-jdtls").join(sanitized);
+    let _ = std::fs::create_dir_all(&dir);
+    dir.to_string_lossy().into_owned()
+}
+
+/// Full launch spec for the server handling `extension`. `root` is the
+/// workspace folder — used as the project root and (for jdtls) to place
+/// the data directory.
+fn server_for_extension(extension: &str, root: &str) -> Option<ServerSpec> {
+    let id = server_id_for_extension(extension)?;
+    Some(match id {
+        "pyright" => ServerSpec {
+            id: id.into(),
+            name: "Pyright".into(),
+            binary: "pyright-langserver".into(),
+            args: vec!["--stdio".into()],
+            install_hint: "Pyright not found — run `npm install -g pyright`"
+                .into(),
+        },
+        // jdtls is the Eclipse JDT server; the Homebrew wrapper figures out
+        // the equinox launcher + config_mac, so we only pass `-data`. It
+        // runs on the system JDK and indexes the project on startup, so the
+        // first completions can lag several seconds.
+        "java" => ServerSpec {
+            id: id.into(),
+            name: "Java (jdtls)".into(),
+            binary: "jdtls".into(),
+            args: vec!["-data".into(), jdtls_data_dir(root)],
+            install_hint: "jdtls not found — run `brew install jdtls` \
+                (requires a JDK on PATH)"
+                .into(),
+        },
+        _ => return None,
+    })
+}
+
+/// Live server handle. Holding `child` keeps the process alive. All
+/// outgoing frames go through `writer` — a channel drained by a single
+/// writer task that owns the child's stdin — so the command path and the
+/// reader loop (which must answer the server's own requests) never fight
+/// over stdin.
 struct LspHandle {
     #[allow(dead_code)] // kept alive intentionally; killed on shutdown
     child: Child,
     writer: mpsc::UnboundedSender<String>,
-    extension: String,
+}
+
+/// One language server per server id, so multiple run concurrently
+/// (Pyright for .py, jdtls for .java, …). `starting` guards against
+/// double-spawning while a slow server (jdtls) is still handshaking — and
+/// lets us release the lock during that handshake so other servers stay
+/// responsive.
+#[derive(Default)]
+struct LspState {
+    servers: HashMap<String, LspHandle>,
+    starting: std::collections::HashSet<String>,
 }
 
 #[derive(Default)]
-pub struct LspManager {
-    inner: AsyncMutex<Option<LspHandle>>,
-}
+pub struct LspManager(AsyncMutex<LspState>);
 
 /// Resolve a binary that may live outside the PATH inherited by a GUI /
 /// spawned process. GUI apps on macOS routinely lack the user's shell
@@ -259,30 +315,83 @@ pub async fn start_language_server(
     extension: String,
     root_path: String,
 ) -> Result<(), String> {
-    let mut guard = manager.inner.lock().await;
-    // Already have a server for this language — nothing to do.
-    if let Some(handle) = guard.as_ref() {
-        if handle.extension == extension {
+    let spec = server_for_extension(&extension, &root_path)
+        .ok_or_else(|| format!("No language server configured for .{extension}"))?;
+    let server_id = spec.id.clone();
+
+    // Reserve this server id (or bail if it's already running / starting),
+    // then release the lock so the — possibly slow — handshake below
+    // doesn't block other servers' requests.
+    {
+        let mut state = manager.0.lock().await;
+        if state.servers.contains_key(&server_id)
+            || state.starting.contains(&server_id)
+        {
             return Ok(());
         }
+        state.starting.insert(server_id.clone());
     }
 
-    let spec = server_for_extension(&extension)
-        .ok_or_else(|| format!("No language server configured for .{extension}"))?;
+    // From here, on any early return we must clear the `starting` flag.
+    let result =
+        spawn_and_handshake(&app, &spec, &root_path).await;
+    match result {
+        Ok((child, writer)) => {
+            let mut state = manager.0.lock().await;
+            state.starting.remove(&server_id);
+            state
+                .servers
+                .insert(server_id, LspHandle { child, writer });
+            Ok(())
+        }
+        Err(error) => {
+            manager.0.lock().await.starting.remove(&server_id);
+            Err(error)
+        }
+    }
+}
 
-    let binary = resolve_binary(spec.binary)
-        .ok_or_else(|| spec.install_hint.to_string())?;
+/// Spawn the server and complete the handshake, returning its child +
+/// writer channel. Factored out of the command so the manager lock can be
+/// released during the (sometimes slow) handshake.
+async fn spawn_and_handshake(
+    app: &AppHandle,
+    spec: &ServerSpec,
+    root_path: &str,
+) -> Result<(Child, mpsc::UnboundedSender<String>), String> {
+    let _ = app.emit(
+        "lsp:status",
+        json!({ "state": "starting", "server": spec.name }),
+    );
+
+    let binary = resolve_binary(&spec.binary)
+        .ok_or_else(|| spec.install_hint.clone())?;
 
     let mut child = Command::new(&binary)
-        .args(spec.args)
+        .args(&spec.args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .kill_on_drop(true)
         .spawn()
         .map_err(|error| {
             format!("Could not start {}: {error}", spec.name)
         })?;
+
+    // Surface the server's stderr to the dev log — the single most useful
+    // diagnostic when a server (jdtls especially) fails to start or reply.
+    if let Some(stderr) = child.stderr.take() {
+        let name = spec.name.clone();
+        tauri::async_runtime::spawn(async move {
+            let mut lines = BufReader::new(stderr).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                eprintln!("[lsp {name}] {line}");
+            }
+        });
+    }
+
+    let is_pyright = spec.id == "pyright";
+    let server_name = spec.name.clone();
 
     let mut stdin = child
         .stdin
@@ -329,7 +438,7 @@ pub async fn start_language_server(
                 let _ = app.emit("lsp:message", message);
             }
             Ok(None) => {
-                return Err(format!("{} exited during handshake", spec.name))
+                return Err(format!("{server_name} exited during handshake"))
             }
             Err(error) => {
                 return Err(format!("Handshake read error: {error}"))
@@ -361,17 +470,19 @@ pub async fn start_language_server(
         }
     });
 
-    // Push our settings so Pyright switches to workspace-wide analysis.
-    // (It will also pull them back via workspace/configuration, which the
-    // reader answers below — belt and suspenders.)
-    let _ = writer_tx.send(
-        json!({
-            "jsonrpc": "2.0",
-            "method": "workspace/didChangeConfiguration",
-            "params": { "settings": { "python": python_settings() } },
-        })
-        .to_string(),
-    );
+    // Pyright-only: push settings so it does workspace-wide analysis.
+    // (It also pulls them back via workspace/configuration, which the
+    // reader answers below.) Other servers use their defaults.
+    if is_pyright {
+        let _ = writer_tx.send(
+            json!({
+                "jsonrpc": "2.0",
+                "method": "workspace/didChangeConfiguration",
+                "params": { "settings": { "python": python_settings() } },
+            })
+            .to_string(),
+        );
+    }
 
     // Persistent reader. It distinguishes three kinds of message:
     //   - server→client REQUEST  (has id AND method): we must reply.
@@ -423,35 +534,33 @@ pub async fn start_language_server(
         }
     });
 
-    *guard = Some(LspHandle {
-        child,
-        writer: writer_tx,
-        extension,
-    });
-
     let _ = app.emit(
         "lsp:status",
         json!({
             "state": "connected",
-            "server": spec.name,
+            "server": server_name,
             "capabilities": capabilities,
         }),
     );
-    Ok(())
+    Ok((child, writer_tx))
 }
 
-/// Send a JSON-RPC *notification* (no id, no response) to the running
-/// server — used for document-sync messages (`didOpen`, `didChange`,
-/// `didClose`). A no-op if no server is running.
+/// Send a JSON-RPC *notification* (no id, no response) to the server that
+/// handles `extension` — used for document sync (`didOpen`/`didChange`/
+/// `didClose`). A no-op if that server isn't running.
 #[tauri::command]
 pub async fn lsp_notify(
     manager: State<'_, LspManager>,
+    extension: String,
     method: String,
     params: Value,
 ) -> Result<(), String> {
-    let guard = manager.inner.lock().await;
-    let Some(handle) = guard.as_ref() else {
-        return Ok(()); // no server yet — nothing to notify
+    let Some(server_id) = server_id_for_extension(&extension) else {
+        return Ok(());
+    };
+    let state = manager.0.lock().await;
+    let Some(handle) = state.servers.get(server_id) else {
+        return Ok(()); // server for this language not running
     };
     let message = json!({
         "jsonrpc": "2.0",
@@ -472,13 +581,16 @@ pub async fn lsp_notify(
 #[tauri::command]
 pub async fn lsp_request(
     manager: State<'_, LspManager>,
+    extension: String,
     method: String,
     params: Value,
     id: i64,
 ) -> Result<(), String> {
-    let guard = manager.inner.lock().await;
-    let Some(handle) = guard.as_ref() else {
-        return Err("No language server running".to_string());
+    let server_id = server_id_for_extension(&extension)
+        .ok_or_else(|| format!("No language server for .{extension}"))?;
+    let state = manager.0.lock().await;
+    let Some(handle) = state.servers.get(server_id) else {
+        return Err(format!("Language server for .{extension} not running"));
     };
     let message = json!({
         "jsonrpc": "2.0",
