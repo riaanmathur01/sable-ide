@@ -17,19 +17,22 @@ import type * as MonacoTypes from "monaco-editor";
 const MEASURE_MS = 300;
 /** Assumed repeat interval if it couldn't be measured (≈ 25/s). */
 const DEFAULT_INTERVAL_MS = 40;
-/** The cap: the shortest delay between deletions (≈ 83/s). */
-const MIN_INTERVAL_MS = 12;
+/** The cap: 30 deletions per second. */
+const MAX_PER_SECOND = 30;
 /** How long it takes to reach the cap. */
-const RAMP_MS = 1800;
+const RAMP_MS = 5000;
 
-/** Delay before the next deletion, `elapsed` ms after taking over from a
- *  repeat interval of `start` ms. Eases in, so the speed-up feels gradual
- *  rather than sudden. Never slower than the start. */
+/**
+ * Delay before the next deletion, `elapsed` ms after taking over from a
+ * repeat interval of `start` ms. The speed grows with the square of the
+ * time held — slowly at first, then faster and faster — until it reaches
+ * the cap at RAMP_MS. Never slower than the start.
+ */
 export function deleteInterval(elapsed: number, start = DEFAULT_INTERVAL_MS): number {
-  const from = Math.max(start, MIN_INTERVAL_MS);
+  const startSpeed = Math.min(1000 / start, MAX_PER_SECOND);
   const progress = Math.min(1, Math.max(0, elapsed / RAMP_MS));
-  const eased = progress * progress * (3 - 2 * progress); // smoothstep
-  return from - (from - MIN_INTERVAL_MS) * eased;
+  const speed = startSpeed + (MAX_PER_SECOND - startSpeed) * progress * progress;
+  return 1000 / speed;
 }
 
 const COMMANDS: Record<string, string> = {

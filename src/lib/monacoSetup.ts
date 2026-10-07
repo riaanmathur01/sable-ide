@@ -113,10 +113,13 @@ export function editorOptionsFromSettings(
     wordWrap: settings["editor.wordWrap"],
     minimap: {
       enabled: settings["editor.minimap"],
-      // Real (tiny) characters, capped so long lines don't widen it.
+      // Real characters at twice the default size, capped so long lines
+      // don't widen it.
       renderCharacters: true,
-      maxColumn: 100,
-      showSlider: "mouseover",
+      scale: 2,
+      maxColumn: 80,
+      // The visible-area slider is always shown (colors in shikiMonaco).
+      showSlider: "always",
       // `// MARK: Section` comments label the minimap.
       showMarkSectionHeaders: true,
       showRegionSectionHeaders: true,

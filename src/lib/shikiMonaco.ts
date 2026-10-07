@@ -107,6 +107,14 @@ const GRAMMAR_NAME: Record<string, string> = {
   shell: "shellscript",
 };
 
+/** The minimap's visible-area slider: clearly visible on every theme
+ *  (Monaco's default is a faint tint). */
+const MINIMAP_SLIDER = {
+  "minimapSlider.background": "#ffffff26",
+  "minimapSlider.hoverBackground": "#ffffff38",
+  "minimapSlider.activeBackground": "#ffffff4d",
+};
+
 const BASE_TOKEN_COLORS = {
   "catppuccin-mocha": () => import("@shikijs/themes/catppuccin-mocha"),
 };
@@ -219,6 +227,7 @@ export function installShikiHighlighting(monaco: Monaco, initialTheme: ThemeId) 
     const { colorMap } = highlighter.setTheme(theme.id);
     monaco.editor.defineTheme(theme.id, {
       ...theme.editor,
+      colors: { ...theme.editor.colors, ...MINIMAP_SLIDER },
       // Monarch fallback rules, the exact TextMate colors, then semantic
       // categories (sem-*; matched only by semantic tokens).
       rules: [...theme.editor.rules, ...colorMapRules(colorMap), ...semanticRules(theme)],
