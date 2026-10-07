@@ -201,6 +201,33 @@ async function ensureLanguageServerForFile(path: string): Promise<boolean> {
   }
 }
 
+/** LSP FileChangeType. */
+export type FileChange = { path: string; type: "created" | "changed" | "deleted" };
+const FILE_CHANGE_TYPE = { created: 1, changed: 2, deleted: 3 } as const;
+
+/**
+ * Tell language servers about files changed behind their back (not open
+ * in the editor) — e.g. by a rename that edited unopened files — so their
+ * view of the project stays current.
+ */
+export async function notifyFilesChanged(changes: FileChange[]): Promise<void> {
+  const byExtension = new Map<string, FileChange[]>();
+  for (const change of changes) {
+    const extension = extensionOf(change.path);
+    if (!LANGUAGE_IDS[extension]) continue;
+    byExtension.set(extension, [...(byExtension.get(extension) ?? []), change]);
+  }
+  for (const [extension, group] of byExtension) {
+    await invoke("lsp_notify", {
+      extension,
+      method: "workspace/didChangeWatchedFiles",
+      params: {
+        changes: group.map((change) => ({ uri: pathToUri(change.path), type: FILE_CHANGE_TYPE[change.type] })),
+      },
+    }).catch(() => {}); // no server running for that language
+  }
+}
+
 /** Tell the server a document is now open (starting its server first). */
 export async function openDocument(path: string, text: string): Promise<void> {
   const languageId = languageIdFor(path);
@@ -274,7 +301,7 @@ export async function resetLanguageServers(): Promise<void> {
   }
   for (const [id, pending] of pendingRequests) {
     clearTimeout(pending.timer);
-    pending.resolve(null);
+    pending.resolve({ result: null, error: "The language server restarted" });
     pendingRequests.delete(id);
   }
   useUiStore.getState().setLspStatus(null, null);
@@ -310,36 +337,54 @@ export async function setUpPythonSemanticHighlighting(): Promise<void> {
 
 /** In-flight LSP requests, keyed by the id we minted, awaiting a response. */
 interface PendingRequest {
-  resolve: (result: unknown) => void;
+  resolve: (response: LspResponse) => void;
   timer: ReturnType<typeof setTimeout>;
+}
+
+/** A request's outcome: the result, or the server's error message. */
+export interface LspResponse {
+  result: unknown;
+  /** Set when the server answered with an error (or didn't answer). */
+  error?: string;
 }
 const pendingRequests = new Map<number, PendingRequest>();
 let requestIdCounter = 0;
 const REQUEST_TIMEOUT_MS = 4000;
 
 /**
- * Send an LSP *request* and await its result. Resolves with the server's
- * `result` (or null on error/timeout — providers then show nothing
- * rather than hanging the editor).
+ * Send an LSP *request* to the server for a file's language and await
+ * its result. Resolves with the server's `result` (or null on
+ * error/timeout — providers then show nothing rather than hanging the
+ * editor).
  */
-/** Send an LSP request to the server for a file's language. */
-export function sendRequest(
+export async function sendRequest(
   extension: string,
   method: string,
   params: unknown,
   timeoutMs = REQUEST_TIMEOUT_MS,
 ): Promise<unknown> {
+  const response = await sendRequestWithError(extension, method, params, timeoutMs);
+  return response.error ? null : response.result;
+}
+
+/** Like sendRequest, but keeps the server's error message. */
+export function sendRequestWithError(
+  extension: string,
+  method: string,
+  params: unknown,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+): Promise<LspResponse> {
   const id = ++requestIdCounter;
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
       pendingRequests.delete(id);
-      resolve(null);
+      resolve({ result: null, error: "The language server didn't respond in time" });
     }, timeoutMs);
     pendingRequests.set(id, { resolve, timer });
-    invoke("lsp_request", { extension, method, params, id }).catch(() => {
+    invoke("lsp_request", { extension, method, params, id }).catch((error) => {
       clearTimeout(timer);
       pendingRequests.delete(id);
-      resolve(null);
+      resolve({ result: null, error: String(error) });
     });
   });
 }
@@ -406,7 +451,10 @@ export function initLspListeners(): void {
       if (pending) {
         clearTimeout(pending.timer);
         pendingRequests.delete(message.id);
-        pending.resolve(message.error ? null : message.result);
+        const error = message.error as { message?: string } | undefined;
+        pending.resolve(
+          error ? { result: null, error: error.message ?? "Request failed" } : { result: message.result },
+        );
       }
       return;
     }

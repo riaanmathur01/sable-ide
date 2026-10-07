@@ -8,15 +8,20 @@ push/pull/fetch, and the AI agent when you message it).
 
 ## Features
 
-- **Editor** — Monaco with tabs, split editor (up to three groups),
+- **Editor** — Monaco with tabs, a minimap (with errors, search matches
+  and breakpoints marked), split editor (up to three groups),
   auto-save, format on save, bracket-pair colors, sticky scroll, font
   zoom, and session restore. JetBrains Mono is bundled; the font picker
   lists every monospace font installed on your machine.
 - **Highlighting** — the same TextMate grammars VS Code uses (via
   [Shiki](https://shiki.style)), plus semantic highlighting from the
-  language servers (parameters, `self`, builtins, declarations vs.
-  references), styled to match JetBrains. Themes: Sable Dark, Darcula,
-  JetBrains Dark, and Catppuccin Mocha.
+  language servers (parameters, `self`, fields, mutable bindings,
+  declarations vs. calls). Themes: Sable Dark, Catppuccin Mocha, and three
+  JetBrains themes — Darcula, Dark, and Islands Dark — with the exact
+  colors each JetBrains IDE uses for its language (PyCharm for Python,
+  WebStorm for JS/TS, GoLand, RustRover, CLion, IntelliJ IDEA for Java and
+  Kotlin, PhpStorm, RubyMine, Rider for C#), extracted from the IDEs
+  themselves (`scripts/jetbrains-colors/`).
 - **Explorer** — virtualized, lazily loaded file tree with
   create/rename/delete/drag-to-move and a live file watcher.
 - **Search** — project-wide content + file-name search and replace
@@ -31,6 +36,12 @@ push/pull/fetch, and the AI agent when you message it).
   quick fixes Pyright lacks: add a missing import, remove unused imports,
   `pip install` a missing package. Any error can also be sent to the AI
   agent ("Fix with Agent").
+- **Rename refactoring** — F2 or ⇧F6 (JetBrains' shortcut) renames a
+  symbol everywhere it's used in the project, through the language server:
+  Python, TypeScript/JavaScript, Java (a class's file is renamed too),
+  Rust, Go, C and C++. CSS, SCSS, Less and HTML use Monaco's built-in
+  rename; other languages (Kotlin, PHP, Ruby, C#, …) rename within the
+  file, skipping strings and comments.
 - **Debugger** — breakpoints (saved per project, and they follow your
   edits), continue/step/pause, call stack, variables, debug console, and
   stop on uncaught exceptions, for:
@@ -137,6 +148,16 @@ session. Tools Sable installs itself (basedpyright, js-debug, java-debug)
 go in a private folder, `~/Library/Application Support/com.riaanmathur.sable/tools`,
 never into your global environment.
 
+**JetBrains colors: extracted, not eyeballed.** JetBrains colors code by
+*key* (`PY.SELF_PARAMETER`, `GO_PACKAGE`, …), each with a fallback chain
+that ends in a "language default". `scripts/jetbrains-colors/extract.py`
+reads the schemes and the fallback chains out of the IDEs' jars and
+resolves them the way IntelliJ does, into
+`src/lib/jetbrains/schemes.generated.ts`. `src/lib/jetbrains/scopes.ts`
+maps TextMate scopes to those keys (starting from IntelliJ's own TextMate
+table), and the semantic-token classifier maps each language server's
+tokens to the key the matching JetBrains IDE uses.
+
 **Highlighting: Shiki tokens + semantic tokens.** `src/lib/shikiMonaco.ts`
 replaces Monaco's tokenizers with TextMate grammars; tokens are named by
 the theme's exact color index, so colors match the theme exactly.
@@ -165,6 +186,7 @@ essentials:
 | `⌘R` | Run the active file in the terminal |
 | `⌘\` | Split editor right |
 | `⌘.`, `F8` | Quick fix, next problem |
+| `F2` / `⇧F6` | Rename symbol (project-wide) |
 | `⌘J` | Toggle the bottom panel (terminal / debug console) |
 | `⌘B` / `⌥⌘B` | Toggle sidebar / agent panel |
 | `⌃Tab`, `⌘1…9`, `⇧⌘T` | Switch tabs, jump to tab N, reopen closed tab |

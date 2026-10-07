@@ -130,6 +130,15 @@ pub fn move_path(source: String, target_directory: String) -> Result<String, Str
 
 /// Rename an entry in place. Takes the new *name* (not path) and joins it
 /// here so path separators are handled on the Rust side for both OSes.
+/// Whether two paths name the same file (e.g. `Main.py` and `main.py` on
+/// a case-insensitive disk).
+fn is_same_file(a: &Path, b: &Path) -> bool {
+    match (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => false,
+    }
+}
+
 #[tauri::command]
 pub fn rename_path(path: String, new_name: String) -> Result<String, String> {
     let source = Path::new(&path);
@@ -137,10 +146,36 @@ pub fn rename_path(path: String, new_name: String) -> Result<String, String> {
         .parent()
         .ok_or_else(|| format!("{path} has no parent directory"))?;
     let destination = parent.join(&new_name);
-    if destination.exists() {
+    // On case-insensitive disks (macOS, Windows) `main.py` "exists" when
+    // the file is `Main.py` — a case-only rename of the same file is fine.
+    if destination.exists() && !is_same_file(source, &destination) {
         return Err(format!("{new_name} already exists"));
     }
     std::fs::rename(source, &destination)
         .map_err(|error| format!("Could not rename {path}: {error}"))?;
     Ok(destination.to_string_lossy().into_owned())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rename_changes_only_case() {
+        let dir = std::env::temp_dir().join(format!("sable-rename-case-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let original = dir.join("Main.py");
+        std::fs::write(&original, "print(1)\n").unwrap();
+        let renamed = rename_path(original.to_string_lossy().into_owned(), "main.py".into()).unwrap();
+        assert!(renamed.ends_with("main.py"));
+        let names: Vec<String> = std::fs::read_dir(&dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, vec!["main.py"]);
+        // A real clash is still refused.
+        std::fs::write(dir.join("other.py"), "").unwrap();
+        assert!(rename_path(dir.join("other.py").to_string_lossy().into_owned(), "main.py".into()).is_err());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 }

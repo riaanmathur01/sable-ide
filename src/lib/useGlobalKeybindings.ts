@@ -36,6 +36,7 @@ export const KEYBINDINGS: { keys: string; action: string }[] = [
   { keys: "⌘1 … ⌘9", action: "Go to tab N (⌘9 = last)" },
   { keys: "⌘=  /  ⌘-  /  ⌘0", action: "Editor zoom in / out / reset" },
   { keys: "⌥Z", action: "Toggle word wrap" },
+  { keys: "F2  /  ⇧F6", action: "Rename symbol (every reference in the project)" },
   { keys: "⌘.", action: "Quick fix (on a squiggle: server fixes + Fix with Agent)" },
   { keys: "F8  /  ⇧F8", action: "Next / previous problem" },
   { keys: "F12  /  ⌘-click", action: "Go to definition (Python, TS/JS, Java, Rust, Go, C/C++)" },
@@ -65,6 +66,8 @@ function handleFunctionKey(event: KeyboardEvent): boolean {
       else void debug.start();
       return true;
     case "F6":
+      // Shift+F6 is rename (as in JetBrains IDEs); leave it to the editor.
+      if (event.shiftKey) return false;
       void debug.pause();
       return true;
     case "F9": {

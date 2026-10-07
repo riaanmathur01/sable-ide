@@ -10,7 +10,11 @@ import {
   pathToUri,
   sendRequest,
 } from "./lspClient";
-import { SEMANTIC_CATEGORIES, translateTokens, type ServerLegend } from "./semanticTokens";
+import { semanticTokenTypes, translateTokens, type ServerLegend } from "./semanticTokens";
+import { registerRename } from "./rename";
+import { DARCULA, DARK } from "../jetbrains/schemes.generated";
+import { themeById } from "../themes";
+import { currentThemeId, onThemeChange } from "../shikiMonaco";
 import { applyWorkspaceEdit, type LspWorkspaceEdit } from "./workspaceEdit";
 import { registerPythonQuickFixes } from "./pythonQuickFixes";
 import { useAgentStore } from "../../store/agentStore";
@@ -271,8 +275,22 @@ async function resolveCompletion(
  * disconnects. Tokens are translated into Sable's categories
  * (semanticTokens.ts) that each theme styles.
  */
+/** Sable's semantic legend: generic categories + every JetBrains key. */
+const SEMANTIC_TOKEN_TYPES = semanticTokenTypes([...Object.keys(DARK), ...Object.keys(DARCULA)]);
+
+const usesJetBrainsColors = () => Boolean(themeById(currentThemeId()).jetbrains);
+
 function registerSemanticHighlighting(monaco: Monaco) {
   const registrations = new Map<string, MonacoTypes.IDisposable[]>();
+  // JetBrains themes get per-language keys, other themes generic
+  // categories — so switching between the two kinds re-requests tokens.
+  const themeKindChanged = new monaco.Emitter<void>();
+  let jetbrains = usesJetBrainsColors();
+  onThemeChange(() => {
+    if (usesJetBrainsColors() === jetbrains) return;
+    jetbrains = usesJetBrainsColors();
+    themeKindChanged.fire();
+  });
   onServerConnection((serverId, connected) => {
     registrations.get(serverId)?.forEach((registration) => registration.dispose());
     registrations.delete(serverId);
@@ -282,7 +300,8 @@ function registerSemanticHighlighting(monaco: Monaco) {
       | undefined;
     if (!legend) return; // e.g. plain Pyright — no semantic tokens
     const provider: MonacoTypes.languages.DocumentSemanticTokensProvider = {
-      getLegend: () => ({ tokenTypes: [...SEMANTIC_CATEGORIES], tokenModifiers: [] }),
+      onDidChange: themeKindChanged.event,
+      getLegend: () => ({ tokenTypes: SEMANTIC_TOKEN_TYPES, tokenModifiers: [] }),
       provideDocumentSemanticTokens: async (model) => {
         const path = pathFromUri(model.uri);
         const response = (await sendRequest(
@@ -291,8 +310,13 @@ function registerSemanticHighlighting(monaco: Monaco) {
           { textDocument: { uri: pathToUri(path) } },
         )) as { data?: number[] } | null;
         if (!response?.data || model.isDisposed()) return null;
-        const data = translateTokens(response.data, legend, model.getLanguageId(), (line) =>
-          line < model.getLineCount() ? model.getLineContent(line + 1) : "",
+        const data = translateTokens(
+          response.data,
+          legend,
+          model.getLanguageId(),
+          (line) => (line < model.getLineCount() ? model.getLineContent(line + 1) : ""),
+          SEMANTIC_TOKEN_TYPES,
+          jetbrains,
         );
         return { data: new Uint32Array(data) };
       },
@@ -657,6 +681,7 @@ export function registerLspProviders(monaco: Monaco): void {
   registerCodeActions(monaco);
   registerPythonQuickFixes(monaco);
   registerSemanticHighlighting(monaco);
+  registerRename(monaco, LSP_LANGUAGES);
   for (const language of LSP_LANGUAGES) {
     monaco.languages.registerHoverProvider(language, {
       provideHover: (model, position) => provideHover(model, position),

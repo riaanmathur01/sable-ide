@@ -31,6 +31,38 @@ import { THEMES, semanticRules, themeById, type ThemeDefinition, type ThemeId } 
 
 type Monaco = typeof MonacoTypes;
 
+let activeTheme = "sable-dark";
+let tokenizeScopes: ((languageId: string, lines: string[]) => LineScopes[] | null) | null = null;
+
+/** One TextMate token: [start, end) on its line and its scope stack. */
+export interface ScopedToken {
+  start: number;
+  end: number;
+  scopes: string[];
+}
+export type LineScopes = ScopedToken[];
+
+/**
+ * TextMate scopes for each line of `lines` (null if the language has no
+ * grammar loaded yet). Used where a feature needs to know whether text is
+ * code, a string or a comment.
+ */
+export function scopesForLines(languageId: string, lines: string[]): LineScopes[] | null {
+  return tokenizeScopes?.(languageId, lines) ?? null;
+}
+const themeListeners = new Set<(id: string) => void>();
+
+/** The editor theme currently applied. */
+export function currentThemeId(): string {
+  return activeTheme;
+}
+
+/** Run `listener` after every editor theme change. */
+export function onThemeChange(listener: (id: string) => void): () => void {
+  themeListeners.add(listener);
+  return () => themeListeners.delete(listener);
+}
+
 /** Monaco language id → Shiki grammar loader. TS/JS use the TSX/JSX
  *  grammars because Monaco opens .tsx/.jsx files as typescript/javascript. */
 const GRAMMARS: Record<string, () => Promise<unknown>> = {
@@ -201,6 +233,8 @@ export function installShikiHighlighting(monaco: Monaco, initialTheme: ThemeId) 
     activate(id);
     originalSetTheme(id);
     if (highlighter) for (const language of providers.keys()) register(language);
+    activeTheme = id;
+    for (const listener of themeListeners) listener(id);
   };
 
   async function ensureLanguage(language: string) {
@@ -226,6 +260,21 @@ export function installShikiHighlighting(monaco: Monaco, initialTheme: ThemeId) 
     }
     await loading.get(language);
   }
+
+  tokenizeScopes = (languageId, lines) => {
+    if (!highlighter || !providers.has(languageId)) return null;
+    const grammar = highlighter.getLanguage(GRAMMAR_NAME[languageId] ?? languageId);
+    let ruleStack = INITIAL;
+    return lines.map((line) => {
+      const result = grammar.tokenizeLine(line, ruleStack, 500);
+      ruleStack = result.ruleStack;
+      return result.tokens.map((token) => ({
+        start: token.startIndex,
+        end: Math.min(token.endIndex, line.length),
+        scopes: token.scopes,
+      }));
+    });
+  };
 
   const initialized = (async () => {
     const themes = await Promise.all(

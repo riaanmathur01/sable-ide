@@ -16,6 +16,7 @@ import { BlameGutter } from "./BlameGutter";
 import { editorOptionsFromSettings, monaco } from "../../lib/monacoSetup";
 import type * as MonacoTypes from "monaco-editor";
 import type { BlameLine } from "../../lib/ipc";
+import { installAcceleratedDelete } from "../../lib/acceleratedDelete";
 import "./MonacoPane.css";
 
 const NO_BREAKPOINTS: number[] = [];
@@ -89,6 +90,8 @@ export default function MonacoPane({ groupId }: { groupId: string }) {
         options: {
           glyphMarginClassName: "debug-breakpoint",
           glyphMarginHoverMessage: { value: "Breakpoint" },
+          minimap: { color: { id: "editorError.foreground" }, position: monaco.editor.MinimapPosition.Gutter },
+          overviewRuler: { color: { id: "editorError.foreground" }, position: monaco.editor.OverviewRulerLane.Left },
           stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
         },
       })),
@@ -114,6 +117,8 @@ export default function MonacoPane({ groupId }: { groupId: string }) {
           isWholeLine: true,
           className: "debug-stopped-line",
           glyphMarginClassName: "debug-stopped-arrow",
+          minimap: { color: { id: "editorWarning.foreground" }, position: monaco.editor.MinimapPosition.Inline },
+          overviewRuler: { color: { id: "editorWarning.foreground" }, position: monaco.editor.OverviewRulerLane.Full },
         },
       },
     ]);
@@ -183,6 +188,10 @@ export default function MonacoPane({ groupId }: { groupId: string }) {
         }
       }
     });
+
+    // Holding Backspace/Delete speeds up the longer it's held.
+    const removeAcceleratedDelete = installAcceleratedDelete(editor);
+    editor.onDidDispose(removeAcceleratedDelete);
 
     // ⌥Z toggles word wrap (persisted as a setting), like VS Code.
     editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.KeyZ, () => {

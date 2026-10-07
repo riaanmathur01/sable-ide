@@ -111,7 +111,16 @@ export function editorOptionsFromSettings(
     insertSpaces: settings["editor.insertSpaces"],
     detectIndentation: settings["editor.detectIndentation"],
     wordWrap: settings["editor.wordWrap"],
-    minimap: { enabled: settings["editor.minimap"] },
+    minimap: {
+      enabled: settings["editor.minimap"],
+      // Real (tiny) characters, capped so long lines don't widen it.
+      renderCharacters: true,
+      maxColumn: 100,
+      showSlider: "mouseover",
+      // `// MARK: Section` comments label the minimap.
+      showMarkSectionHeaders: true,
+      showRegionSectionHeaders: true,
+    },
     lineNumbers: settings["editor.lineNumbers"],
     rulers,
     renderWhitespace: settings["editor.renderWhitespace"],
@@ -198,8 +207,8 @@ for (const defaults of [
 // project (tsconfig, node_modules), so its diagnostics, completions,
 // hover, definitions, signature help and fixes replace the built-in
 // service's (which only sees open files) — otherwise you'd get two of
-// everything. Formatting, rename, references and highlights stay
-// built-in. If the server stops (or isn't installed), the built-in
+// everything; so does rename (project-wide instead of open files).
+// Formatting, references and highlights stay built-in. If the server stops (or isn't installed), the built-in
 // service comes back.
 function useBuiltinTypeScript(enabled: boolean) {
   for (const defaults of [
@@ -215,6 +224,8 @@ function useBuiltinTypeScript(enabled: boolean) {
       signatureHelp: enabled,
       codeActions: enabled,
       inlayHints: enabled,
+      // The server renames across the whole project.
+      rename: enabled,
     });
   }
 }

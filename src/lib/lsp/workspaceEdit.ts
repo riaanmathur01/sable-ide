@@ -8,7 +8,7 @@ import {
   writeFile,
 } from "../ipc";
 import { getModelValue, markSaved, pushModelEdits } from "../editorRegistry";
-import { changeDocument, uriToPath } from "./lspClient";
+import { changeDocument, notifyFilesChanged, uriToPath, type FileChange } from "./lspClient";
 import { isFileOpen, useTabsStore } from "../../store/tabsStore";
 import { useBreakpointsStore } from "../../store/breakpointsStore";
 import { useGitStore } from "../../store/gitStore";
@@ -85,6 +85,9 @@ export function applyTextEdits(text: string, edits: LspTextEdit[]): string {
   return result;
 }
 
+/** Files changed on disk (not through an open model) by the current edit. */
+let diskChanges: FileChange[] = [];
+
 async function editFile(path: string, edits: LspTextEdit[]) {
   if (edits.length === 0) return;
   const tabs = useTabsStore.getState();
@@ -116,6 +119,7 @@ async function editFile(path: string, edits: LspTextEdit[]) {
   }
   const before = await readFile(path);
   await writeFile(path, applyTextEdits(before, edits));
+  diskChanges.push({ path, type: "changed" });
 }
 
 async function renameFile(oldPath: string, newPath: string) {
@@ -132,9 +136,21 @@ async function renameFile(oldPath: string, newPath: string) {
   }
   await tabs.remapMovedPaths(oldPath, current);
   useBreakpointsStore.getState().remapPath(oldPath, current);
+  diskChanges.push({ path: oldPath, type: "deleted" }, { path: current, type: "created" });
 }
 
 export async function applyWorkspaceEdit(edit: LspWorkspaceEdit): Promise<void> {
+  diskChanges = [];
+  try {
+    await applyChanges(edit);
+  } finally {
+    // Language servers must hear about files edited behind their back.
+    if (diskChanges.length > 0) await notifyFilesChanged(diskChanges);
+    useGitStore.getState().refresh();
+  }
+}
+
+async function applyChanges(edit: LspWorkspaceEdit): Promise<void> {
   if (edit.documentChanges) {
     for (const change of edit.documentChanges) {
       if ("textDocument" in change) {
@@ -147,6 +163,7 @@ export async function applyWorkspaceEdit(edit: LspWorkspaceEdit): Promise<void> 
           if (change.options?.overwrite) await writeFile(path, "");
           else if (!change.options?.ignoreIfExists) throw error;
         }
+        diskChanges.push({ path, type: "created" });
       } else if (change.kind === "rename") {
         await renameFile(uriToPath(change.oldUri), uriToPath(change.newUri));
       } else if (change.kind === "delete") {
@@ -154,6 +171,7 @@ export async function applyWorkspaceEdit(edit: LspWorkspaceEdit): Promise<void> 
         await deletePath(path);
         useTabsStore.getState().closeTabsUnder(path);
         useBreakpointsStore.getState().removeUnder(path);
+        diskChanges.push({ path, type: "deleted" });
       }
     }
   } else if (edit.changes) {
@@ -161,5 +179,4 @@ export async function applyWorkspaceEdit(edit: LspWorkspaceEdit): Promise<void> 
       await editFile(uriToPath(uri), edits);
     }
   }
-  useGitStore.getState().refresh();
 }

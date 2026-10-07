@@ -10,18 +10,32 @@
  *     grammars load)
  *   - `terminal`: the xterm.js palette
  *
- * The JetBrains themes port IntelliJ's open-source (Apache-2.0) Darcula
- * and New UI Dark schemes. Catppuccin Mocha (MIT) follows the JetBrains
+ * The JetBrains themes use the exact colors of JetBrains' Darcula, Dark
+ * and Islands Dark schemes, extracted from the IDEs (jetbrains/), with
+ * each language colored the way its JetBrains IDE colors it. Catppuccin Mocha (MIT) follows the JetBrains
  * Catppuccin plugin, which differs slightly from the VS Code port.
  *
  * Only plain data lives here (no Monaco import), so the main bundle can
  * apply UI colors at startup without loading the editor.
  */
 
+import {
+  DARCULA as JB_DARCULA,
+  DARCULA_EDITOR,
+  DARK as JB_DARK,
+  DARK_EDITOR,
+  ISLANDS_DARK as JB_ISLANDS_DARK,
+  ISLANDS_DARK_EDITOR,
+  type JbScheme,
+} from "./jetbrains/schemes.generated";
+import { jetbrainsTokenColors, styleOf, textColor } from "./jetbrains/tokenColors";
+import { jetbrainsTokenType } from "./lsp/semanticTokens";
+
 export type ThemeId =
   | "sable-dark"
   | "jetbrains-darcula"
   | "jetbrains-dark"
+  | "jetbrains-islands-dark"
   | "catppuccin-mocha";
 
 /** One TextMate theme rule (VS Code's `tokenColors` format). */
@@ -91,16 +105,30 @@ export interface ThemeDefinition {
   editor: EditorThemeData;
   /** Semantic highlighting (needs a language server that provides it). */
   semantic: SemanticStyles;
+  /** A JetBrains scheme: syntax and semantic colors per language. */
+  jetbrains?: JbScheme;
   terminal: TerminalPalette;
 }
 
-/** Theme rules for the semantic categories (appended to Monaco themes). */
+/** Theme rules for semantic tokens (appended to Monaco themes): the
+ *  generic categories, plus every JetBrains key for JetBrains themes. */
 export function semanticRules(theme: ThemeDefinition) {
-  return Object.entries(theme.semantic).map(([token, style]) => ({
+  const rules = Object.entries(theme.semantic).map(([token, style]) => ({
     token,
     foreground: style.foreground.replace("#", ""),
     fontStyle: style.fontStyle ?? "",
   }));
+  if (theme.jetbrains) {
+    for (const key of Object.keys(theme.jetbrains)) {
+      const style = styleOf(theme.jetbrains, key);
+      rules.push({
+        token: jetbrainsTokenType(key),
+        foreground: style.foreground.replace("#", ""),
+        fontStyle: style.fontStyle,
+      });
+    }
+  }
+  return rules;
 }
 
 const SABLE: ThemeDefinition = {
@@ -250,33 +278,9 @@ const SABLE: ThemeDefinition = {
 const DARCULA: ThemeDefinition = {
   id: "jetbrains-darcula",
   label: "JetBrains Darcula",
-  foreground: "#a9b7c6",
-  tokenColors: [
-    { scope: ["comment", "punctuation.definition.comment"], settings: { foreground: "#808080" } },
-    { scope: ["comment.block.documentation", "string.quoted.docstring", "comment.block.javadoc"], settings: { foreground: "#629755", fontStyle: "italic" } },
-    { scope: ["keyword", "storage.type", "storage.modifier", "keyword.control", "constant.language", "keyword.operator.logical.python", "keyword.operator.word", "keyword.operator.new", "keyword.operator.expression", "variable.language.this", "variable.language.super"], settings: { foreground: "#cc7832" } },
-    { scope: ["keyword.operator", "punctuation"], settings: { foreground: "#a9b7c6" } },
-    { scope: ["punctuation.separator.comma", "punctuation.separator.element", "punctuation.separator.parameters", "punctuation.separator.arguments", "punctuation.terminator", "punctuation.separator.delimiter"], settings: { foreground: "#cc7832" } },
-    { scope: ["string", "punctuation.definition.string"], settings: { foreground: "#6a8759" } },
-    { scope: ["constant.character.escape", "constant.character.format.placeholder", "punctuation.definition.template-expression", "storage.type.string.python"], settings: { foreground: "#cc7832" } },
-    { scope: ["constant.numeric"], settings: { foreground: "#6897bb" } },
-    { scope: ["entity.name.function"], settings: { foreground: "#ffc66d" } },
-    { scope: ["meta.function-call", "entity.name.function.member", "meta.method-call entity.name.function"], settings: { foreground: "#a9b7c6" } },
-    { scope: ["support.function.builtin", "support.type.python", "support.function.magic.python", "support.variable.magic.python"], settings: { foreground: "#8888c6" } },
-    { scope: ["meta.decorator", "entity.name.function.decorator", "punctuation.definition.decorator", "storage.type.annotation", "punctuation.definition.annotation"], settings: { foreground: "#bbb529" } },
-    { scope: ["meta.function.decorator.python support.type.python", "meta.function.decorator.python support.function.builtin.python", "meta.function.decorator.python entity.name.function.decorator.python"], settings: { foreground: "#bbb529" } },
-    { scope: ["variable.language.special.self", "variable.parameter.function.language.special.self", "variable.language.special.cls", "variable.parameter.function.language.special.cls"], settings: { foreground: "#94558d" } },
-    { scope: ["variable.other.property", "variable.other.object.property", "variable.other.member", "meta.attribute.python"], settings: { foreground: "#9876aa" } },
-    { scope: ["variable.other.constant", "constant.other", "variable.other.enummember"], settings: { foreground: "#9876aa", fontStyle: "italic" } },
-    { scope: ["entity.name.tag"], settings: { foreground: "#e8bf6a" } },
-    { scope: ["entity.other.attribute-name"], settings: { foreground: "#bababa" } },
-    { scope: ["meta.attribute string", "string.quoted.double.html", "string.quoted.single.html"], settings: { foreground: "#a5c261" } },
-    { scope: ["support.type.property-name"], settings: { foreground: "#9876aa" } },
-    { scope: ["markup.heading", "entity.name.section"], settings: { foreground: "#cc7832", fontStyle: "bold" } },
-    { scope: ["markup.bold"], settings: { fontStyle: "bold" } },
-    { scope: ["markup.italic"], settings: { fontStyle: "italic" } },
-    { scope: ["markup.inline.raw", "markup.fenced_code"], settings: { foreground: "#6a8759" } },
-  ],
+  foreground: textColor(JB_DARCULA),
+  tokenColors: jetbrainsTokenColors(JB_DARCULA),
+  jetbrains: JB_DARCULA,
   ui: {
     "--bg-base": "#2b2b2b",
     "--bg-panel": "#3c3f41",
@@ -369,6 +373,8 @@ const DARCULA: ThemeDefinition = {
       "editorLightBulbAutoFix.foreground": "#6897bb",
       "editorOverviewRuler.errorForeground": "#bc3f3c",
       "editorOverviewRuler.warningForeground": "#be9117",
+      // Exact scheme colors (caret row, selection, gutter, …).
+      ...DARCULA_EDITOR,
     },
   },
   // IntelliJ Darcula: parameters/classes/calls plain; self purple; method
@@ -414,32 +420,9 @@ const DARCULA: ThemeDefinition = {
 const JETBRAINS_DARK: ThemeDefinition = {
   id: "jetbrains-dark",
   label: "JetBrains Dark (New UI)",
-  foreground: "#bcbec4",
-  tokenColors: [
-    { scope: ["comment", "punctuation.definition.comment"], settings: { foreground: "#7a7e85" } },
-    { scope: ["comment.block.documentation", "string.quoted.docstring", "comment.block.javadoc"], settings: { foreground: "#5f826b", fontStyle: "italic" } },
-    { scope: ["keyword", "storage.type", "storage.modifier", "keyword.control", "constant.language", "keyword.operator.logical.python", "keyword.operator.word", "keyword.operator.new", "keyword.operator.expression", "variable.language.this", "variable.language.super"], settings: { foreground: "#cf8e6d" } },
-    { scope: ["keyword.operator", "punctuation"], settings: { foreground: "#bcbec4" } },
-    { scope: ["string", "punctuation.definition.string"], settings: { foreground: "#6aab73" } },
-    { scope: ["constant.character.escape", "constant.character.format.placeholder", "punctuation.definition.template-expression", "storage.type.string.python"], settings: { foreground: "#cf8e6d" } },
-    { scope: ["constant.numeric"], settings: { foreground: "#2aacb8" } },
-    { scope: ["entity.name.function"], settings: { foreground: "#56a8f5" } },
-    { scope: ["meta.function-call", "entity.name.function.member", "meta.method-call entity.name.function"], settings: { foreground: "#bcbec4" } },
-    { scope: ["support.function.builtin", "support.type.python", "support.function.magic.python", "support.variable.magic.python"], settings: { foreground: "#8888c6" } },
-    { scope: ["meta.decorator", "entity.name.function.decorator", "punctuation.definition.decorator", "storage.type.annotation", "punctuation.definition.annotation"], settings: { foreground: "#b3ae60" } },
-    { scope: ["meta.function.decorator.python support.type.python", "meta.function.decorator.python support.function.builtin.python", "meta.function.decorator.python entity.name.function.decorator.python"], settings: { foreground: "#b3ae60" } },
-    { scope: ["variable.language.special.self", "variable.parameter.function.language.special.self", "variable.language.special.cls", "variable.parameter.function.language.special.cls"], settings: { foreground: "#94558d" } },
-    { scope: ["variable.other.property", "variable.other.object.property", "variable.other.member", "meta.attribute.python"], settings: { foreground: "#c77dbb" } },
-    { scope: ["variable.other.constant", "constant.other", "variable.other.enummember"], settings: { foreground: "#c77dbb", fontStyle: "italic" } },
-    { scope: ["entity.name.type.parameter", "meta.type.parameters entity.name.type"], settings: { foreground: "#16baac" } },
-    { scope: ["entity.name.tag"], settings: { foreground: "#d5b778" } },
-    { scope: ["entity.other.attribute-name"], settings: { foreground: "#bababa" } },
-    { scope: ["support.type.property-name"], settings: { foreground: "#c77dbb" } },
-    { scope: ["markup.heading", "entity.name.section"], settings: { foreground: "#cf8e6d", fontStyle: "bold" } },
-    { scope: ["markup.bold"], settings: { fontStyle: "bold" } },
-    { scope: ["markup.italic"], settings: { fontStyle: "italic" } },
-    { scope: ["markup.inline.raw", "markup.fenced_code"], settings: { foreground: "#6aab73" } },
-  ],
+  foreground: textColor(JB_DARK),
+  tokenColors: jetbrainsTokenColors(JB_DARK),
+  jetbrains: JB_DARK,
   ui: {
     "--bg-base": "#1e1f22",
     "--bg-panel": "#2b2d30",
@@ -531,6 +514,8 @@ const JETBRAINS_DARK: ThemeDefinition = {
       "editorLightBulbAutoFix.foreground": "#56a8f5",
       "editorOverviewRuler.errorForeground": "#f75464",
       "editorOverviewRuler.warningForeground": "#e0bb65",
+      // Exact scheme colors (caret row, selection, gutter, …).
+      ...DARK_EDITOR,
     },
   },
   // IntelliJ New UI Dark.
@@ -718,10 +703,46 @@ const CATPPUCCIN_MOCHA: ThemeDefinition = {
   },
 };
 
+/** Islands Dark, the default since 2025.3: Dark's syntax colors on the
+ *  darker Islands background and UI. */
+const JETBRAINS_ISLANDS_DARK: ThemeDefinition = {
+  ...JETBRAINS_DARK,
+  id: "jetbrains-islands-dark",
+  label: "JetBrains Islands Dark",
+  tokenColors: jetbrainsTokenColors(JB_ISLANDS_DARK),
+  jetbrains: JB_ISLANDS_DARK,
+  ui: {
+    ...JETBRAINS_DARK.ui,
+    "--bg-base": "#191a1c",
+    "--bg-panel": "#191a1c",
+    "--bg-elevated": "#26282c",
+    "--border": "#26282c",
+    "--text": "#d1d3d9",
+    "--text-muted": "#9fa2a8",
+    "--accent": "#3871e1",
+    "--danger": "#c54e58",
+  },
+  editor: {
+    ...JETBRAINS_DARK.editor,
+    colors: {
+      ...JETBRAINS_DARK.editor.colors,
+      "editorStickyScroll.background": "#191a1c",
+      "editorStickyScrollHover.background": "#1f2024",
+      "editorWidget.border": "#33353b",
+      "editorSuggestWidget.border": "#33353b",
+      "editorHoverWidget.border": "#33353b",
+      "editorSuggestWidget.selectedBackground": "#2a4371",
+      ...ISLANDS_DARK_EDITOR,
+    },
+  },
+  terminal: { ...JETBRAINS_DARK.terminal, selectionBackground: "#2a4371" },
+};
+
 export const THEMES: Record<ThemeId, ThemeDefinition> = {
   "sable-dark": SABLE,
   "jetbrains-darcula": DARCULA,
   "jetbrains-dark": JETBRAINS_DARK,
+  "jetbrains-islands-dark": JETBRAINS_ISLANDS_DARK,
   "catppuccin-mocha": CATPPUCCIN_MOCHA,
 };
 

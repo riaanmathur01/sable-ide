@@ -280,6 +280,11 @@ pub fn java_debug_bundle() -> Option<PathBuf> {
 
 pub(crate) fn initialize_params(root_path: &str, server_id: &str) -> Value {
     let mut params = base_initialize_params(root_path);
+    // gopls only sends semantic tokens (packages, exported names, …) when
+    // asked.
+    if server_id == "gopls" {
+        params["initializationOptions"] = json!({ "semanticTokens": true });
+    }
     if server_id == "java" {
         if let Some(jar) = java_debug_bundle() {
             params["initializationOptions"] = json!({ "bundles": [jar.to_string_lossy()] });
@@ -304,8 +309,16 @@ fn base_initialize_params(root_path: &str) -> Value {
                 // Servers may push edits (e.g. after running a quick-fix
                 // command); the frontend applies them.
                 "applyEdit": true,
-                "workspaceEdit": { "documentChanges": true },
-                "didChangeConfiguration": { "dynamicRegistration": true }
+                // File operations let a rename move the file too (a Java
+                // class's file follows the class).
+                "workspaceEdit": {
+                    "documentChanges": true,
+                    "resourceOperations": ["create", "rename", "delete"]
+                },
+                "didChangeConfiguration": { "dynamicRegistration": true },
+                // Sable reports files it changes on disk (e.g. a rename
+                // editing unopened files).
+                "didChangeWatchedFiles": { "dynamicRegistration": false }
             },
             "textDocument": {
                 "synchronization": {
@@ -327,6 +340,11 @@ fn base_initialize_params(root_path: &str) -> Value {
                         "documentationFormat": ["markdown", "plaintext"],
                         "parameterInformation": { "labelOffsetSupport": true }
                     }
+                },
+                // F2 / Shift+F6: the server says what's renameable first.
+                "rename": {
+                    "prepareSupport": true,
+                    "prepareSupportDefaultBehavior": 1
                 },
                 "codeAction": {
                     "codeActionLiteralSupport": {
