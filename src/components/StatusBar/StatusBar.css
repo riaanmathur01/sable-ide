@@ -89,3 +89,14 @@
   white-space: nowrap;
   cursor: pointer;
 }
+
+.status-bar-button.debugging {
+  color: var(--git-modified);
+}
+
+.status-bar-message {
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import {
   createPythonVenv,
   discoverPythonInterpreters,
+  lspSetPythonPath,
   type Interpreter,
 } from "../lib/ipc";
 import { useWorkspaceStore } from "./workspaceStore";
@@ -10,8 +11,8 @@ import { useUiStore } from "./uiStore";
 /**
  * Python interpreter selection for the Run feature. Discovered from the
  * system + workspace venvs (Rust); the user can pick a local one or
- * create a new virtualenv. The default is the *latest Python version*
- * available (PyPy stays selectable but isn't the default).
+ * create a new virtualenv. The default is the workspace's virtualenv, or
+ * else the latest Python version (PyPy stays selectable, never default).
  *
  * Structured so other languages needing an interpreter can be added: the
  * selection is keyed per language, with "python" wired up today.
@@ -30,9 +31,16 @@ function isNewer(a: string, b: string): boolean {
   return a0 !== b0 ? a0 > b0 : a1 !== b1 ? a1 > b1 : a2 > b2;
 }
 
-/** Default = highest version among non-PyPy interpreters, else anything. */
+/**
+ * Default interpreter: the project's own virtualenv if it has one (that's
+ * where its dependencies — and debugpy — are installed), otherwise the
+ * highest CPython version, otherwise anything. An explicit choice in the
+ * picker always wins over this.
+ */
 function pickDefault(interpreters: Interpreter[]): Interpreter | null {
   if (interpreters.length === 0) return null;
+  const projectVenv = interpreters.find((i) => i.kind === "venv");
+  if (projectVenv) return projectVenv;
   const cpython = interpreters.filter((i) => i.kind !== "pypy");
   const pool = cpython.length > 0 ? cpython : interpreters;
   return pool.reduce((best, current) =>
@@ -116,3 +124,12 @@ export const useInterpreterStore = create<InterpreterState>((set, get) => ({
 
   reset: () => set({ interpreters: [], selectedPath: null }),
 }));
+
+// Pyright resolves imports against the selected interpreter (so packages
+// in the project's .venv aren't flagged as missing). Keep it in sync with
+// every selection change — discovery, the picker, a new venv, a reset.
+useInterpreterStore.subscribe((state, previous) => {
+  if (state.selectedPath !== previous.selectedPath) {
+    void lspSetPythonPath(state.selectedPath).catch(() => {});
+  }
+});

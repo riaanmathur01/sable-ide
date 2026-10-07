@@ -128,3 +128,13 @@
 .editor-tab-close.dirty:hover .editor-tab-x {
   display: block;
 }
+
+.editor-tab-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+/* With a split editor, mark the focused group's tab strip. */
+.tab-bar.focused {
+  box-shadow: inset 0 1px 0 var(--accent);
+}

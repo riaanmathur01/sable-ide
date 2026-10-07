@@ -1,8 +1,7 @@
 .sidebar {
   display: flex;
   flex-direction: column;
-  width: 240px;
-  min-width: 240px;
+  flex-shrink: 0;
   height: 100%;
   background: var(--bg-panel);
   border-right: 1px solid var(--border);
@@ -66,7 +65,7 @@
   padding: 0 3px;
   border-radius: 7px;
   background: var(--accent);
-  color: #0d0d0f;
+  color: var(--on-accent);
   font-size: 9px;
   font-weight: 600;
   line-height: 13px;

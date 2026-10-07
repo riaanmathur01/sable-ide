@@ -6,6 +6,7 @@ import { useTabsStore } from "../../store/tabsStore";
 import { useUiStore } from "../../store/uiStore";
 import { useDiagnosticsStore } from "../../store/diagnosticsStore";
 import { useGitStore, treeStatusOf } from "../../store/gitStore";
+import { useBreakpointsStore } from "../../store/breakpointsStore";
 import type { GitFileStatus } from "../../lib/ipc";
 import { iconForFile } from "../../lib/fileIcons";
 import {
@@ -234,22 +235,13 @@ export function FileTree() {
     try {
       // Flush unsaved edits in any affected tab to the old location
       // first, so nothing is lost when paths change.
-      const tabsState = useTabsStore.getState();
-      for (const tab of tabsState.tabs) {
-        if (
-          tab.isDirty &&
-          (tab.path === entry.path ||
-            tab.path.startsWith(`${entry.path}/`) ||
-            tab.path.startsWith(`${entry.path}\\`))
-        ) {
-          await tabsState.saveTab(tab.path);
-        }
-      }
+      await useTabsStore.getState().saveTabsUnder(entry.path);
       const newPath = await movePath(entry.path, targetDirectory);
       if (newPath === entry.path) return; // no-op drop
       await refreshDirectory(parentDirectoryOf(entry.path));
       await refreshDirectory(targetDirectory);
       await useTabsStore.getState().remapMovedPaths(entry.path, newPath);
+      useBreakpointsStore.getState().remapPath(entry.path, newPath);
     } catch (error) {
       setLastError(String(error));
     }
@@ -292,8 +284,13 @@ export function FileTree() {
     setRenamingPath(null);
     if (!newName || newName === entry.name) return;
     try {
-      await renamePath(entry.path, newName);
+      // Same as a move: flush edits, rename, then repoint open tabs so
+      // later (auto-)saves don't recreate the file at its old path.
+      await useTabsStore.getState().saveTabsUnder(entry.path);
+      const newPath = await renamePath(entry.path, newName);
       await refreshDirectory(parentDirectoryOf(entry.path));
+      await useTabsStore.getState().remapMovedPaths(entry.path, newPath);
+      useBreakpointsStore.getState().remapPath(entry.path, newPath);
     } catch (error) {
       setLastError(String(error));
     }
@@ -307,6 +304,9 @@ export function FileTree() {
     if (!accepted) return;
     try {
       await deletePath(entry.path);
+      // The file is gone — its tabs must not auto-save it back into existence.
+      useTabsStore.getState().closeTabsUnder(entry.path);
+      useBreakpointsStore.getState().removeUnder(entry.path);
       await refreshDirectory(parentDirectoryOf(entry.path));
     } catch (error) {
       setLastError(String(error));

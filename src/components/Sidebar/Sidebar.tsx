@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Bug,
   FilePlus,
   Files,
   FolderOpen,
@@ -17,6 +18,7 @@ import { FileTree } from "./FileTree";
 import { SearchPanel } from "./SearchPanel";
 import { SourceControlPanel } from "./SourceControlPanel";
 import { HistoryPanel } from "./HistoryPanel";
+import { DebugPanel } from "../Debug/DebugPanel";
 import "./Sidebar.css";
 
 type PendingCreate = "file" | "folder" | null;
@@ -32,6 +34,7 @@ export function Sidebar() {
   const setLastError = useUiStore((state) => state.setLastError);
   const sidebarView = useUiStore((state) => state.sidebarView);
   const setSidebarView = useUiStore((state) => state.setSidebarView);
+  const width = useUiStore((state) => state.panelSizes.sidebarWidth);
   const changeCount = useGitStore(
     (state) => Object.keys(state.statusByPath).length,
   );
@@ -66,7 +69,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" style={{ width }}>
       <div className="sidebar-header">
         <span className="sidebar-title">
           {sidebarView === "search"
@@ -75,7 +78,9 @@ export function Sidebar() {
               ? "Source Control"
               : sidebarView === "history"
                 ? "History"
-                : (rootName ?? "Explorer")}
+                : sidebarView === "debug"
+                  ? "Run and Debug"
+                  : (rootName ?? "Explorer")}
         </span>
         <span className="sidebar-actions">
           <button
@@ -117,6 +122,15 @@ export function Sidebar() {
           >
             <History size={15} strokeWidth={1.5} />
           </button>
+          <button
+            className={
+              sidebarView === "debug" ? "icon-button active" : "icon-button"
+            }
+            title="Run and Debug (⇧⌘D)"
+            onClick={() => setSidebarView("debug")}
+          >
+            <Bug size={15} strokeWidth={1.5} />
+          </button>
           {rootPath && sidebarView === "files" && (
             <>
               <span className="sidebar-actions-divider" />
@@ -149,6 +163,7 @@ export function Sidebar() {
       {sidebarView === "search" && <SearchPanel />}
       {sidebarView === "git" && <SourceControlPanel />}
       {sidebarView === "history" && <HistoryPanel />}
+      {sidebarView === "debug" && <DebugPanel />}
 
       {sidebarView === "files" && pendingCreate && (
         <input

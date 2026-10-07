@@ -4,6 +4,8 @@ import { gitCommitFileDiff, gitFileDiff } from "../../lib/ipc";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import type { DiffSource } from "../../store/tabsStore";
 import { monaco } from "../../lib/monacoSetup";
+import { getSetting, useSettingsStore } from "../../store/settingsStore";
+import { cachedThemeId } from "../../lib/themes";
 import "./DiffView.css";
 
 interface DiffViewProps {
@@ -64,16 +66,19 @@ export default function DiffView({ source }: DiffViewProps) {
         modifiedModel = monaco.editor.createModel(diff.modified, language);
 
         const diffEditor = monaco.editor.createDiffEditor(container, {
-          theme: "sable-dark",
+          theme: useSettingsStore.getState().loaded
+            ? getSetting("workbench.colorTheme")
+            : cachedThemeId(),
           readOnly: true,
           originalEditable: false,
           renderSideBySide: sideBySide,
           automaticLayout: true,
           minimap: { enabled: false },
-          fontFamily:
-            '"JetBrains Mono", "SF Mono", "Cascadia Code", monospace',
-          fontSize: 13,
-          lineHeight: 1.6,
+          fontFamily: getSetting("editor.fontFamily"),
+          fontSize: getSetting("editor.fontSize"),
+          fontWeight: getSetting("editor.fontWeight"),
+          lineHeight: getSetting("editor.lineHeight"),
+          fontLigatures: getSetting("editor.fontLigatures"),
           scrollBeyondLastLine: false,
         });
         diffEditor.setModel({

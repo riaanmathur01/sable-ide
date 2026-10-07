@@ -6,7 +6,11 @@ import { EditorArea } from "./components/Editor/EditorArea";
 import { TerminalPanel } from "./components/Terminal/TerminalPanel";
 import { StatusBar } from "./components/StatusBar/StatusBar";
 import { CommandPalette } from "./components/CommandPalette/CommandPalette";
+import { AgentPanel } from "./components/Agent/AgentPanel";
+import { Resizer } from "./components/Layout/Resizer";
 import { useUiStore, lastTerminalVisible } from "./store/uiStore";
+import { useColorTheme, useSettingsStore } from "./store/settingsStore";
+import { applyUiTheme } from "./lib/themes";
 import { useTabsStore } from "./store/tabsStore";
 import {
   useWorkspaceStore,
@@ -22,12 +26,16 @@ import { initDebugListeners } from "./lib/debug/debugClient";
 import "./App.css";
 
 /**
- * Shell layout: a horizontal row of sidebar + editor, with the status bar
- * pinned underneath. The terminal panel slots into the editor column in
- * Phase 4.
+ * Shell layout: sidebar | editor column (editor over the bottom panel) |
+ * AI agent panel, with resizable splits and the status bar pinned
+ * underneath.
  */
 function App() {
   const sidebarVisible = useUiStore((state) => state.sidebarVisible);
+  const terminalVisible = useUiStore((state) => state.terminalVisible);
+  const agentVisible = useUiStore((state) => state.agentVisible);
+  const panelSizes = useUiStore((state) => state.panelSizes);
+  const setPanelSize = useUiStore((state) => state.setPanelSize);
   const setLastError = useUiStore((state) => state.setLastError);
   const openWorkspace = useWorkspaceStore((state) => state.openWorkspace);
   const applyExternalChanges = useWorkspaceStore(
@@ -37,10 +45,15 @@ function App() {
 
   useGlobalKeybindings();
 
-  // Register LSP + debug event listeners once for the app's lifetime.
+  const colorTheme = useColorTheme();
+  useEffect(() => applyUiTheme(colorTheme), [colorTheme]);
+
+  // Register LSP + debug event listeners once for the app's lifetime,
+  // and load the user's settings.
   useEffect(() => {
     initLspListeners();
     initDebugListeners();
+    void useSettingsStore.getState().load();
   }, []);
 
   // Session restore: reopen the folder from last launch, then its tabs
@@ -135,11 +148,42 @@ function App() {
   return (
     <div className="app-shell">
       <div className="app-main">
-        {sidebarVisible && <Sidebar />}
+        {sidebarVisible && (
+          <>
+            <Sidebar />
+            <Resizer
+              axis="x"
+              size={panelSizes.sidebarWidth}
+              defaultSize={240}
+              onResize={(size) => setPanelSize("sidebarWidth", size)}
+            />
+          </>
+        )}
         <div className="editor-column">
           <EditorArea />
+          {terminalVisible && (
+            <Resizer
+              axis="y"
+              invert
+              size={panelSizes.panelHeight}
+              defaultSize={240}
+              onResize={(size) => setPanelSize("panelHeight", size)}
+            />
+          )}
           <TerminalPanel />
         </div>
+        {agentVisible && (
+          <>
+            <Resizer
+              axis="x"
+              invert
+              size={panelSizes.agentWidth}
+              defaultSize={380}
+              onResize={(size) => setPanelSize("agentWidth", size)}
+            />
+            <AgentPanel />
+          </>
+        )}
       </div>
       <StatusBar />
       {isDropTarget && (

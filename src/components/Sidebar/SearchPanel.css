@@ -143,3 +143,106 @@
   font-size: 12px;
   color: var(--text);
 }
+
+/* --- Find & replace fields ------------------------------------------------ */
+.search-fields {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  padding-right: 8px;
+}
+
+.search-replace-toggle {
+  display: flex;
+  margin: 6px 0 0 4px;
+  padding: 2px;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.search-replace-toggle:hover {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.search-field-stack {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.search-field-stack .search-input-wrap {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* Toggle buttons sit inside the right end of the input. */
+.search-toggles {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: flex;
+  gap: 1px;
+  transform: translateY(-50%);
+}
+
+.search-field-stack .search-input {
+  padding-right: 76px;
+}
+
+.search-toggle {
+  display: flex;
+  padding: 2px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.search-toggle:hover:not(:disabled) {
+  background: var(--bg-panel);
+  color: var(--text);
+}
+
+.search-toggle.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.search-toggle:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.search-error {
+  color: var(--danger);
+  word-break: break-word;
+}
+
+.search-row-action {
+  display: none;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 1px;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.search-file-row:hover .search-row-action,
+.search-match-row:hover .search-row-action {
+  display: flex;
+}
+
+.search-row-action:hover {
+  background: var(--bg-panel);
+  color: var(--text);
+}

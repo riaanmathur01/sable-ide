@@ -1,0 +1,133 @@
+.problems-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.problems-filter {
+  margin: 0 10px 6px 16px;
+  max-width: 360px;
+  padding: 4px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  outline: none;
+  user-select: text;
+}
+
+.problems-filter:focus {
+  border-color: var(--accent);
+}
+
+.problems-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 8px;
+  font-size: 12.5px;
+}
+
+.problems-empty {
+  padding: 6px 16px;
+  color: var(--text-muted);
+}
+
+.problems-file,
+.problems-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.problems-file {
+  padding: 0 12px 0 10px;
+  color: var(--text-muted);
+}
+
+.problems-row {
+  padding: 0 10px 0 34px;
+}
+
+.problems-file:hover,
+.problems-row:hover {
+  background: var(--bg-elevated);
+}
+
+.problems-file-icon {
+  flex-shrink: 0;
+}
+
+.problems-file-name {
+  color: var(--text);
+}
+
+.problems-file-dir {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11.5px;
+}
+
+.problems-count {
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  font-size: 10.5px;
+  text-align: center;
+}
+
+.problems-icon {
+  flex-shrink: 0;
+}
+
+.problems-icon.error {
+  color: var(--danger);
+}
+
+.problems-icon.warning {
+  color: var(--git-modified);
+}
+
+.problems-icon.info {
+  color: var(--accent);
+}
+
+.problems-message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+
+.problems-source,
+.problems-position {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.problems-fix {
+  display: none;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 2px;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.problems-row:hover .problems-fix {
+  display: flex;
+}
+
+.problems-fix:hover {
+  background: var(--bg-panel);
+}

@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Folder, Search } from "lucide-react";
+import {
+  CaseSensitive,
+  ChevronDown,
+  ChevronRight,
+  Folder,
+  Regex,
+  Replace,
+  ReplaceAll,
+  Search,
+  WholeWord,
+} from "lucide-react";
 import { useSearchStore } from "../../store/searchStore";
 import { useTabsStore } from "../../store/tabsStore";
 import { useWorkspaceStore } from "../../store/workspaceStore";
@@ -81,6 +91,14 @@ export function SearchPanel() {
   const matches = useSearchStore((state) => state.matches);
   const isSearching = useSearchStore((state) => state.isSearching);
   const limitHit = useSearchStore((state) => state.limitHit);
+  const error = useSearchStore((state) => state.error);
+  const replacement = useSearchStore((state) => state.replacement);
+  const showReplace = useSearchStore((state) => state.showReplace);
+  const matchCase = useSearchStore((state) => state.matchCase);
+  const wholeWord = useSearchStore((state) => state.wholeWord);
+  const useRegex = useSearchStore((state) => state.useRegex);
+  const isReplacing = useSearchStore((state) => state.isReplacing);
+  const store = useSearchStore.getState();
   const openFile = useTabsStore((state) => state.openFile);
   const revealPath = useWorkspaceStore((state) => state.revealPath);
   const setSidebarView = useUiStore((state) => state.setSidebarView);
@@ -139,22 +157,95 @@ export function SearchPanel() {
 
   return (
     <div className="search-panel">
-      <div className="search-input-wrap">
-        <Search size={13} strokeWidth={1.5} className="search-input-icon" />
-        <input
-          className="search-input"
-          autoFocus
-          placeholder="Search in workspace"
-          value={query}
-          disabled={!rootPath}
-          onChange={(event) => setQuery(event.target.value)}
-        />
+      <div className="search-fields">
+        <button
+          className="search-replace-toggle"
+          title={showReplace ? "Hide Replace" : "Show Replace"}
+          aria-expanded={showReplace}
+          onClick={store.toggleReplace}
+        >
+          {showReplace ? (
+            <ChevronDown size={13} strokeWidth={1.5} />
+          ) : (
+            <ChevronRight size={13} strokeWidth={1.5} />
+          )}
+        </button>
+        <div className="search-field-stack">
+          <div className="search-input-wrap">
+            <Search size={13} strokeWidth={1.5} className="search-input-icon" />
+            <input
+              className="search-input"
+              autoFocus
+              placeholder="Search"
+              value={query}
+              disabled={!rootPath}
+              spellCheck={false}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <div className="search-toggles">
+              <button
+                className={matchCase ? "search-toggle active" : "search-toggle"}
+                title="Match Case"
+                aria-pressed={matchCase}
+                onClick={() => store.toggleOption("matchCase")}
+              >
+                <CaseSensitive size={14} strokeWidth={1.5} />
+              </button>
+              <button
+                className={wholeWord ? "search-toggle active" : "search-toggle"}
+                title="Match Whole Word"
+                aria-pressed={wholeWord}
+                onClick={() => store.toggleOption("wholeWord")}
+              >
+                <WholeWord size={14} strokeWidth={1.5} />
+              </button>
+              <button
+                className={useRegex ? "search-toggle active" : "search-toggle"}
+                title="Use Regular Expression"
+                aria-pressed={useRegex}
+                onClick={() => store.toggleOption("useRegex")}
+              >
+                <Regex size={14} strokeWidth={1.5} />
+              </button>
+            </div>
+          </div>
+          {showReplace && (
+            <div className="search-input-wrap">
+              <Replace size={13} strokeWidth={1.5} className="search-input-icon" />
+              <input
+                className="search-input"
+                placeholder={useRegex ? "Replace ($1 for groups)" : "Replace"}
+                value={replacement}
+                disabled={!rootPath}
+                spellCheck={false}
+                onChange={(event) => store.setReplacement(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                    void store.replaceAll();
+                  }
+                }}
+              />
+              <div className="search-toggles">
+                <button
+                  className="search-toggle"
+                  title="Replace All (⌘Enter)"
+                  disabled={!query || matches.length === 0 || isReplacing}
+                  onClick={() => void store.replaceAll()}
+                >
+                  <ReplaceAll size={14} strokeWidth={1.5} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {!rootPath ? (
         <div className="search-hint">Open a folder to search it.</div>
       ) : query.trim() === "" ? (
         <div className="search-hint">Type to search across the project.</div>
+      ) : error ? (
+        <div className="search-hint search-error">{error}</div>
       ) : (
         <>
           <div className="search-summary">
@@ -189,13 +280,32 @@ export function SearchPanel() {
                         />
                       );
                     case "file":
-                      return <FileHeaderRow key={`h:${row.path}`} row={row} />;
+                      return (
+                        <FileHeaderRow
+                          key={`h:${row.path}`}
+                          row={row}
+                          onReplace={
+                            showReplace && !isReplacing
+                              ? () => void store.replaceInFile(row.path)
+                              : undefined
+                          }
+                        />
+                      );
                     case "match":
                       return (
                         <MatchRow
                           key={`m:${row.match.path}:${row.match.lineNumber}:${row.match.preview}`}
                           match={row.match}
                           onJump={() => jumpToMatch(row.match)}
+                          onReplace={
+                            showReplace && !isReplacing
+                              ? () =>
+                                  void store.replaceInLine(
+                                    row.match.path,
+                                    row.match.lineNumber,
+                                  )
+                              : undefined
+                          }
                         />
                       );
                   }
@@ -229,14 +339,22 @@ function FileNameRow({
 
 function FileHeaderRow({
   row,
+  onReplace,
 }: {
   row: Extract<ResultRow, { kind: "file" }>;
+  /** Present when the replace field is open. */
+  onReplace?: () => void;
 }) {
   const FileIcon = iconForFile(row.fileName);
   return (
     <div className="search-file-row" title={row.path}>
       <FileIcon size={13} strokeWidth={1.5} className="search-file-icon" />
       <span className="search-file-name">{row.fileName}</span>
+      {onReplace && (
+        <button className="search-row-action" title="Replace in this file" onClick={onReplace}>
+          <ReplaceAll size={13} strokeWidth={1.5} />
+        </button>
+      )}
       <span className="search-file-count">{row.matchCount}</span>
     </div>
   );
@@ -245,14 +363,29 @@ function FileHeaderRow({
 function MatchRow({
   match,
   onJump,
+  onReplace,
 }: {
   match: SearchMatch;
   onJump: () => void;
+  /** Present when the replace field is open. */
+  onReplace?: () => void;
 }) {
   return (
     <div className="search-match-row" onClick={onJump} title={match.preview}>
       <span className="search-match-line">{match.lineNumber}</span>
       <span className="search-match-preview">{match.preview.trim()}</span>
+      {onReplace && (
+        <button
+          className="search-row-action"
+          title="Replace on this line"
+          onClick={(event) => {
+            event.stopPropagation();
+            onReplace();
+          }}
+        >
+          <Replace size={13} strokeWidth={1.5} />
+        </button>
+      )}
     </div>
   );
 }

@@ -175,3 +175,4 @@ pub fn kill_terminal(state: State<TerminalState>, id: String) -> Result<(), Stri
     }
     Ok(())
 }
+

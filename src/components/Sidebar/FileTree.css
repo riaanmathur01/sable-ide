@@ -25,7 +25,7 @@
 }
 
 .tree-row.drop-target {
-  background: rgba(124, 147, 255, 0.12);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   outline: 1px solid var(--accent);
   outline-offset: -1px;
 }

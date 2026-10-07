@@ -2,25 +2,69 @@
 
 A fast, minimal, dark code editor in the spirit of VS Code — built with
 [Tauri 2](https://tauri.app) (Rust backend + native OS webview) and
-React + TypeScript. No Electron, no telemetry, no network calls.
-Everything runs locally.
+React + TypeScript. No Electron, no telemetry. Everything runs locally;
+the only network calls are the ones you make on purpose (git
+push/pull/fetch, and the AI agent when you message it).
 
-## Status
+## Features
 
-| Phase | Scope | State |
-| ----- | ----- | ----- |
-| 0 | Scaffold, dark theme tokens, shell layout | ✅ done |
-| 1 | File explorer (native open-folder dialog, virtualized tree) | ✅ done |
-| 2 | Monaco editor, tabs, save | ✅ done |
-| 3 | Command palette & keybindings | ⏳ partial (core shortcuts done; palette pending) |
-| 4 | Integrated terminal (portable-pty + xterm.js) | ✅ done |
-| 5 | File operations, watcher, project-wide search | ✅ done |
+- **Editor** — Monaco with tabs, split editor (up to three groups),
+  auto-save, format on save, bracket-pair colors, sticky scroll, font
+  zoom, and session restore. JetBrains Mono is bundled; the font picker
+  lists every monospace font installed on your machine.
+- **Highlighting** — the same TextMate grammars VS Code uses (via
+  [Shiki](https://shiki.style)), plus semantic highlighting from the
+  language servers (parameters, `self`, builtins, declarations vs.
+  references), styled to match JetBrains. Themes: Sable Dark, Darcula,
+  JetBrains Dark, and Catppuccin Mocha.
+- **Explorer** — virtualized, lazily loaded file tree with
+  create/rename/delete/drag-to-move and a live file watcher.
+- **Search** — project-wide content + file-name search and replace
+  (ripgrep engine), with case/word/regex options.
+- **Terminal** — real PTY shells (xterm.js), several at once; ⌘R runs the
+  active file.
+- **Language intelligence** — squiggles, a Problems panel, quick fixes
+  (⌘.), completions, hover, go-to-definition, and signature help over LSP:
+  Python (basedpyright or Pyright), TypeScript/JavaScript
+  (typescript-language-server, project-aware), Java (jdtls), Rust
+  (rust-analyzer), Go (gopls), and C/C++ (clangd). Python gets extra
+  quick fixes Pyright lacks: add a missing import, remove unused imports,
+  `pip install` a missing package. Any error can also be sent to the AI
+  agent ("Fix with Agent").
+- **Debugger** — breakpoints (saved per project, and they follow your
+  edits), continue/step/pause, call stack, variables, debug console, and
+  stop on uncaught exceptions, for:
+
+  | Language | Debug adapter | Setup |
+  | -------- | ------------- | ----- |
+  | Python | debugpy | one-click install into the selected interpreter |
+  | JavaScript, TypeScript | js-debug (VS Code's) | one-click install |
+  | Go | Delve | `brew install go delve` |
+  | Java | java-debug inside jdtls | one-click install |
+  | C, C++, Rust | lldb-dap | Xcode Command Line Tools / rustup |
+
+  C, C++, and Rust files are compiled with debug info first (Cargo
+  projects build with `cargo build`). TypeScript runs directly on Node 22.18+
+  (type stripping keeps line numbers, so no source maps are needed).
+- **Git** — status, stage/commit, diffs, history, blame, branches,
+  push/pull/fetch.
+- **AI agent** — a chat panel (⌘L) that can read, search, and edit your
+  code, run commands, and use git and the GitHub CLI. Replies stream in;
+  chats are saved per project, and you can keep several. Works with
+  Anthropic, OpenAI (or any OpenAI-compatible API), and Google Gemini.
+- **Settings** — a searchable settings page (⌘,) backed by a plain
+  `settings.json`.
 
 ## Prerequisites
 
 - **Rust** (stable) — install via [rustup](https://rustup.rs)
 - **Node.js** 18+ and npm
 - macOS: Xcode Command Line Tools (`xcode-select --install`)
+- Optional, per language (Sable tells you what's missing and how to get
+  it): `npm install -g pyright typescript-language-server typescript`,
+  `brew install jdtls`, `rustup component add rust-analyzer`,
+  `brew install go delve` (gopls: `go install golang.org/x/tools/gopls@latest`).
+  clangd and lldb-dap come with the Xcode Command Line Tools.
 - Windows: [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) and WebView2 (preinstalled on Windows 10/11)
 
 ## Run
@@ -58,6 +102,48 @@ rather than shelling out to an `rg` binary. Same speed class, but it
 works on every machine with nothing extra installed, and results stream
 to the UI in batches over Tauri events with stale-search cancellation.
 
+**Settings: a schema, a file, and the keychain.** Every setting is
+declared once in `src/store/settingsStore.ts` (type, default, label);
+the Settings page is generated from that schema. Only values you change
+are written to `settings.json` in the OS app-config directory
+(`~/Library/Application Support/com.riaanmathur.sable/` on macOS), so
+it can also be edited by hand — saving it in Sable applies it
+immediately. API keys never go in that file: they live in the system
+keychain (`src-tauri/src/commands/ai.rs`) and never reach the webview.
+`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and `GEMINI_API_KEY` are used as
+fallbacks.
+
+**AI agent: loop in TypeScript, keys and HTTP in Rust.** The agent loop
+(`src/store/agentStore.ts`) alternates model calls and tool calls until
+the model is done. `src/lib/ai/providers.ts` translates one
+provider-neutral transcript to each API's wire format, so you can switch
+provider mid-chat. Tools (`src/lib/ai/tools.ts`) are confined to the
+workspace and reuse the editor's own plumbing — reads see unsaved
+buffers, writes to open files are undoable with ⌘Z, and every edit can be
+reverted from the chat. File edits are auto-approved by default and
+commands always ask (both configurable); read-only git/gh commands never
+ask. Commands run non-interactively in your login shell with a timeout
+that kills the whole process group (`src-tauri/src/commands/shell.rs`).
+
+**Language servers and debuggers: external processes, relayed by Rust.**
+`src-tauri/src/lsp/` spawns one server per language and relays LSP
+messages to the frontend, where `src/lib/lsp/` wires them into Monaco
+(diagnostics, completions, code actions, semantic tokens).
+`src-tauri/src/debug.rs` does the same for the Debug Adapter Protocol: it
+runs the launch handshake (breakpoints are sent only after the adapter's
+`initialized` event), talks to adapters over stdio or TCP, and opens the
+child sessions js-debug asks for. The UI always drives the newest
+session. Tools Sable installs itself (basedpyright, js-debug, java-debug)
+go in a private folder, `~/Library/Application Support/com.riaanmathur.sable/tools`,
+never into your global environment.
+
+**Highlighting: Shiki tokens + semantic tokens.** `src/lib/shikiMonaco.ts`
+replaces Monaco's tokenizers with TextMate grammars; tokens are named by
+the theme's exact color index, so colors match the theme exactly.
+Semantic tokens from each server are mapped into a small fixed set of
+categories (`src/lib/lsp/semanticTokens.ts`) that every theme styles, so
+themes don't need to know each server's vocabulary.
+
 **File tree: custom virtualization instead of react-arborist.** The tree
 only ever renders the rows inside the viewport (fixed 24px rows, windowed
 on scroll), and directory contents load lazily from Rust one level at a
@@ -67,14 +153,39 @@ controlled-tree model fights the lazy-loading-from-Rust design.
 
 ## Keyboard shortcuts
 
+The full list is in **Settings → Keyboard Shortcuts** (⌘,). The
+essentials:
+
 | Shortcut | Action |
 | -------- | ------ |
-| `Cmd/Ctrl+S` | Save (auto-save also runs ~0.8s after typing stops) |
-| `Cmd/Ctrl+R` | Run the active file in the terminal |
-| `Cmd/Ctrl+J` (or `` Cmd+` ``) | Toggle terminal |
-| `Cmd/Ctrl+B` | Toggle sidebar |
-| `Cmd/Ctrl+W` | Close tab |
-| `Cmd/Ctrl+Shift+F` | Search in workspace |
+| `⇧⌘P` / `⌘P` | Command palette / go to file |
+| `⌘,` | Settings |
+| `⌘L` | Ask the AI agent |
+| `⌘S` | Save (auto-save also runs after typing stops) |
+| `⌘R` | Run the active file in the terminal |
+| `⌘\` | Split editor right |
+| `⌘.`, `F8` | Quick fix, next problem |
+| `⌘J` | Toggle the bottom panel (terminal / debug console) |
+| `⌘B` / `⌥⌘B` | Toggle sidebar / agent panel |
+| `⌃Tab`, `⌘1…9`, `⇧⌘T` | Switch tabs, jump to tab N, reopen closed tab |
+| `⌘=` / `⌘-` / `⌘0` | Editor zoom |
+| `F5`, `F9`, `F10`/`F11` | Debug start/continue, toggle breakpoint, step |
+
+## Testing
+
+```sh
+cd src-tauri && cargo test --lib   # shell runner, search, AI streaming, debugger
+npx tsc --noEmit                    # type-check the frontend
+```
+
+The debugger tests are end-to-end: each starts the real adapter, stops
+at a breakpoint, reads a local variable, steps, and continues to the end.
+A test whose adapter isn't installed is skipped (it prints why). Useful
+variables:
+
+- `SABLE_TEST_PYTHON=/path/to/python` — an interpreter with debugpy
+- `SABLE_TEST_INSTALL_JS_DEBUG=1`, `SABLE_TEST_INSTALL_JAVA_DEBUG=1` —
+  download js-debug / java-debug into Sable's tools folder first
 
 ## Bundle size
 

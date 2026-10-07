@@ -9,6 +9,19 @@ import { fuzzyScore } from "../../lib/fuzzy";
 import { runActiveFile } from "../../lib/runFile";
 import { openFolderDialog } from "../../lib/openFolder";
 import { useDebugStore } from "../../store/debugStore";
+import { useAgentStore } from "../../store/agentStore";
+import { useBreakpointsStore } from "../../store/breakpointsStore";
+import {
+  DEFAULT_SETTINGS,
+  useSettingsStore,
+  type SettingKey,
+} from "../../store/settingsStore";
+import { getEditor } from "../../lib/editorRegistry";
+import { THEMES } from "../../lib/themes";
+import {
+  restartLanguageServers,
+  setUpPythonSemanticHighlighting,
+} from "../../lib/lsp/lspClient";
 import "./CommandPalette.css";
 
 interface PaletteItem {
@@ -170,10 +183,203 @@ function PaletteInner({
   );
 }
 
+/** Flip a boolean setting. */
+function toggleSetting(key: SettingKey) {
+  const { values, set } = useSettingsStore.getState();
+  set(key, !values[key] as never);
+}
+
 /** The static action list for command mode (plus git actions if a repo). */
 function buildCommands(): PaletteItem[] {
   const ui = useUiStore.getState();
+  const tabs = useTabsStore.getState();
+  const debug = useDebugStore.getState();
+  const settings = useSettingsStore.getState();
   const items: PaletteItem[] = [
+    {
+      id: "settings",
+      label: "Preferences: Open Settings",
+      detail: "⌘,",
+      run: () => tabs.openSettings(),
+    },
+    {
+      id: "settings-json",
+      label: "Preferences: Open settings.json",
+      run: () => {
+        const path = settings.filePath;
+        if (path) void tabs.openFile(path);
+      },
+    },
+    {
+      id: "agent-focus",
+      label: "Agent: Ask the AI Agent",
+      detail: "⌘L",
+      run: () => ui.focusAgent(),
+    },
+    {
+      id: "agent-toggle",
+      label: "Agent: Toggle Panel",
+      detail: "⌥⌘B",
+      run: () => ui.toggleAgent(),
+    },
+    {
+      id: "agent-new",
+      label: "Agent: New Chat",
+      run: () => {
+        useAgentStore.getState().newChat();
+        ui.focusAgent();
+      },
+    },
+    ...Object.values(THEMES).map((theme) => ({
+      id: `theme-${theme.id}`,
+      label: `Color Theme: ${theme.label}`,
+      detail: settings.values["workbench.colorTheme"] === theme.id ? "current" : undefined,
+      run: () => settings.set("workbench.colorTheme", theme.id),
+    })),
+    {
+      id: "split-right",
+      label: "View: Split Editor Right",
+      detail: "⌘\\",
+      run: () => void tabs.splitRight(),
+    },
+    {
+      id: "move-to-next-group",
+      label: "View: Move Editor into Next Group",
+      run: () => void tabs.moveActiveTabToNextGroup(),
+    },
+    {
+      id: "focus-next-group",
+      label: "View: Focus Next Editor Group",
+      detail: "⌥⌘→",
+      run: () => tabs.focusAdjacentGroup(1),
+    },
+    {
+      id: "close-group",
+      label: "View: Close Editor Group",
+      run: () => void tabs.closeGroup(tabs.activeGroupId),
+    },
+    {
+      id: "python-basedpyright",
+      label: "Python: Install basedpyright (semantic highlighting)",
+      run: () => void setUpPythonSemanticHighlighting(),
+    },
+    {
+      id: "restart-lsp",
+      label: "Restart Language Servers",
+      run: () => void restartLanguageServers(),
+    },
+    {
+      id: "problems",
+      label: "View: Show Problems",
+      run: () => ui.setBottomPanel("problems"),
+    },
+    {
+      id: "quick-fix",
+      label: "Quick Fix…",
+      detail: "⌘.",
+      run: () => {
+        const editor = getEditor();
+        editor?.focus();
+        void editor?.getAction("editor.action.quickFix")?.run();
+      },
+    },
+    {
+      id: "next-problem",
+      label: "Go to Next Problem",
+      detail: "F8",
+      run: () => {
+        const editor = getEditor();
+        editor?.focus();
+        void editor?.getAction("editor.action.marker.nextInFiles")?.run();
+      },
+    },
+    {
+      id: "format",
+      label: "Format Document",
+      run: () => {
+        void getEditor()?.getAction("editor.action.formatDocument")?.run();
+      },
+    },
+    {
+      id: "word-wrap",
+      label: "View: Toggle Word Wrap",
+      detail: "⌥Z",
+      run: () =>
+        settings.set(
+          "editor.wordWrap",
+          settings.values["editor.wordWrap"] === "on" ? "off" : "on",
+        ),
+    },
+    {
+      id: "minimap",
+      label: "View: Toggle Minimap",
+      run: () => toggleSetting("editor.minimap"),
+    },
+    {
+      id: "sticky-scroll",
+      label: "View: Toggle Sticky Scroll",
+      run: () => toggleSetting("editor.stickyScroll"),
+    },
+    {
+      id: "auto-save",
+      label: "File: Toggle Auto Save",
+      run: () => toggleSetting("files.autoSave"),
+    },
+    {
+      id: "zoom-in",
+      label: "View: Editor Zoom In",
+      detail: "⌘=",
+      run: () => settings.set("editor.fontSize", settings.values["editor.fontSize"] + 1),
+    },
+    {
+      id: "zoom-out",
+      label: "View: Editor Zoom Out",
+      detail: "⌘-",
+      run: () => settings.set("editor.fontSize", settings.values["editor.fontSize"] - 1),
+    },
+    {
+      id: "zoom-reset",
+      label: "View: Reset Editor Zoom",
+      detail: "⌘0",
+      run: () => settings.set("editor.fontSize", DEFAULT_SETTINGS["editor.fontSize"]),
+    },
+    {
+      id: "reopen-tab",
+      label: "Reopen Closed Tab",
+      detail: "⇧⌘T",
+      run: () => void tabs.reopenClosedTab(),
+    },
+    {
+      id: "debug-view",
+      label: "Debug: Show Run and Debug",
+      detail: "⇧⌘D",
+      run: () => ui.setSidebarView("debug"),
+    },
+    {
+      id: "debug-console",
+      label: "Debug: Show Debug Console",
+      run: () => ui.setBottomPanel("debug"),
+    },
+    {
+      id: "debug-breakpoint",
+      label: "Debug: Toggle Breakpoint",
+      detail: "F9",
+      run: () => {
+        const path = tabs.lastFilePath;
+        const line = getEditor()?.getPosition()?.lineNumber;
+        if (path && line) useBreakpointsStore.getState().toggle(path, line);
+      },
+    },
+    ...(debug.isDebugging
+      ? [
+          { id: "debug-continue", label: "Debug: Continue", detail: "F5", run: () => void debug.continue() },
+          { id: "debug-over", label: "Debug: Step Over", detail: "F10", run: () => void debug.stepOver() },
+          { id: "debug-into", label: "Debug: Step Into", detail: "F11", run: () => void debug.stepInto() },
+          { id: "debug-out", label: "Debug: Step Out", detail: "⇧F11", run: () => void debug.stepOut() },
+          { id: "debug-pause", label: "Debug: Pause", detail: "F6", run: () => void debug.pause() },
+          { id: "debug-restart", label: "Debug: Restart", detail: "⇧⌘F5", run: () => void debug.restart() },
+        ]
+      : []),
     {
       id: "quick-open",
       label: "Go to File…",
@@ -192,12 +398,14 @@ function buildCommands(): PaletteItem[] {
     { id: "run", label: "Run File", detail: "⌘R", run: () => runActiveFile() },
     {
       id: "debug-start",
-      label: "Start Debugging",
+      label: "Debug: Start Debugging",
+      detail: "F5",
       run: () => void useDebugStore.getState().start(),
     },
     {
       id: "debug-stop",
-      label: "Stop Debugging",
+      label: "Debug: Stop Debugging",
+      detail: "⇧F5",
       run: () => void useDebugStore.getState().stop(),
     },
     {
@@ -210,6 +418,20 @@ function buildCommands(): PaletteItem[] {
       id: "restart-terminal",
       label: "Restart Terminal",
       run: () => void useTerminalStore.getState().restartSession(),
+    },
+    {
+      id: "new-terminal",
+      label: "Terminal: New Terminal",
+      detail: "⌃⇧`",
+      run: () => void useTerminalStore.getState().newTerminal(),
+    },
+    {
+      id: "kill-terminal",
+      label: "Terminal: Kill Active Terminal",
+      run: () => {
+        const terminals = useTerminalStore.getState();
+        void terminals.closeTerminal(terminals.activeId);
+      },
     },
     {
       id: "toggle-sidebar",

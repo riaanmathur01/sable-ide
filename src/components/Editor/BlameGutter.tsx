@@ -5,6 +5,7 @@ import {
   type EditorScrollMetrics,
 } from "../../lib/editorRegistry";
 import { useTabsStore } from "../../store/tabsStore";
+import type * as MonacoTypes from "monaco-editor";
 import type { BlameLine } from "../../lib/ipc";
 import "./BlameGutter.css";
 
@@ -34,32 +35,35 @@ function relativeTime(unixSeconds: number): string {
 export function BlameGutter({
   lines,
   filePath,
+  editor,
 }: {
   lines: BlameLine[];
   filePath: string;
+  /** The editor this gutter sits beside (each split group has its own). */
+  editor: MonacoTypes.editor.IStandaloneCodeEditor | null;
 }) {
   const openDiff = useTabsStore((state) => state.openDiff);
   const [metrics, setMetrics] = useState<EditorScrollMetrics | null>(
-    getScrollMetrics(),
+    getScrollMetrics(editor),
   );
 
   useEffect(() => {
-    const sync = () => setMetrics(getScrollMetrics());
+    const sync = () => setMetrics(getScrollMetrics(editor));
     sync();
     // The editor mounts slightly after this; poll briefly until metrics
     // are available, then rely on scroll/layout events.
     const timer = setInterval(() => {
-      if (getScrollMetrics()) {
+      if (getScrollMetrics(editor)) {
         sync();
         clearInterval(timer);
       }
     }, 50);
-    const unsubscribe = onEditorViewChange(sync);
+    const unsubscribe = onEditorViewChange(editor, sync);
     return () => {
       clearInterval(timer);
       unsubscribe();
     };
-  }, []);
+  }, [editor]);
 
   if (!metrics) return <div className="blame-gutter" />;
   const { scrollTop, lineHeight, paddingTop, viewportHeight } = metrics;

@@ -1,0 +1,42 @@
+.resizer {
+  position: relative;
+  flex-shrink: 0;
+  z-index: 5;
+  background: transparent;
+  transition: background var(--transition-fast);
+}
+
+/* Visually a hairline, but with a wider invisible grab area. */
+.resizer-x {
+  width: 1px;
+  margin: 0 -3px;
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  background-clip: padding-box;
+  cursor: col-resize;
+}
+
+.resizer-y {
+  height: 1px;
+  margin: -3px 0;
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  background-clip: padding-box;
+  cursor: row-resize;
+}
+
+.resizer:hover,
+.resizer:active {
+  background-color: var(--accent);
+  transition-delay: 150ms;
+}
+
+body.resizing-x,
+body.resizing-x * {
+  cursor: col-resize !important;
+}
+
+body.resizing-y,
+body.resizing-y * {
+  cursor: row-resize !important;
+}

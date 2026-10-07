@@ -48,7 +48,7 @@
   background: var(--accent);
   border: none;
   border-radius: 4px;
-  color: #0d0d0f;
+  color: var(--on-accent);
   font-family: var(--font-ui);
   font-size: var(--font-size-ui);
   font-weight: 500;
@@ -109,7 +109,7 @@
   background: var(--accent);
   border: none;
   border-radius: 4px;
-  color: #0d0d0f;
+  color: var(--on-accent);
   font-family: var(--font-ui);
   font-size: 12px;
   cursor: pointer;

@@ -23,7 +23,7 @@
 
 /* The line where execution is paused. */
 .debug-stopped-line {
-  background: rgba(214, 165, 92, 0.16);
+  background: color-mix(in srgb, var(--git-modified) 16%, transparent);
 }
 
 .debug-stopped-arrow::before {

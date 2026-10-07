@@ -1,44 +1,69 @@
-import { Play, X } from "lucide-react";
-import { useTabsStore } from "../../store/tabsStore";
+import { useEffect, useRef } from "react";
+import { Bug, Columns2, Play, Settings, X } from "lucide-react";
+import { MAX_GROUPS, useTabsStore, type EditorGroup } from "../../store/tabsStore";
+import { isDebuggable, useDebugStore } from "../../store/debugStore";
 import { runActiveFile } from "../../lib/runFile";
 import "./TabBar.css";
 
 /**
- * Tab strip above the editor. Dirty tabs show a dot that swaps to the
- * close button on hover (the CSS handles the swap). Middle-click closes.
+ * Tab strip above one editor group. Dirty tabs show a dot that swaps to
+ * the close button on hover (the CSS handles the swap). Middle-click
+ * closes. With several groups, the focused one's strip is accented.
  */
-export function TabBar() {
-  const tabs = useTabsStore((state) => state.tabs);
-  const activePath = useTabsStore((state) => state.activePath);
+export function TabBar({
+  group,
+  isFocused,
+  isSplit,
+}: {
+  group: EditorGroup;
+  isFocused: boolean;
+  /** More than one group is open. */
+  isSplit: boolean;
+}) {
+  const { tabs, activePath, lastFilePath } = group;
   const setActive = useTabsStore((state) => state.setActive);
   const closeTab = useTabsStore((state) => state.closeTab);
+  const groupCount = useTabsStore((state) => state.groups.length);
+  const isDebugging = useDebugStore((state) => state.isDebugging);
+  const stripRef = useRef<HTMLDivElement>(null);
+
+  // Keep the active tab visible when switching with ⌃Tab / ⌘1… or when
+  // a far-right tab opens.
+  useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip || !activePath) return;
+    const active = strip.querySelector<HTMLElement>(".editor-tab.active");
+    active?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activePath, tabs.length]);
 
   if (tabs.length === 0) return null;
 
+  const canDebug = isDebuggable(lastFilePath);
+  const canSplit = lastFilePath !== null && groupCount < MAX_GROUPS;
+
   return (
-    <div className="tab-bar">
-      <div className="tab-bar-tabs">
+    <div className={isSplit && isFocused ? "tab-bar focused" : "tab-bar"}>
+      <div className="tab-bar-tabs" ref={stripRef}>
         {tabs.map((tab) => (
           <div
             key={tab.path}
-            className={
-              tab.path === activePath ? "editor-tab active" : "editor-tab"
-            }
+            className={tab.path === activePath ? "editor-tab active" : "editor-tab"}
             title={tab.path}
-            onClick={() => setActive(tab.path)}
+            onClick={() => setActive(tab.path, group.id)}
             onAuxClick={(event) => {
-              if (event.button === 1) closeTab(tab.path);
+              if (event.button === 1) void closeTab(tab.path, group.id);
             }}
           >
+            {tab.kind === "settings" && (
+              <Settings size={13} strokeWidth={1.5} className="editor-tab-icon" />
+            )}
             <span className="editor-tab-name">{tab.name}</span>
             <span
-              className={
-                tab.isDirty ? "editor-tab-close dirty" : "editor-tab-close"
-              }
+              className={tab.isDirty ? "editor-tab-close dirty" : "editor-tab-close"}
               title="Close"
               onClick={(event) => {
                 event.stopPropagation();
-                closeTab(tab.path);
+                void closeTab(tab.path, group.id);
               }}
             >
               <span className="editor-tab-dot" />
@@ -48,11 +73,25 @@ export function TabBar() {
         ))}
       </div>
       <div className="tab-bar-actions">
-        <button
-          className="tab-bar-run"
-          title="Run File (⌘R)"
-          onClick={() => runActiveFile()}
-        >
+        {canSplit && (
+          <button
+            className="tab-bar-run"
+            title="Split Editor Right (⌘\)"
+            onClick={() => void useTabsStore.getState().splitRight()}
+          >
+            <Columns2 size={14} strokeWidth={1.5} />
+          </button>
+        )}
+        {canDebug && !isDebugging && (
+          <button
+            className="tab-bar-run"
+            title="Debug File (F5)"
+            onClick={() => void useDebugStore.getState().start()}
+          >
+            <Bug size={14} strokeWidth={1.5} />
+          </button>
+        )}
+        <button className="tab-bar-run" title="Run File (⌘R)" onClick={() => runActiveFile()}>
           <Play size={14} strokeWidth={1.5} />
         </button>
       </div>

@@ -13,6 +13,8 @@
   --text: #e6e6e9; /* primary text */
   --text-muted: #8a8a93; /* secondary / inactive */
   --accent: #7c93ff; /* active states, focus rings, caret */
+  --on-accent: #0d0d0f; /* text on accent-filled buttons */
+  /* (Color themes in src/lib/themes.ts override these at runtime.) */
   --danger: #f87171; /* delete / errors */
 
   /* Git status — a deliberate, limited exception to the one-accent rule.
@@ -23,7 +25,7 @@
 
   /* Typography */
   --font-ui: -apple-system, "Segoe UI", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", monospace;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
   --font-size-ui: 13px;
   --font-size-status: 12px;
 
@@ -52,6 +54,16 @@ body {
   font-size: var(--font-size-ui);
   -webkit-font-smoothing: antialiased;
   user-select: none; /* the editor and inputs opt back in */
+}
+
+/* Code uses macOS's default smoothing: "antialiased" switches off the
+   stroke thickening macOS applies to light-on-dark text, which makes
+   code look thin and washed out next to native editors (PyCharm, VS
+   Code). The UI chrome keeps the lighter rendering. */
+.monaco-editor,
+.monaco-diff-editor,
+.xterm {
+  -webkit-font-smoothing: auto;
   cursor: default;
 }
 

@@ -7,6 +7,10 @@ import { useTabsStore } from "./tabsStore";
 import { useSearchStore } from "./searchStore";
 import { useDiagnosticsStore } from "./diagnosticsStore";
 import { useTerminalStore } from "./terminalStore";
+import { resetLanguageServers } from "../lib/lsp/lspClient";
+import { useAgentStore } from "./agentStore";
+import { useProblemsStore } from "./problemsStore";
+import { useBreakpointsStore } from "./breakpointsStore";
 
 /**
  * Workspace state: the open folder and a lazily-loaded directory tree.
@@ -58,8 +62,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     useTabsStore.getState().resetTabs();
     useSearchStore.getState().reset();
     useDiagnosticsStore.getState().clear();
+    useProblemsStore.getState().clear();
     useGitStore.getState().reset();
     useInterpreterStore.getState().reset();
+    // Agent chats belong to a workspace: save the old folder's, load
+    // this one's.
+    if (get().rootPath !== path) void useAgentStore.getState().loadWorkspaceChats(path);
+    // Breakpoints are saved per workspace too.
+    if (get().rootPath !== path) useBreakpointsStore.getState().loadWorkspace(path);
+    // Language servers are rooted at the old folder; restart them lazily
+    // (the next opened file starts one for the new root).
+    if (get().rootPath !== path) await resetLanguageServers();
     try {
       const rootChildren = await readDirectory(path);
       // Both separators so Windows paths split correctly too.
@@ -82,7 +95,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       // picks up the new workspace as its cwd. (If none is running, the
       // next time the terminal opens it already uses the new root.)
       const terminal = useTerminalStore.getState();
-      if (terminal.isSessionRunning) void terminal.restartSession();
+      if (terminal.sessions.some((session) => session.isRunning)) {
+        void terminal.restartAll();
+      }
     } catch (error) {
       reportError(error);
     }

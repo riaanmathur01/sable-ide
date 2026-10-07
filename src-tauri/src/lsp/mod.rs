@@ -53,6 +53,10 @@ fn server_id_for_extension(extension: &str) -> Option<&'static str> {
     match extension {
         "py" | "pyi" => Some("pyright"),
         "java" => Some("java"),
+        "rs" => Some("rust-analyzer"),
+        "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" | "mts" | "cts" => Some("typescript"),
+        "go" => Some("gopls"),
+        "c" | "h" | "cc" | "cpp" | "cxx" | "hpp" | "hh" | "hxx" => Some("clangd"),
         // JS/TS intelligence is provided by Monaco's built-in language
         // service; a typescript-language-server entry can be added here
         // when we want full LSP for it.
@@ -79,12 +83,28 @@ fn jdtls_data_dir(root: &str) -> String {
 fn server_for_extension(extension: &str, root: &str) -> Option<ServerSpec> {
     let id = server_id_for_extension(extension)?;
     Some(match id {
-        "pyright" => ServerSpec {
+        // basedpyright (a Pyright fork) when installed — it adds semantic
+        // highlighting (parameters, self, builtins, …); plain Pyright
+        // otherwise. Same id either way: one Python server.
+        "pyright" => {
+            let based = resolve_binary("basedpyright-langserver").is_some();
+            ServerSpec {
+                id: id.into(),
+                name: if based { "basedpyright" } else { "Pyright" }.into(),
+                binary: if based { "basedpyright-langserver" } else { "pyright-langserver" }.into(),
+                args: vec!["--stdio".into()],
+                install_hint: "Pyright not found — run `npm install -g pyright`".into(),
+            }
+        }
+        // TypeScript/JavaScript through tsserver: understands the project
+        // (tsconfig, node_modules), unlike Monaco's in-browser service.
+        "typescript" => ServerSpec {
             id: id.into(),
-            name: "Pyright".into(),
-            binary: "pyright-langserver".into(),
+            name: "TypeScript".into(),
+            binary: "typescript-language-server".into(),
             args: vec!["--stdio".into()],
-            install_hint: "Pyright not found — run `npm install -g pyright`"
+            install_hint: "typescript-language-server not found — run \
+                `npm install -g typescript-language-server typescript`"
                 .into(),
         },
         // jdtls is the Eclipse JDT server; the Homebrew wrapper figures out
@@ -100,6 +120,31 @@ fn server_for_extension(extension: &str, root: &str) -> Option<ServerSpec> {
                 (requires a JDK on PATH)"
                 .into(),
         },
+        "rust-analyzer" => ServerSpec {
+            id: id.into(),
+            name: "rust-analyzer".into(),
+            binary: "rust-analyzer".into(),
+            args: vec![],
+            install_hint: "rust-analyzer not found — run `rustup component add rust-analyzer`"
+                .into(),
+        },
+        "gopls" => ServerSpec {
+            id: id.into(),
+            name: "gopls".into(),
+            binary: "gopls".into(),
+            args: vec![],
+            install_hint:
+                "gopls not found — run `go install golang.org/x/tools/gopls@latest`".into(),
+        },
+        "clangd" => ServerSpec {
+            id: id.into(),
+            name: "clangd".into(),
+            binary: "clangd".into(),
+            args: vec!["--background-index".into()],
+            install_hint: "clangd not found — run `brew install llvm` \
+                (or install the Xcode Command Line Tools)"
+                .into(),
+        },
         _ => return None,
     })
 }
@@ -110,7 +155,7 @@ fn server_for_extension(extension: &str, root: &str) -> Option<ServerSpec> {
 /// reader loop (which must answer the server's own requests) never fight
 /// over stdin.
 struct LspHandle {
-    #[allow(dead_code)] // kept alive intentionally; killed on shutdown
+    /// Kept alive while registered; killed by `stop_language_servers`.
     child: Child,
     writer: mpsc::UnboundedSender<String>,
 }
@@ -124,6 +169,10 @@ struct LspHandle {
 struct LspState {
     servers: HashMap<String, LspHandle>,
     starting: std::collections::HashSet<String>,
+    /// Bumped by `stop_language_servers` (workspace switch). A server whose
+    /// handshake began under an older generation is discarded on arrival
+    /// instead of being registered against the new workspace.
+    generation: u64,
 }
 
 #[derive(Default)]
@@ -132,14 +181,40 @@ pub struct LspManager(AsyncMutex<LspState>);
 /// Resolve a binary that may live outside the PATH inherited by a GUI /
 /// spawned process. GUI apps on macOS routinely lack the user's shell
 /// PATH, so we also probe the common npm-global locations directly.
-fn resolve_binary(name: &str) -> Option<PathBuf> {
+/// Sable's private tools folder (an npm prefix in the app data dir), set
+/// at startup. Tools Sable installs itself (basedpyright) live here.
+static TOOLS_BIN: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
+/// Sable's tools folder (the npm prefix), if set.
+pub fn tools_dir() -> Option<PathBuf> {
+    Some(TOOLS_BIN.get()?.parent()?.parent()?.to_path_buf())
+}
+
+/// Record the tools prefix (called once from app setup).
+pub fn set_tools_dir(prefix: PathBuf) {
+    let _ = TOOLS_BIN.set(prefix.join("node_modules").join(".bin"));
+}
+
+pub(crate) fn resolve_binary(name: &str) -> Option<PathBuf> {
     let mut candidates: Vec<PathBuf> = Vec::new();
+    if let Some(tools) = TOOLS_BIN.get() {
+        candidates.push(tools.join(name));
+    }
     if let Ok(home) = std::env::var("HOME") {
         candidates.push(format!("{home}/.npm-global/bin/{name}").into());
         candidates.push(format!("{home}/.npm/bin/{name}").into());
     }
     candidates.push(format!("/usr/local/bin/{name}").into());
     candidates.push(format!("/opt/homebrew/bin/{name}").into());
+    // Toolchain-managed servers (rust-analyzer via rustup, gopls via
+    // `go install`, clangd via Homebrew LLVM or the Xcode CLT).
+    if let Ok(home) = std::env::var("HOME") {
+        candidates.push(format!("{home}/.cargo/bin/{name}").into());
+        candidates.push(format!("{home}/go/bin/{name}").into());
+    }
+    candidates.push(format!("/opt/homebrew/opt/llvm/bin/{name}").into());
+    candidates.push(format!("/usr/local/opt/llvm/bin/{name}").into());
+    candidates.push(format!("/Library/Developer/CommandLineTools/usr/bin/{name}").into());
     // Windows npm global location.
     if let Ok(appdata) = std::env::var("APPDATA") {
         candidates.push(format!("{appdata}\\npm\\{name}.cmd").into());
@@ -193,9 +268,27 @@ pub fn path_to_uri(path: &str) -> String {
 }
 
 /// Build the `initialize` request params. Capabilities are declared for
-/// the three features Sable wires up (sync, completion, hover, and
-/// receiving diagnostics) so later sub-phases need no re-handshake.
-fn initialize_params(root_path: &str) -> Value {
+/// the features Sable wires up (sync, completion, hover, definition,
+/// signature help, code actions / quick fixes, and diagnostics).
+/// The java-debug plugin jar (installed by `install_java_debug`). jdtls
+/// loads it as a bundle, which adds the commands that start a Java debug
+/// session.
+pub fn java_debug_bundle() -> Option<PathBuf> {
+    let jar = tools_dir()?.join("java-debug").join("com.microsoft.java.debug.plugin.jar");
+    jar.exists().then_some(jar)
+}
+
+pub(crate) fn initialize_params(root_path: &str, server_id: &str) -> Value {
+    let mut params = base_initialize_params(root_path);
+    if server_id == "java" {
+        if let Some(jar) = java_debug_bundle() {
+            params["initializationOptions"] = json!({ "bundles": [jar.to_string_lossy()] });
+        }
+    }
+    params
+}
+
+fn base_initialize_params(root_path: &str) -> Value {
     let root_uri = path_to_uri(root_path);
     json!({
         "processId": std::process::id(),
@@ -208,6 +301,10 @@ fn initialize_params(root_path: &str) -> Value {
                 // into whole-workspace analysis (diagnostics for every file,
                 // not just open ones).
                 "configuration": true,
+                // Servers may push edits (e.g. after running a quick-fix
+                // command); the frontend applies them.
+                "applyEdit": true,
+                "workspaceEdit": { "documentChanges": true },
                 "didChangeConfiguration": { "dynamicRegistration": true }
             },
             "textDocument": {
@@ -224,8 +321,51 @@ fn initialize_params(root_path: &str) -> Value {
                 "hover": {
                     "contentFormat": ["markdown", "plaintext"]
                 },
+                "definition": { "linkSupport": true },
+                "signatureHelp": {
+                    "signatureInformation": {
+                        "documentationFormat": ["markdown", "plaintext"],
+                        "parameterInformation": { "labelOffsetSupport": true }
+                    }
+                },
+                "codeAction": {
+                    "codeActionLiteralSupport": {
+                        "codeActionKind": {
+                            "valueSet": [
+                                "", "quickfix", "refactor", "refactor.extract",
+                                "refactor.inline", "refactor.rewrite", "source",
+                                "source.organizeImports", "source.fixAll"
+                            ]
+                        }
+                    },
+                    "isPreferredSupport": true,
+                    "dataSupport": true,
+                    "resolveSupport": { "properties": ["edit"] }
+                },
+                // Semantic tokens: what each name *is* (parameter, self,
+                // class, builtin, …), for JetBrains-style highlighting.
+                "semanticTokens": {
+                    "requests": { "full": true, "range": false },
+                    "tokenTypes": [
+                        "namespace", "type", "class", "enum", "interface", "struct",
+                        "typeParameter", "parameter", "variable", "property", "enumMember",
+                        "event", "function", "method", "macro", "keyword", "modifier",
+                        "comment", "string", "number", "regexp", "operator", "decorator"
+                    ],
+                    "tokenModifiers": [
+                        "declaration", "definition", "readonly", "static", "deprecated",
+                        "abstract", "async", "modification", "documentation", "defaultLibrary"
+                    ],
+                    "formats": ["relative"],
+                    "multilineTokenSupport": false,
+                    "overlappingTokenSupport": false
+                },
                 "publishDiagnostics": {
-                    "relatedInformation": false
+                    "relatedInformation": false,
+                    // Unnecessary (unused) / deprecated code renders faded
+                    // / struck through.
+                    "tagSupport": { "valueSet": [1, 2] },
+                    "codeDescriptionSupport": true
                 }
             }
         }
@@ -245,10 +385,18 @@ fn initialize_params(root_path: &str) -> Value {
 ///     the type-inference noise that flags working dynamic code or calls
 ///     into untyped third-party libraries.
 fn python_settings() -> Value {
-    json!({
+    let mut settings = json!({
         "analysis": {
             "diagnosticMode": "workspace",
             "typeCheckingMode": "off",
+            // Genuine breakage stays visible regardless of mode (and of
+            // which server runs: basedpyright's "off" drops these, Pyright
+            // only warns). Both crash at runtime, so they're errors.
+            "diagnosticSeverityOverrides": {
+                "reportUndefinedVariable": "error",
+                "reportMissingImports": "error",
+                "reportMissingModuleSource": "warning"
+            },
             "useLibraryCodeForTypes": true,
             "exclude": [
                 "**/.*",
@@ -261,16 +409,29 @@ fn python_settings() -> Value {
                 "**/build"
             ]
         }
-    })
+    });
+    // The interpreter selected in Sable, so imports resolve against *its*
+    // site-packages (e.g. the project's .venv) rather than whatever
+    // python happens to be first on PATH.
+    if let Some(python) = PYTHON_PATH.read().unwrap().clone() {
+        settings["pythonPath"] = json!(python);
+    }
+    settings
 }
+
+/// The Python interpreter Pyright should analyze against (set from the
+/// frontend's interpreter picker).
+static PYTHON_PATH: std::sync::RwLock<Option<String>> = std::sync::RwLock::new(None);
 
 /// Answer to a `workspace/configuration` request, which asks for settings
 /// per "section". We return our Python settings for the python sections
 /// and null (server default) for anything else.
 fn config_for_section(section: &str) -> Value {
     match section {
-        "python" => json!({ "analysis": python_settings()["analysis"] }),
-        "python.analysis" => python_settings()["analysis"].clone(),
+        "python" => python_settings(),
+        // basedpyright reads its analysis settings from its own section.
+        "python.analysis" | "basedpyright.analysis" => python_settings()["analysis"].clone(),
+        "basedpyright" => json!({ "analysis": python_settings()["analysis"] }),
         _ => Value::Null,
     }
 }
@@ -301,6 +462,8 @@ fn server_request_result(method: &str, message: &Value) -> Value {
                 .unwrap_or_default();
             Value::Array(results)
         }
+        // The frontend applies the edit (forwarded by the reader loop).
+        "workspace/applyEdit" => json!({ "applied": true }),
         // registerCapability, workDoneProgress/create, etc. — just ack.
         _ => Value::Null,
     }
@@ -322,7 +485,7 @@ pub async fn start_language_server(
     // Reserve this server id (or bail if it's already running / starting),
     // then release the lock so the — possibly slow — handshake below
     // doesn't block other servers' requests.
-    {
+    let generation = {
         let mut state = manager.0.lock().await;
         if state.servers.contains_key(&server_id)
             || state.starting.contains(&server_id)
@@ -330,14 +493,21 @@ pub async fn start_language_server(
             return Ok(());
         }
         state.starting.insert(server_id.clone());
-    }
+        state.generation
+    };
 
     // From here, on any early return we must clear the `starting` flag.
     let result =
         spawn_and_handshake(&app, &spec, &root_path).await;
     match result {
-        Ok((child, writer)) => {
+        Ok((mut child, writer)) => {
             let mut state = manager.0.lock().await;
+            if state.generation != generation {
+                // The workspace changed mid-handshake; this server is
+                // rooted at the old folder. Drop it.
+                let _ = child.kill().await;
+                return Ok(());
+            }
             state.starting.remove(&server_id);
             state
                 .servers
@@ -345,7 +515,10 @@ pub async fn start_language_server(
             Ok(())
         }
         Err(error) => {
-            manager.0.lock().await.starting.remove(&server_id);
+            let mut state = manager.0.lock().await;
+            if state.generation == generation {
+                state.starting.remove(&server_id);
+            }
             Err(error)
         }
     }
@@ -361,7 +534,7 @@ async fn spawn_and_handshake(
 ) -> Result<(Child, mpsc::UnboundedSender<String>), String> {
     let _ = app.emit(
         "lsp:status",
-        json!({ "state": "starting", "server": spec.name }),
+        json!({ "state": "starting", "server": spec.name, "id": spec.id }),
     );
 
     let binary = resolve_binary(&spec.binary)
@@ -391,6 +564,7 @@ async fn spawn_and_handshake(
     }
 
     let is_pyright = spec.id == "pyright";
+    let server_id = spec.id.clone();
     let server_name = spec.name.clone();
 
     let mut stdin = child
@@ -408,7 +582,7 @@ async fn spawn_and_handshake(
         "jsonrpc": "2.0",
         "id": INITIALIZE_ID,
         "method": "initialize",
-        "params": initialize_params(&root_path),
+        "params": initialize_params(&root_path, &spec.id),
     });
     framing::write_message(&mut stdin, &initialize.to_string())
         .await
@@ -478,7 +652,10 @@ async fn spawn_and_handshake(
             json!({
                 "jsonrpc": "2.0",
                 "method": "workspace/didChangeConfiguration",
-                "params": { "settings": { "python": python_settings() } },
+                "params": { "settings": {
+                    "python": python_settings(),
+                    "basedpyright": { "analysis": python_settings()["analysis"] },
+                } },
             })
             .to_string(),
         );
@@ -490,6 +667,7 @@ async fn spawn_and_handshake(
     //   - notification           (method, no id): forward to frontend.
     let reader_app = app.clone();
     let reader_tx = writer_tx.clone();
+    let reader_server_name = server_name.clone();
     tauri::async_runtime::spawn(async move {
         let mut reader = reader;
         loop {
@@ -504,6 +682,11 @@ async fn spawn_and_handshake(
                     let id = message.get("id").cloned();
                     match (id, method) {
                         (Some(id), Some(method)) => {
+                            // Server-pushed edits are applied by the
+                            // frontend, so it needs to see this request.
+                            if method == "workspace/applyEdit" {
+                                let _ = reader_app.emit("lsp:message", message.clone());
+                            }
                             // Server is asking us something — reply by id.
                             let result =
                                 server_request_result(method, &message);
@@ -526,7 +709,10 @@ async fn spawn_and_handshake(
                 Ok(None) | Err(_) => {
                     let _ = reader_app.emit(
                         "lsp:status",
-                        json!({ "state": "disconnected" }),
+                        json!({
+                            "state": "disconnected",
+                            "server": reader_server_name,
+                        }),
                     );
                     break;
                 }
@@ -539,6 +725,7 @@ async fn spawn_and_handshake(
         json!({
             "state": "connected",
             "server": server_name,
+            "id": server_id,
             "capabilities": capabilities,
         }),
     );
@@ -603,4 +790,94 @@ pub async fn lsp_request(
         .send(message.to_string())
         .map_err(|error| format!("Failed to send {method}: {error}"))?;
     Ok(())
+}
+
+/// Shut down every running language server. Called when the workspace
+/// changes: servers are rooted at the folder they were started in, so
+/// they must restart for the new one. Servers still mid-handshake are
+/// discarded when they finish (see `generation`).
+#[tauri::command]
+pub async fn stop_language_servers(
+    manager: State<'_, LspManager>,
+) -> Result<(), String> {
+    let handles: Vec<LspHandle> = {
+        let mut state = manager.0.lock().await;
+        state.generation += 1;
+        state.starting.clear();
+        state.servers.drain().map(|(_, handle)| handle).collect()
+    };
+    for mut handle in handles {
+        let _ = handle.writer.send(
+            json!({ "jsonrpc": "2.0", "id": "sable-shutdown", "method": "shutdown" })
+                .to_string(),
+        );
+        let _ = handle.writer.send(
+            json!({ "jsonrpc": "2.0", "method": "exit" }).to_string(),
+        );
+        // Give the polite exit a moment, then make sure it's gone.
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        let _ = handle.child.kill().await;
+    }
+    Ok(())
+}
+
+/// Point Pyright at the selected Python interpreter. Pyright re-reads its
+/// configuration on `didChangeConfiguration` (pulling `python.pythonPath`
+/// via `workspace/configuration`) and re-resolves every import.
+#[tauri::command]
+pub async fn lsp_set_python_path(
+    manager: State<'_, LspManager>,
+    path: Option<String>,
+) -> Result<(), String> {
+    *PYTHON_PATH.write().unwrap() = path;
+    let state = manager.0.lock().await;
+    if let Some(handle) = state.servers.get("pyright") {
+        let _ = handle.writer.send(
+            json!({
+                "jsonrpc": "2.0",
+                "method": "workspace/didChangeConfiguration",
+                "params": { "settings": {
+                    "python": python_settings(),
+                    "basedpyright": { "analysis": python_settings()["analysis"] },
+                } },
+            })
+            .to_string(),
+        );
+    }
+    Ok(())
+}
+
+/// Install basedpyright into Sable's private tools folder (an npm
+/// prefix — a global install would clash with Pyright's `pyright`
+/// command). Language servers restart afterwards to pick it up.
+#[tauri::command]
+pub async fn install_basedpyright() -> Result<(), String> {
+    let bin = TOOLS_BIN.get().ok_or_else(|| "Tools folder unavailable".to_string())?;
+    let prefix = bin
+        .parent()
+        .and_then(|modules| modules.parent())
+        .ok_or_else(|| "Tools folder unavailable".to_string())?;
+    std::fs::create_dir_all(prefix).map_err(|error| format!("Could not create tools folder: {error}"))?;
+    let npm = resolve_binary("npm").ok_or_else(|| "npm not found — install Node.js first".to_string())?;
+    let output = Command::new(&npm)
+        .args(["install", "--prefix"])
+        .arg(prefix)
+        .args(["basedpyright", "--no-fund", "--no-audit"])
+        .stdin(Stdio::null())
+        .output()
+        .await
+        .map_err(|error| format!("Could not run npm: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "npm install failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    Ok(())
+}
+
+/// Whether the Python server would be basedpyright (semantic highlighting).
+#[tauri::command]
+pub fn python_server_has_semantic_tokens() -> bool {
+    resolve_binary("basedpyright-langserver").is_some()
 }

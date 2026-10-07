@@ -1,5 +1,9 @@
+pub mod ai;
+pub mod fonts;
 pub mod fs;
 pub mod git;
 pub mod interpreter;
 pub mod search;
+pub mod settings;
+pub mod shell;
 pub mod terminal;

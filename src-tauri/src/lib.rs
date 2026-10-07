@@ -1,6 +1,7 @@
 // Sable — application entry point for the Rust backend.
 //
-// All OS-level functionality (filesystem, terminal PTY, search, watching)
+// All OS-level functionality (filesystem, terminal PTY, search, watching,
+// settings, AI provider calls)
 // lives behind Tauri commands registered here. The frontend never touches
 // the OS directly; it calls these commands via `invoke()`.
 
@@ -17,6 +18,14 @@ use std::sync::{Arc, Mutex};
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            // Sable's private tools folder (e.g. basedpyright).
+            use tauri::Manager;
+            if let Ok(data) = app.path().app_data_dir() {
+                lsp::set_tools_dir(data.join("tools"));
+            }
+            Ok(())
+        })
         .manage(watcher::WatcherState(Mutex::new(None)))
         .manage(commands::terminal::TerminalState(Mutex::new(
             HashMap::new(),
@@ -24,6 +33,7 @@ pub fn run() {
         .manage(commands::search::SearchState(Arc::new(AtomicU64::new(0))))
         .manage(lsp::LspManager::default())
         .manage(debug::DebugManager::default())
+        .manage(commands::ai::AiState::default())
         .invoke_handler(tauri::generate_handler![
             commands::fs::read_directory,
             commands::fs::read_file,
@@ -40,6 +50,22 @@ pub fn run() {
             commands::terminal::kill_terminal,
             commands::search::search_workspace,
             commands::search::list_workspace_files,
+            commands::search::search_text,
+            commands::search::files_with_matches,
+            commands::fonts::list_monospace_fonts,
+            commands::settings::settings_path,
+            commands::settings::load_settings,
+            commands::settings::save_settings,
+            commands::shell::run_shell,
+            commands::ai::ai_set_api_key,
+            commands::ai::ai_delete_api_key,
+            commands::ai::ai_key_status,
+            commands::ai::ai_complete,
+            commands::ai::ai_list_models,
+            commands::ai::ai_stream,
+            commands::ai::ai_cancel,
+            commands::ai::load_chats,
+            commands::ai::save_chats,
             commands::git::git_status,
             commands::git::git_file_diff,
             commands::git::git_log,
@@ -65,9 +91,18 @@ pub fn run() {
             lsp::start_language_server,
             lsp::lsp_notify,
             lsp::lsp_request,
+            lsp::stop_language_servers,
+            lsp::lsp_set_python_path,
+            lsp::install_basedpyright,
+            lsp::python_server_has_semantic_tokens,
             debug::start_debug,
             debug::debug_request,
             debug::debug_stop,
+            debug::install_debugpy,
+            debug::install_js_debug,
+            debug::install_java_debug,
+            debug::java_debug_installed,
+            debug::start_java_debug,
             watcher::watch_workspace,
         ])
         .run(tauri::generate_context!())

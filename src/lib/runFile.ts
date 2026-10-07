@@ -39,12 +39,12 @@ const RUNNERS_BY_EXTENSION: Record<string, (path: string) => string> = {
 
 export async function runActiveFile(): Promise<void> {
   const { activePath, lastFilePath, tabs, saveTab } = useTabsStore.getState();
-  const { setLastError, setTerminalVisible } = useUiStore.getState();
+  const { setLastError, setBottomPanel } = useUiStore.getState();
 
-  // Run the active file; if a diff tab is active, fall back to the last
-  // real file (diff views aren't runnable).
+  // Run the active file; if a non-file tab is active, fall back to the last
+  // real file (diff and settings tabs aren't runnable).
   const activeTab = tabs.find((tab) => tab.path === activePath);
-  const filePath = activeTab?.kind === "diff" ? lastFilePath : activePath;
+  const filePath = activeTab && activeTab.kind !== "file" ? lastFilePath : activePath;
   if (!filePath) {
     setLastError("No file to run — open one first");
     return;
@@ -58,7 +58,7 @@ export async function runActiveFile(): Promise<void> {
   }
 
   await saveTab(filePath); // run what's on screen, not a stale file
-  setTerminalVisible(true);
+  setBottomPanel("terminal");
   // Queue the command; the terminal view runs it once mounted and
   // listening (the panel lazy-loads, so it may not exist yet).
   useTerminalStore.getState().enqueueCommand(buildCommand(filePath));

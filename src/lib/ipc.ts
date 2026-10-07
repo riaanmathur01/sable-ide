@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { SearchOptions } from "./replace";
 
 /**
  * Typed wrappers around every Rust command. This is the only file that
@@ -290,8 +291,146 @@ export function searchWorkspace(
   root: string,
   query: string,
   searchId: number,
+  options?: SearchOptions,
 ): Promise<void> {
-  return invoke<void>("search_workspace", { root, query, searchId });
+  return invoke<void>("search_workspace", { root, query, searchId, options });
+}
+
+/** Every file with at least one match (for Replace All). */
+export function filesWithMatches(
+  root: string,
+  query: string,
+  options: SearchOptions,
+): Promise<string[]> {
+  return invoke<string[]>("files_with_matches", { root, query, options });
+}
+
+/** One-shot content search (used by the AI agent). */
+export function searchText(
+  root: string,
+  query: string,
+  isRegex: boolean,
+  maxResults: number,
+): Promise<SearchMatch[]> {
+  return invoke<SearchMatch[]>("search_text", {
+    root,
+    query,
+    isRegex,
+    maxResults,
+  });
+}
+
+/** Tell Pyright which interpreter to resolve imports against. */
+export function lspSetPythonPath(path: string | null): Promise<void> {
+  return invoke<void>("lsp_set_python_path", { path });
+}
+
+/** Install basedpyright into Sable's tools folder (semantic highlighting). */
+export function installBasedpyright(): Promise<void> {
+  return invoke<void>("install_basedpyright");
+}
+
+/** Whether Python's language server provides semantic highlighting. */
+export function pythonServerHasSemanticTokens(): Promise<boolean> {
+  return invoke<boolean>("python_server_has_semantic_tokens");
+}
+
+/** Installed monospace font families (for the font pickers). */
+export function listMonospaceFonts(): Promise<string[]> {
+  return invoke<string[]>("list_monospace_fonts");
+}
+
+// --- Settings -------------------------------------------------------------
+
+export function settingsPath(): Promise<string> {
+  return invoke<string>("settings_path");
+}
+
+/** The raw user settings object (only keys the user changed). */
+export function loadSettings(): Promise<Record<string, unknown>> {
+  return invoke<Record<string, unknown>>("load_settings");
+}
+
+export function saveSettings(settings: Record<string, unknown>): Promise<void> {
+  return invoke<void>("save_settings", { settings });
+}
+
+// --- Shell (AI agent commands) ---------------------------------------------
+
+export interface ShellOutput {
+  stdout: string;
+  stderr: string;
+  exitCode: number | null;
+  timedOut: boolean;
+}
+
+/** Run a command non-interactively in the user's login shell. */
+export function runShell(
+  command: string,
+  cwd: string,
+  timeoutSecs: number,
+): Promise<ShellOutput> {
+  return invoke<ShellOutput>("run_shell", { command, cwd, timeoutSecs });
+}
+
+// --- AI providers ------------------------------------------------------------
+
+export type AiProvider = "anthropic" | "openai" | "google";
+
+/** Store a key in the OS keychain (it never comes back to the frontend). */
+export function aiSetApiKey(provider: AiProvider, key: string): Promise<void> {
+  return invoke<void>("ai_set_api_key", { provider, key });
+}
+
+export function aiDeleteApiKey(provider: AiProvider): Promise<void> {
+  return invoke<void>("ai_delete_api_key", { provider });
+}
+
+/** Which providers have a key configured. */
+export function aiKeyStatus(): Promise<Record<AiProvider, boolean>> {
+  return invoke<Record<AiProvider, boolean>>("ai_key_status");
+}
+
+/** One model call with a provider-native body; returns the raw response. */
+export function aiComplete(
+  provider: AiProvider,
+  model: string,
+  body: unknown,
+  baseUrl: string | null,
+): Promise<unknown> {
+  return invoke<unknown>("ai_complete", { provider, model, body, baseUrl });
+}
+
+/** Start a streamed model call; events arrive as `ai:stream`. */
+export function aiStream(
+  provider: AiProvider,
+  model: string,
+  body: unknown,
+  baseUrl: string | null,
+  streamId: string,
+): Promise<void> {
+  return invoke<void>("ai_stream", { provider, model, body, baseUrl, streamId });
+}
+
+/** Abort an in-flight stream. */
+export function aiCancel(streamId: string): Promise<void> {
+  return invoke<void>("ai_cancel", { streamId });
+}
+
+/** A workspace's saved agent chats (null if none). */
+export function loadChats(root: string): Promise<unknown> {
+  return invoke<unknown>("load_chats", { root });
+}
+
+export function saveChats(root: string, chats: unknown): Promise<void> {
+  return invoke<void>("save_chats", { root, chats });
+}
+
+export function aiListModels(
+  provider: AiProvider,
+  baseUrl: string | null,
+): Promise<string[]> {
+  return invoke<string[]>("ai_list_models", { provider, baseUrl });
 }
 
 /** Parent directory of an absolute path, handling both separators. */
