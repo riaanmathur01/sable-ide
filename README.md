@@ -36,6 +36,12 @@ push/pull/fetch, and the AI agent when you message it).
   quick fixes Pyright lacks: add a missing import, remove unused imports,
   `pip install` a missing package. Any error can also be sent to the AI
   agent ("Fix with Agent").
+- **Code navigation** (JetBrains shortcuts) — Search Everywhere (⇧⇧),
+  Go to Symbol (⌥⌘O), File Structure (⌘F12), Recent Files / Locations
+  (⌘E / ⇧⌘E), Find Usages (⌥F7) in a results panel, Go to Implementation
+  / Type Declaration (⌥⌘B / ⇧⌘B), Call Hierarchy (⌃⌥H), and inlay hints
+  (argument names) — through the language servers for Python, JS/TS, Java,
+  Go, Rust and C/C++.
 - **Rename refactoring** — F2 or ⇧F6 (JetBrains' shortcut) renames a
   symbol everywhere it's used in the project, through the language server:
   Python, TypeScript/JavaScript, Java (a class's file is renamed too),
@@ -188,7 +194,10 @@ essentials:
 | `⌘.`, `F8` | Quick fix, next problem |
 | `F2` / `⇧F6` | Rename symbol (project-wide) |
 | `⌘J` | Toggle the bottom panel (terminal / debug console) |
-| `⌘B` / `⌥⌘B` | Toggle sidebar / agent panel |
+| `⌘B` / `⌥⌘A` | Toggle sidebar / agent panel |
+| `⇧⇧` | Search Everywhere |
+| `⌥⌘O`, `⌘F12`, `⌘E` | Go to symbol, file structure, recent files |
+| `⌥F7`, `⌥⌘B`, `⌃⌥H` | Find usages, go to implementation, call hierarchy |
 | `⌃Tab`, `⌘1…9`, `⇧⌘T` | Switch tabs, jump to tab N, reopen closed tab |
 | `⌘=` / `⌘-` / `⌘0` | Editor zoom |
 | `F5`, `F9`, `F10`/`F11` | Debug start/continue, toggle breakpoint, step |

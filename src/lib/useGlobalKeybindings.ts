@@ -8,6 +8,7 @@ import { DEFAULT_SETTINGS, useSettingsStore } from "../store/settingsStore";
 import { getEditor } from "./editorRegistry";
 import { runActiveFile } from "./runFile";
 import { openFolderDialog } from "./openFolder";
+import { useNavigationStore } from "../store/navigationStore";
 
 /**
  * App-wide keyboard shortcuts, registered once at the App level in the
@@ -20,7 +21,7 @@ export const KEYBINDINGS: { keys: string; action: string }[] = [
   { keys: "⌘P", action: "Go to file" },
   { keys: "⌘,", action: "Open settings" },
   { keys: "⌘L", action: "Focus AI agent" },
-  { keys: "⌥⌘B", action: "Toggle AI agent panel" },
+  { keys: "⌥⌘A", action: "Toggle AI agent panel" },
   { keys: "⌘S", action: "Save (auto-save also runs after typing stops)" },
   { keys: "⌘R", action: "Run active file" },
   { keys: "⌘J  /  ⌘`", action: "Toggle bottom panel" },
@@ -37,6 +38,14 @@ export const KEYBINDINGS: { keys: string; action: string }[] = [
   { keys: "⌘=  /  ⌘-  /  ⌘0", action: "Editor zoom in / out / reset" },
   { keys: "⌥Z", action: "Toggle word wrap" },
   { keys: "F2  /  ⇧F6", action: "Rename symbol (every reference in the project)" },
+  { keys: "⇧ ⇧", action: "Search Everywhere (files, symbols, actions)" },
+  { keys: "⌥⌘O  /  ⌘T", action: "Go to symbol in the project" },
+  { keys: "⌘F12  /  ⇧⌘O", action: "File structure (go to a symbol in this file)" },
+  { keys: "⌘E  /  ⇧⌘E", action: "Recent files / recent locations" },
+  { keys: "⌥F7", action: "Find usages (every use in the project)" },
+  { keys: "⇧F12", action: "Peek usages inline" },
+  { keys: "⌥⌘B  /  ⇧⌘B", action: "Go to implementation / type declaration" },
+  { keys: "⌃⌥H", action: "Call hierarchy (callers / callees)" },
   { keys: "⌘.", action: "Quick fix (on a squiggle: server fixes + Fix with Agent)" },
   { keys: "F8  /  ⇧F8", action: "Next / previous problem" },
   { keys: "F12  /  ⌘-click", action: "Go to definition (Python, TS/JS, Java, Rust, Go, C/C++)" },
@@ -69,6 +78,17 @@ function handleFunctionKey(event: KeyboardEvent): boolean {
       // Shift+F6 is rename (as in JetBrains IDEs); leave it to the editor.
       if (event.shiftKey) return false;
       void debug.pause();
+      return true;
+    case "F7":
+      // ⌥F7: Find Usages (JetBrains).
+      if (!event.altKey) return false;
+      void useNavigationStore.getState().findUsagesAtCursor();
+      return true;
+    case "F12":
+      // ⌘F12: File Structure (JetBrains). Plain F12 / ⇧F12 stay the
+      // editor's (go to definition / peek usages).
+      if (!event.metaKey) return false;
+      useUiStore.getState().openPalette("structure");
       return true;
     case "F9": {
       const path = useTabsStore.getState().lastFilePath;
@@ -148,6 +168,12 @@ export function useGlobalKeybindings() {
           case "t":
             void tabs.reopenClosedTab();
             return true;
+          case "e":
+            ui.openPalette("recentLocations");
+            return true;
+          case "b":
+            void useNavigationStore.getState().goToAtCursor("typeDefinition");
+            return true;
         }
         if (event.code === "BracketRight") {
           tabs.cycleTab(1);
@@ -162,8 +188,23 @@ export function useGlobalKeybindings() {
 
       if (event.altKey) {
         // ⌥ changes event.key on macOS (⌥B = "∫"), so match the code.
+        // ⌥⌘B: Go to Implementation (JetBrains); the agent panel moved
+        // to ⌥⌘A.
         if (event.code === "KeyB") {
+          void useNavigationStore.getState().goToAtCursor("implementation");
+          return true;
+        }
+        if (event.code === "KeyA") {
           ui.toggleAgent();
+          return true;
+        }
+        if (event.code === "KeyO") {
+          ui.openPalette("symbols");
+          return true;
+        }
+        // ⌃⌥H: Call Hierarchy.
+        if (event.code === "KeyH" && event.ctrlKey) {
+          void useNavigationStore.getState().showCallHierarchy();
           return true;
         }
         // ⌥⌘←/→: move focus between split editor groups. Only when
@@ -183,6 +224,12 @@ export function useGlobalKeybindings() {
       switch (key) {
         case "p":
           ui.openPalette("files");
+          return true;
+        case "e":
+          ui.openPalette("recentFiles");
+          return true;
+        case "t":
+          ui.openPalette("symbols");
           return true;
         case "s":
           if (tabs.activePath) void tabs.saveTab(tabs.activePath);
@@ -228,8 +275,32 @@ export function useGlobalKeybindings() {
       return false;
     }
 
+    // Double Shift: Search Everywhere (JetBrains). Two Shift presses on
+    // their own, within 400 ms, with nothing typed in between.
+    let lastShiftUp = 0;
+    let otherKeySinceShift = false;
+    function onShiftKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Shift") otherKeySinceShift = true;
+    }
+    function onShiftKeyUp(event: KeyboardEvent) {
+      if (event.key !== "Shift") return;
+      const now = performance.now();
+      if (!otherKeySinceShift && now - lastShiftUp < 400) {
+        lastShiftUp = 0;
+        useUiStore.getState().openPalette("everywhere");
+        return;
+      }
+      lastShiftUp = otherKeySinceShift ? 0 : now;
+      otherKeySinceShift = false;
+    }
+
     window.addEventListener("keydown", onKeyDown, { capture: true });
-    return () =>
+    window.addEventListener("keydown", onShiftKeyDown, { capture: true });
+    window.addEventListener("keyup", onShiftKeyUp, { capture: true });
+    return () => {
       window.removeEventListener("keydown", onKeyDown, { capture: true });
+      window.removeEventListener("keydown", onShiftKeyDown, { capture: true });
+      window.removeEventListener("keyup", onShiftKeyUp, { capture: true });
+    };
   }, []);
 }

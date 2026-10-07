@@ -12,6 +12,7 @@ import {
 } from "./lspClient";
 import { semanticTokenTypes, translateTokens, type ServerLegend } from "./semanticTokens";
 import { registerRename } from "./rename";
+import { registerNavigationProviders } from "./navigation";
 import { DARCULA, DARK } from "../jetbrains/schemes.generated";
 import { themeById } from "../themes";
 import { currentThemeId, onThemeChange } from "../shikiMonaco";
@@ -362,7 +363,7 @@ function uriToPath(uri: string): string {
  * in files that aren't open yet, create the model from disk (keyed the
  * same way tabs key theirs, so opening the tab later reuses it).
  */
-async function ensureModel(monaco: Monaco, path: string) {
+export async function ensureModel(monaco: Monaco, path: string) {
   const uri = monaco.Uri.file(path);
   if (monaco.editor.getModel(uri)) return uri;
   try {
@@ -682,6 +683,7 @@ export function registerLspProviders(monaco: Monaco): void {
   registerPythonQuickFixes(monaco);
   registerSemanticHighlighting(monaco);
   registerRename(monaco, LSP_LANGUAGES);
+  registerNavigationProviders(monaco, LSP_LANGUAGES, ensureModel);
   for (const language of LSP_LANGUAGES) {
     monaco.languages.registerHoverProvider(language, {
       provideHover: (model, position) => provideHover(model, position),

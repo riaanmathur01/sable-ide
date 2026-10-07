@@ -26,6 +26,7 @@ export interface Settings {
   "editor.detectIndentation": boolean;
   "editor.wordWrap": "off" | "on";
   "editor.minimap": boolean;
+  "editor.inlayHints": boolean;
   "editor.lineNumbers": "on" | "relative" | "off";
   "editor.rulers": string;
   "editor.renderWhitespace": "none" | "selection" | "boundary" | "all";
@@ -109,6 +110,7 @@ export const SETTINGS_SCHEMA: SettingSpec[] = [
   // --- Editor: appearance ---------------------------------------------------
   { key: "workbench.colorTheme", section: "Editor Appearance", type: "enum", options: [{ value: "sable-dark", label: "Sable Dark" }, { value: "jetbrains-darcula", label: "JetBrains Darcula" }, { value: "jetbrains-dark", label: "JetBrains Dark (New UI)" }, { value: "jetbrains-islands-dark", label: "JetBrains Islands Dark" }, { value: "catppuccin-mocha", label: "Catppuccin Mocha" }], label: "Color Theme", description: "Colors for the whole app: editor syntax, panels, and terminal. The JetBrains themes use the exact colors of JetBrains' schemes, per language as in each JetBrains IDE; Catppuccin Mocha matches the JetBrains Catppuccin plugin.", default: "sable-dark" },
   { key: "editor.lineNumbers", section: "Editor Appearance", type: "enum", options: [{ value: "on", label: "On" }, { value: "relative", label: "Relative" }, { value: "off", label: "Off" }], label: "Line Numbers", description: "How line numbers are shown.", default: "on" },
+  { key: "editor.inlayHints", section: "Editor Appearance", type: "boolean", label: "Inlay Hints", description: "Show argument names (and other hints from the language server) inline in the code, greyed out, like JetBrains IDEs. Hold ⌃⌥ to hide them temporarily.", default: true },
   { key: "editor.minimap", section: "Editor Appearance", type: "boolean", label: "Minimap", description: "Show a zoomed-out overview of the file on the right edge, with errors, warnings, search matches and breakpoints marked. Click or drag it to scroll.", default: true },
   { key: "editor.renderWhitespace", section: "Editor Appearance", type: "enum", options: [{ value: "none", label: "None" }, { value: "selection", label: "In selection" }, { value: "boundary", label: "Boundary" }, { value: "all", label: "All" }], label: "Render Whitespace", description: "When to draw whitespace characters.", default: "selection" },
   { key: "editor.cursorStyle", section: "Editor Appearance", type: "enum", options: [{ value: "line", label: "Line" }, { value: "block", label: "Block" }, { value: "underline", label: "Underline" }], label: "Cursor Style", description: "Shape of the text cursor.", default: "line" },

@@ -73,6 +73,17 @@ export function capabilitiesOf(serverId: string): Record<string, any> | null {
   return serverCapabilities.get(serverId) ?? null;
 }
 
+/** Ids of the language servers currently connected. */
+export function connectedServers(): string[] {
+  return [...serverCapabilities.keys()];
+}
+
+/** A file extension that routes requests to `serverId` (requests are
+ *  addressed by extension). */
+export function extensionForServer(serverId: string): string | null {
+  return Object.entries(SERVER_IDS).find(([, id]) => id === serverId)?.[0] ?? null;
+}
+
 type ServerListener = (serverId: string, connected: boolean) => void;
 const serverListeners = new Set<ServerListener>();
 

@@ -10,7 +10,7 @@ interface CursorPosition {
 }
 
 export type SidebarView = "files" | "search" | "git" | "history" | "debug";
-export type BottomPanel = "terminal" | "debug" | "problems";
+export type BottomPanel = "terminal" | "debug" | "problems" | "usages" | "hierarchy";
 
 /** Draggable panel sizes, in pixels. */
 export interface PanelSizes {
@@ -18,7 +18,19 @@ export interface PanelSizes {
   panelHeight: number;
   agentWidth: number;
 }
-export type PaletteMode = "commands" | "files";
+export type PaletteMode =
+  | "commands"
+  | "files"
+  /** File Structure (⌘F12): the current file's symbols. */
+  | "structure"
+  /** Go to Symbol (⌥⌘O / ⌘T): symbols across the project. */
+  | "symbols"
+  /** Search Everywhere (double Shift): files, symbols and commands. */
+  | "everywhere"
+  /** Recent Files (⌘E). */
+  | "recentFiles"
+  /** Recent Locations (⇧⌘E). */
+  | "recentLocations";
 
 /** What the status bar shows about the active editor. */
 export interface EditorInfo {

@@ -6,6 +6,9 @@ import { useDebugStore } from "../../store/debugStore";
 import { DebugConsole } from "../Debug/DebugConsole";
 import { ProblemsPanel } from "../Problems/ProblemsPanel";
 import { useProblemCounts } from "../../store/problemsStore";
+import { useNavigationStore } from "../../store/navigationStore";
+import { UsagesPanel } from "../Navigation/UsagesPanel";
+import { CallHierarchyPanel } from "../Navigation/CallHierarchyPanel";
 import "./TerminalPanel.css";
 
 const TerminalView = lazy(() => import("./TerminalView"));
@@ -32,6 +35,11 @@ export function TerminalPanel() {
   const [terminalEverShown, setTerminalEverShown] = useState(false);
   const problemCounts = useProblemCounts();
   const problemTotal = problemCounts.errors + problemCounts.warnings;
+  // Usages and Call Hierarchy tabs appear once they have something to show.
+  const hasUsages = useNavigationStore((state) => state.usages !== null);
+  const hasHierarchy = useNavigationStore((state) => state.hierarchy !== null);
+  const usageCount = useNavigationStore((state) => state.usages?.usages.length ?? 0);
+  const { clearUsages, clearHierarchy } = useNavigationStore.getState();
 
   const terminalShown = panelVisible && bottomPanel === "terminal";
   useEffect(() => {
@@ -74,9 +82,42 @@ export function TerminalPanel() {
           >
             Debug Console
           </button>
+          {(hasUsages || bottomPanel === "usages") && (
+            <button
+              role="tab"
+              aria-selected={bottomPanel === "usages"}
+              className={bottomPanel === "usages" ? "active" : undefined}
+              onClick={() => setBottomPanel("usages")}
+            >
+              Usages
+              {usageCount > 0 && <span className="terminal-panel-badge">{usageCount}</span>}
+            </button>
+          )}
+          {(hasHierarchy || bottomPanel === "hierarchy") && (
+            <button
+              role="tab"
+              aria-selected={bottomPanel === "hierarchy"}
+              className={bottomPanel === "hierarchy" ? "active" : undefined}
+              onClick={() => setBottomPanel("hierarchy")}
+            >
+              Call Hierarchy
+            </button>
+          )}
         </div>
         <div className="terminal-panel-actions">
-          {bottomPanel === "problems" ? null : bottomPanel === "terminal" ? (
+          {bottomPanel === "usages" || bottomPanel === "hierarchy" ? (
+            <button
+              className="terminal-panel-action"
+              title="Clear"
+              onClick={() => {
+                if (bottomPanel === "usages") clearUsages();
+                else clearHierarchy();
+                setBottomPanel("terminal");
+              }}
+            >
+              <Trash2 size={13} strokeWidth={1.5} />
+            </button>
+          ) : bottomPanel === "problems" ? null : bottomPanel === "terminal" ? (
             <>
               <button
                 className="terminal-panel-action"
@@ -169,6 +210,8 @@ export function TerminalPanel() {
       )}
       {bottomPanel === "debug" && <DebugConsole />}
       {bottomPanel === "problems" && <ProblemsPanel />}
+      {bottomPanel === "usages" && <UsagesPanel />}
+      {bottomPanel === "hierarchy" && <CallHierarchyPanel />}
     </div>
   );
 }

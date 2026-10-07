@@ -1,5 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useUiStore } from "../../store/uiStore";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useUiStore, type PaletteMode } from "../../store/uiStore";
+import { cursorContext, goTo, useNavigationStore } from "../../store/navigationStore";
+import {
+  documentSymbols,
+  serverSupports,
+  SYMBOL_KIND_NAMES,
+  workspaceSymbols,
+  type SymbolEntry,
+} from "../../lib/lsp/navigation";
 import { useTabsStore } from "../../store/tabsStore";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import { useGitStore } from "../../store/gitStore";
@@ -29,14 +37,79 @@ interface PaletteItem {
   label: string;
   /** Dim secondary text: a relative path or a keybinding hint. */
   detail?: string;
+  /** Small tag before the label (symbol kind). */
+  tag?: string;
+  /** Indentation level (File Structure). */
+  depth?: number;
+  /** Search Everywhere groups results under headings. */
+  section?: string;
+  /** Text matched by the filter, when it differs from the label. */
+  filterText?: string;
   run: () => void;
 }
 
 const MAX_RESULTS = 50;
 
+const PLACEHOLDERS: Record<PaletteMode, string> = {
+  commands: "Type a command…",
+  files: "Go to file…",
+  structure: "Go to a class, function or member in this file…",
+  symbols: "Go to a class, function or variable in the project…",
+  everywhere: "Search files, symbols and actions…",
+  recentFiles: "Recent files",
+  recentLocations: "Recent locations",
+};
+
+function relativeTo(path: string): string {
+  const root = useWorkspaceStore.getState().rootPath ?? "";
+  return path.startsWith(root) ? path.slice(root.length).replace(/^[/\\]/, "") : path;
+}
+
+function fileItem(path: string, section?: string): PaletteItem {
+  const name = path.split(/[/\\]/).filter(Boolean).pop() ?? path;
+  return {
+    id: `file:${path}`,
+    label: name,
+    detail: relativeTo(path),
+    section,
+    run: () => void useTabsStore.getState().openFile(path),
+  };
+}
+
+function symbolItem(symbol: SymbolEntry, options: { showFile: boolean; section?: string }): PaletteItem {
+  const where = options.showFile ? `${relativeTo(symbol.path)}:${symbol.line}` : `:${symbol.line}`;
+  return {
+    id: `symbol:${symbol.path}:${symbol.line}:${symbol.column}:${symbol.name}`,
+    label: symbol.name,
+    tag: SYMBOL_KIND_NAMES[symbol.kind],
+    depth: options.showFile ? 0 : symbol.depth,
+    detail: [symbol.detail, symbol.container, where].filter(Boolean).join("  ·  "),
+    section: options.section,
+    run: () => void goTo(symbol.path, symbol.line, symbol.column),
+  };
+}
+
+/** Fuzzy-filter and rank; an empty query keeps the original order. */
+function rank(items: PaletteItem[], query: string, limit: number): PaletteItem[] {
+  if (query.trim() === "") return items.slice(0, limit);
+  const scored: { item: PaletteItem; score: number }[] = [];
+  for (const item of items) {
+    // Score the label and the detail (e.g. a path); take the better.
+    const nameScore = fuzzyScore(query, item.filterText ?? item.label);
+    const detailScore = item.detail && !item.tag ? fuzzyScore(query, item.detail) : null;
+    const best =
+      nameScore === null ? detailScore : detailScore === null ? nameScore : Math.max(nameScore, detailScore);
+    if (best !== null) scored.push({ item, score: best });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, limit).map((entry) => entry.item);
+}
+
 /**
- * Command palette (⇧⌘P) and quick file open (⌘P). One overlay, two
- * sources of items, the same fuzzy filter + keyboard navigation.
+ * The palette overlay: commands (⇧⌘P), files (⌘P), File Structure
+ * (⌘F12), Go to Symbol (⌥⌘O), Search Everywhere (double Shift), Recent
+ * Files (⌘E) and Recent Locations (⇧⌘E). One overlay, one fuzzy filter,
+ * the same keyboard navigation.
  */
 export function CommandPalette() {
   const mode = useUiStore((state) => state.paletteMode);
@@ -47,21 +120,22 @@ export function CommandPalette() {
   return <PaletteInner key={mode} mode={mode} onClose={closePalette} />;
 }
 
-function PaletteInner({
-  mode,
-  onClose,
-}: {
-  mode: "commands" | "files";
-  onClose: () => void;
-}) {
+function PaletteInner({ mode, onClose }: { mode: PaletteMode; onClose: () => void }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
   const [files, setFiles] = useState<string[]>([]);
+  const [structure, setStructure] = useState<SymbolEntry[] | null>(null);
+  /** Project symbols for the current query (asked of the servers). */
+  const [symbols, setSymbols] = useState<{ query: string; items: SymbolEntry[] } | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const recentFiles = useNavigationStore((state) => state.recentFiles);
+  const recentLocations = useNavigationStore((state) => state.recentLocations);
+  /** The file the palette was opened over. */
+  const [currentPath] = useState(() => cursorContext()?.path ?? useTabsStore.getState().activePath);
 
-  // Load the workspace file list once for quick-open.
+  // The workspace's files (quick open, Search Everywhere).
   useEffect(() => {
-    if (mode !== "files") return;
+    if (mode !== "files" && mode !== "everywhere") return;
     const root = useWorkspaceStore.getState().rootPath;
     if (!root) return;
     listWorkspaceFiles(root)
@@ -69,53 +143,105 @@ function PaletteInner({
       .catch(() => setFiles([]));
   }, [mode]);
 
-  const allItems = useMemo<PaletteItem[]>(() => {
-    if (mode === "files") {
-      const root = useWorkspaceStore.getState().rootPath ?? "";
-      return files.map((path) => {
-        const name = path.split(/[/\\]/).filter(Boolean).pop() ?? path;
-        const relative = path.startsWith(root)
-          ? path.slice(root.length).replace(/^[/\\]/, "")
-          : path;
-        return {
-          id: path,
-          label: name,
-          detail: relative,
-          run: () => void useTabsStore.getState().openFile(path),
-        };
-      });
+  // File Structure: the current file's symbols.
+  useEffect(() => {
+    if (mode !== "structure") return;
+    if (!currentPath || !serverSupports(currentPath, "documentSymbolProvider")) {
+      setStructure([]);
+      return;
     }
-    return buildCommands();
-  }, [mode, files]);
+    documentSymbols(currentPath)
+      .then(setStructure)
+      .catch(() => setStructure([]));
+  }, [mode, currentPath]);
 
-  // Filter + rank. Empty query keeps original order (capped).
+  // Project symbols, re-queried as you type (debounced).
+  useEffect(() => {
+    if (mode !== "symbols" && mode !== "everywhere") return;
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setSymbols(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      workspaceSymbols(trimmed, useWorkspaceStore.getState().rootPath)
+        .then((items) => {
+          if (!cancelled) setSymbols({ query: trimmed, items });
+        })
+        .catch(() => {
+          if (!cancelled) setSymbols({ query: trimmed, items: [] });
+        });
+    }, 150);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [mode, query]);
+
   const results = useMemo<PaletteItem[]>(() => {
-    if (query.trim() === "") return allItems.slice(0, MAX_RESULTS);
-    const scored: { item: PaletteItem; score: number }[] = [];
-    for (const item of allItems) {
-      // For files, score the filename and the path; take the better.
-      const nameScore = fuzzyScore(query, item.label);
-      const pathScore = item.detail ? fuzzyScore(query, item.detail) : null;
-      const best =
-        nameScore === null
-          ? pathScore
-          : pathScore === null
-            ? nameScore
-            : Math.max(nameScore, pathScore);
-      if (best !== null) scored.push({ item, score: best });
+    switch (mode) {
+      case "files":
+        return rank(files.map((path) => fileItem(path)), query, MAX_RESULTS);
+      case "commands":
+        return rank(buildCommands(), query, MAX_RESULTS);
+      case "structure":
+        return rank(
+          (structure ?? []).map((symbol) => symbolItem(symbol, { showFile: false })),
+          query,
+          query.trim() ? MAX_RESULTS : 1000,
+        );
+      case "symbols":
+        return rank(
+          (symbols?.items ?? []).map((symbol) => symbolItem(symbol, { showFile: true })),
+          query,
+          MAX_RESULTS,
+        );
+      case "recentFiles":
+        // The current file is listed but the previous one is preselected.
+        return rank(recentFiles.map((path) => fileItem(path)), query, MAX_RESULTS);
+      case "recentLocations":
+        return rank(
+          recentLocations.map((location) => ({
+            id: `location:${location.path}:${location.line}`,
+            label: location.preview.trim() || "(blank line)",
+            detail: `${relativeTo(location.path)}:${location.line}`,
+            filterText: `${location.preview} ${relativeTo(location.path)}`,
+            run: () => void goTo(location.path, location.line, location.column),
+          })),
+          query,
+          MAX_RESULTS,
+        );
+      case "everywhere": {
+        if (!query.trim()) {
+          // Nothing typed: recent files, like JetBrains.
+          return recentFiles.slice(0, 10).map((path) => fileItem(path, "Recent Files"));
+        }
+        const fileResults = rank(files.map((path) => fileItem(path, "Files")), query, 8);
+        const symbolResults = rank(
+          (symbols?.items ?? []).map((symbol) => symbolItem(symbol, { showFile: true, section: "Symbols" })),
+          query,
+          8,
+        );
+        const actionResults = rank(
+          buildCommands().map((command) => ({ ...command, section: "Actions" })),
+          query,
+          6,
+        );
+        return [...fileResults, ...symbolResults, ...actionResults];
+      }
     }
-    scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, MAX_RESULTS).map((entry) => entry.item);
-  }, [query, allItems]);
+  }, [mode, files, structure, symbols, query, recentFiles, recentLocations]);
 
-  // Keep selection in range and scrolled into view.
+  // Reset the selection when the results change. In Recent Files the
+  // current file is first, so start on the one before it (⌘E, Enter
+  // flips between two files).
   useEffect(() => {
-    setSelected(0);
-  }, [query]);
+    const switchBack = mode === "recentFiles" && !query && recentFiles[0] === currentPath && results.length > 1;
+    setSelected(switchBack ? 1 : 0);
+  }, [query, mode, results.length, recentFiles, currentPath]);
   useEffect(() => {
-    const node = listRef.current?.children[selected] as
-      | HTMLElement
-      | undefined;
+    const node = listRef.current?.querySelector(`[data-index="${selected}"]`) as HTMLElement | null;
     node?.scrollIntoView({ block: "nearest" });
   }, [selected]);
 
@@ -128,18 +254,30 @@ function PaletteInner({
     if (useUiStore.getState().paletteMode === before) onClose();
   }
 
+  const emptyMessage =
+    mode === "structure"
+      ? structure === null
+        ? "Loading…"
+        : currentPath && !serverSupports(currentPath, "documentSymbolProvider")
+          ? "File Structure needs a language server for this file's language"
+          : "No symbols"
+      : mode === "symbols" && !query.trim()
+        ? "Type a name — searches every running language server"
+        : (mode === "symbols" || mode === "everywhere") && query.trim() && symbols?.query !== query.trim()
+          ? "Searching…"
+          : mode === "recentFiles" || mode === "recentLocations"
+            ? query
+              ? "No matches"
+              : "Nothing yet"
+            : "No matches";
+
   return (
     <div className="palette-backdrop" onMouseDown={onClose}>
-      <div
-        className="palette"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
+      <div className="palette" onMouseDown={(event) => event.stopPropagation()}>
         <input
           className="palette-input"
           autoFocus
-          placeholder={
-            mode === "files" ? "Go to file…" : "Type a command…"
-          }
+          placeholder={PLACEHOLDERS[mode]}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
@@ -159,23 +297,24 @@ function PaletteInner({
           }}
         />
         <div className="palette-list" ref={listRef}>
-          {results.length === 0 && (
-            <div className="palette-empty">No matches</div>
-          )}
+          {results.length === 0 && <div className="palette-empty">{emptyMessage}</div>}
           {results.map((item, index) => (
-            <div
-              key={item.id}
-              className={
-                index === selected ? "palette-item selected" : "palette-item"
-              }
-              onMouseEnter={() => setSelected(index)}
-              onClick={() => choose(item)}
-            >
-              <span className="palette-item-label">{item.label}</span>
-              {item.detail && (
-                <span className="palette-item-detail">{item.detail}</span>
+            <Fragment key={item.id}>
+              {item.section && item.section !== results[index - 1]?.section && (
+                <div className="palette-section">{item.section}</div>
               )}
-            </div>
+              <div
+                data-index={index}
+                className={index === selected ? "palette-item selected" : "palette-item"}
+                style={item.depth ? { paddingLeft: 10 + item.depth * 16 } : undefined}
+                onMouseEnter={() => setSelected(index)}
+                onClick={() => choose(item)}
+              >
+                {item.tag && <span className="palette-item-tag">{item.tag}</span>}
+                <span className="palette-item-label">{item.label}</span>
+                {item.detail && <span className="palette-item-detail">{item.detail}</span>}
+              </div>
+            </Fragment>
           ))}
         </div>
       </div>
@@ -219,7 +358,7 @@ function buildCommands(): PaletteItem[] {
     {
       id: "agent-toggle",
       label: "Agent: Toggle Panel",
-      detail: "⌥⌘B",
+      detail: "⌥⌘A",
       run: () => ui.toggleAgent(),
     },
     {
@@ -385,6 +524,65 @@ function buildCommands(): PaletteItem[] {
       label: "Go to File…",
       detail: "⌘P",
       run: () => ui.openPalette("files"),
+    },
+    {
+      id: "search-everywhere",
+      label: "Navigate: Search Everywhere",
+      detail: "⇧ ⇧",
+      run: () => ui.openPalette("everywhere"),
+    },
+    {
+      id: "go-to-symbol",
+      label: "Navigate: Go to Symbol…",
+      detail: "⌥⌘O",
+      run: () => ui.openPalette("symbols"),
+    },
+    {
+      id: "file-structure",
+      label: "Navigate: File Structure",
+      detail: "⌘F12",
+      run: () => ui.openPalette("structure"),
+    },
+    {
+      id: "recent-files",
+      label: "Navigate: Recent Files",
+      detail: "⌘E",
+      run: () => ui.openPalette("recentFiles"),
+    },
+    {
+      id: "recent-locations",
+      label: "Navigate: Recent Locations",
+      detail: "⇧⌘E",
+      run: () => ui.openPalette("recentLocations"),
+    },
+    {
+      id: "find-usages",
+      label: "Navigate: Find Usages",
+      detail: "⌥F7",
+      run: () => void useNavigationStore.getState().findUsagesAtCursor(),
+    },
+    {
+      id: "go-to-implementation",
+      label: "Navigate: Go to Implementation",
+      detail: "⌥⌘B",
+      run: () => void useNavigationStore.getState().goToAtCursor("implementation"),
+    },
+    {
+      id: "go-to-type",
+      label: "Navigate: Go to Type Declaration",
+      detail: "⇧⌘B",
+      run: () => void useNavigationStore.getState().goToAtCursor("typeDefinition"),
+    },
+    {
+      id: "call-hierarchy",
+      label: "Navigate: Call Hierarchy",
+      detail: "⌃⌥H",
+      run: () => void useNavigationStore.getState().showCallHierarchy(),
+    },
+    {
+      id: "inlay-hints",
+      label: "View: Toggle Inlay Hints",
+      run: () => toggleSetting("editor.inlayHints"),
     },
     {
       id: "save",

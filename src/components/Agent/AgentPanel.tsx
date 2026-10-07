@@ -152,7 +152,7 @@ export function AgentPanel() {
             <Settings size={14} strokeWidth={1.5} />
           </button>
           <button
-            title="Close (⌥⌘B)"
+            title="Close (⌥⌘A)"
             onClick={() => useUiStore.getState().toggleAgent()}
           >
             <X size={14} strokeWidth={1.5} />

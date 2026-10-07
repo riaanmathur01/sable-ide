@@ -111,6 +111,7 @@ export function editorOptionsFromSettings(
     insertSpaces: settings["editor.insertSpaces"],
     detectIndentation: settings["editor.detectIndentation"],
     wordWrap: settings["editor.wordWrap"],
+    inlayHints: { enabled: settings["editor.inlayHints"] ? "onUnlessPressed" : "off" },
     minimap: {
       enabled: settings["editor.minimap"],
       // Real characters at twice the default size, capped so long lines
@@ -210,8 +211,8 @@ for (const defaults of [
 // project (tsconfig, node_modules), so its diagnostics, completions,
 // hover, definitions, signature help and fixes replace the built-in
 // service's (which only sees open files) — otherwise you'd get two of
-// everything; so does rename (project-wide instead of open files).
-// Formatting, references and highlights stay built-in. If the server stops (or isn't installed), the built-in
+// everything; so do rename, references, document symbols and highlights
+// (project-wide instead of open files). Formatting stays built-in. If the server stops (or isn't installed), the built-in
 // service comes back.
 function useBuiltinTypeScript(enabled: boolean) {
   for (const defaults of [
@@ -229,6 +230,10 @@ function useBuiltinTypeScript(enabled: boolean) {
       inlayHints: enabled,
       // The server renames across the whole project.
       rename: enabled,
+      // …and finds usages, outlines and highlights from the whole project.
+      references: enabled,
+      documentSymbols: enabled,
+      documentHighlights: enabled,
     });
   }
 }

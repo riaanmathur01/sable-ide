@@ -90,6 +90,8 @@
   height: 16px;
   border-radius: 3px;
   flex-shrink: 0;
+  /* Always at the tab's right edge, however long the name. */
+  margin-left: auto;
 }
 
 .editor-tab-close:hover {

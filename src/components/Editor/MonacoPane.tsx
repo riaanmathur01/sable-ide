@@ -16,7 +16,8 @@ import { BlameGutter } from "./BlameGutter";
 import { editorOptionsFromSettings, monaco } from "../../lib/monacoSetup";
 import type * as MonacoTypes from "monaco-editor";
 import type { BlameLine } from "../../lib/ipc";
-import { installAcceleratedDelete } from "../../lib/acceleratedDelete";
+import { installKeyRepeatAcceleration } from "../../lib/keyRepeatAcceleration";
+import { installRecentTracking } from "../../lib/recentTracking";
 import "./MonacoPane.css";
 
 const NO_BREAKPOINTS: number[] = [];
@@ -189,9 +190,11 @@ export default function MonacoPane({ groupId }: { groupId: string }) {
       }
     });
 
-    // Holding Backspace/Delete speeds up the longer it's held.
-    const removeAcceleratedDelete = installAcceleratedDelete(editor);
-    editor.onDidDispose(removeAcceleratedDelete);
+    // Held cursor keys (Backspace, Delete, arrows) speed up the longer
+    // they're held.
+    editor.onDidDispose(installKeyRepeatAcceleration(editor));
+    // Recent Files (⌘E) and Recent Locations (⇧⌘E).
+    editor.onDidDispose(installRecentTracking(editor));
 
     // ⌥Z toggles word wrap (persisted as a setting), like VS Code.
     editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.KeyZ, () => {

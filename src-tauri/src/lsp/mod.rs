@@ -280,10 +280,26 @@ pub fn java_debug_bundle() -> Option<PathBuf> {
 
 pub(crate) fn initialize_params(root_path: &str, server_id: &str) -> Value {
     let mut params = base_initialize_params(root_path);
-    // gopls only sends semantic tokens (packages, exported names, …) when
-    // asked.
+    // gopls only sends semantic tokens (packages, exported names, …) and
+    // inlay hints when asked. Hints like GoLand's: argument names.
     if server_id == "gopls" {
-        params["initializationOptions"] = json!({ "semanticTokens": true });
+        params["initializationOptions"] = json!({
+            "semanticTokens": true,
+            "hints": { "parameterNames": true, "constantValues": true },
+            // Go to Symbol searches the project, not the standard library.
+            "symbolScope": "workspace"
+        });
+    }
+    // TypeScript's inlay hints are off unless asked for. Like WebStorm's:
+    // argument names for literal arguments, enum member values.
+    if server_id == "typescript" {
+        params["initializationOptions"] = json!({
+            "preferences": {
+                "includeInlayParameterNameHints": "literals",
+                "includeInlayParameterNameHintsWhenArgumentMatchesName": false,
+                "includeInlayEnumMemberValueHints": true
+            }
+        });
     }
     if server_id == "java" {
         if let Some(jar) = java_debug_bundle() {
@@ -318,7 +334,12 @@ fn base_initialize_params(root_path: &str) -> Value {
                 "didChangeConfiguration": { "dynamicRegistration": true },
                 // Sable reports files it changes on disk (e.g. a rename
                 // editing unopened files).
-                "didChangeWatchedFiles": { "dynamicRegistration": false }
+                "didChangeWatchedFiles": { "dynamicRegistration": false },
+                // Go to Symbol / Search Everywhere.
+                "symbol": {
+                    "symbolKind": { "valueSet": (1..=26).collect::<Vec<u32>>() }
+                },
+                "inlayHint": { "refreshSupport": false }
             },
             "textDocument": {
                 "synchronization": {
@@ -335,6 +356,20 @@ fn base_initialize_params(root_path: &str) -> Value {
                     "contentFormat": ["markdown", "plaintext"]
                 },
                 "definition": { "linkSupport": true },
+                // Navigation: Find Usages, Go to Implementation / Type
+                // Definition, File Structure, Call Hierarchy, inlay hints.
+                "references": {},
+                "implementation": { "linkSupport": true },
+                "typeDefinition": { "linkSupport": true },
+                "documentHighlight": {},
+                "documentSymbol": {
+                    "hierarchicalDocumentSymbolSupport": true,
+                    "symbolKind": { "valueSet": (1..=26).collect::<Vec<u32>>() }
+                },
+                "callHierarchy": {},
+                "inlayHint": {
+                    "resolveSupport": { "properties": ["tooltip", "label.tooltip"] }
+                },
                 "signatureHelp": {
                     "signatureInformation": {
                         "documentationFormat": ["markdown", "plaintext"],
@@ -416,6 +451,14 @@ fn python_settings() -> Value {
                 "reportMissingModuleSource": "warning"
             },
             "useLibraryCodeForTypes": true,
+            // Inlay hints like PyCharm's: argument names, not every
+            // inferred type.
+            "inlayHints": {
+                "callArgumentNames": true,
+                "variableTypes": false,
+                "functionReturnTypes": false,
+                "genericTypes": false
+            },
             "exclude": [
                 "**/.*",
                 "**/node_modules",

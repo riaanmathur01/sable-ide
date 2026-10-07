@@ -1,14 +1,15 @@
 import type * as MonacoTypes from "monaco-editor";
 
 /**
- * Holding Backspace or Delete speeds up the longer it's held.
+ * Holding a cursor key — Backspace, Delete or an arrow (with or without
+ * Shift, to extend the selection) — speeds up the longer it's held.
  *
  * The first press, the OS's key-repeat delay and the first moments of
  * repeating are untouched (that's when the OS's repeat rate is measured).
  * Then Sable takes over: it ignores the OS's fixed-rate repeats and
  * deletes on its own timer, starting at that measured rate — so there's
- * no jolt — and accelerating smoothly up to a cap. It's always one
- * character per step (plain deleteLeft/deleteRight, so the smooth caret
+ * no jolt — and accelerating up to a cap. It's always one character or
+ * line per step (the editor's own commands, so the smooth caret
  * animation and undo grouping behave as usual) — only the pace changes.
  * Releasing the key, or the editor losing focus, resets it.
  */
@@ -35,12 +36,24 @@ export function deleteInterval(elapsed: number, start = DEFAULT_INTERVAL_MS): nu
   return 1000 / speed;
 }
 
-const COMMANDS: Record<string, string> = {
-  Backspace: "deleteLeft",
-  Delete: "deleteRight",
+/** The editor command each held key repeats (with Shift: extend the
+ *  selection). */
+const COMMANDS: Record<string, { plain: string; shift?: string }> = {
+  Backspace: { plain: "deleteLeft" },
+  Delete: { plain: "deleteRight" },
+  ArrowLeft: { plain: "cursorLeft", shift: "cursorLeftSelect" },
+  ArrowRight: { plain: "cursorRight", shift: "cursorRightSelect" },
+  ArrowUp: { plain: "cursorUp", shift: "cursorUpSelect" },
+  ArrowDown: { plain: "cursorDown", shift: "cursorDownSelect" },
 };
 
-export function installAcceleratedDelete(editor: MonacoTypes.editor.IStandaloneCodeEditor): () => void {
+/** Up/Down belong to an open suggestion list or signature help. */
+function popupOwnsKey(container: HTMLElement, key: string): boolean {
+  if (key !== "ArrowUp" && key !== "ArrowDown") return false;
+  return Boolean(container.querySelector(".suggest-widget.visible, .parameter-hints-widget.visible"));
+}
+
+export function installKeyRepeatAcceleration(editor: MonacoTypes.editor.IStandaloneCodeEditor): () => void {
   const container = editor.getContainerDomNode();
   let heldKey: string | null = null;
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -60,27 +73,40 @@ export function installAcceleratedDelete(editor: MonacoTypes.editor.IStandaloneC
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
-    const command = COMMANDS[event.key];
-    // Plain Backspace/Delete only: modified ones (word/line delete) and
-    // IME composition keep their normal behavior.
-    if (!command || event.altKey || event.metaKey || event.ctrlKey || event.shiftKey || event.isComposing) {
+    const commands = COMMANDS[event.key];
+    const command = commands && (event.shiftKey ? commands.shift : commands.plain);
+    // Word/line jumps and deletes (⌥/⌘), IME composition, text fields
+    // inside the editor (find, rename) and open popups keep their
+    // normal behavior.
+    if (
+      !command ||
+      event.altKey ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.isComposing ||
+      !editor.hasTextFocus() ||
+      popupOwnsKey(container, event.key)
+    ) {
       if (heldKey) stop();
       return;
     }
+    // Shift pressed or released mid-hold is a different action.
+    const identity = `${event.shiftKey ? "shift+" : ""}${event.key}`;
     if (!event.repeat) {
       stop(); // a fresh press: the editor handles it normally
       return;
     }
-    if (editor.getRawOptions().readOnly) return;
-    if (timer && heldKey === event.key) {
+    // Read-only views can't be edited, but the cursor can still move.
+    if (editor.getRawOptions().readOnly && command.startsWith("delete")) return;
+    if (timer && heldKey === identity) {
       // Already driving: swallow the OS's repeats.
       event.preventDefault();
       event.stopPropagation();
       return;
     }
-    if (heldKey !== event.key) {
+    if (heldKey !== identity) {
       stop();
-      heldKey = event.key;
+      heldKey = identity;
     }
     // Let the OS's repeats through briefly to measure their rate…
     const now = performance.now();
@@ -94,7 +120,8 @@ export function installAcceleratedDelete(editor: MonacoTypes.editor.IStandaloneC
   };
 
   const onKeyUp = (event: KeyboardEvent) => {
-    if (event.key === heldKey) stop();
+    // Releasing the held key (or Shift during a Shift+arrow) resets.
+    if (heldKey && (heldKey.endsWith(event.key) || event.key === "Shift")) stop();
   };
 
   container.addEventListener("keydown", onKeyDown, true);
