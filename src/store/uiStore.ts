@@ -39,7 +39,9 @@ interface UiState {
   editorInfo: EditorInfo | null;
   setEditorInfo: (info: EditorInfo | null) => void;
   /** Name of the connected language server, shown in the status bar. */
-  lspStatus: string | null;
+  /** Each language server's status label ("gopls", "Java (jdtls)…"),
+   *  by server id; the status bar shows the active file's. */
+  lspStatus: Record<string, string>;
   /** Open command/quick-open palette, or null when closed. */
   paletteMode: PaletteMode | null;
   /** Whether git blame annotations are shown in the editor. */
@@ -57,7 +59,8 @@ interface UiState {
   setTerminalVisible: (visible: boolean) => void;
   setLastError: (message: string | null) => void;
   setCursorPosition: (position: CursorPosition | null) => void;
-  setLspStatus: (status: string | null) => void;
+  /** Set (or with null, clear) one server's label; no id clears all. */
+  setLspStatus: (serverId: string | null, status: string | null) => void;
   openPalette: (mode: PaletteMode) => void;
   closePalette: () => void;
   toggleBlame: () => void;
@@ -120,8 +123,15 @@ export const useUiStore = create<UiState>((set) => ({
   setCursorPosition: (position) => set({ cursorPosition: position }),
   editorInfo: null,
   setEditorInfo: (info) => set({ editorInfo: info }),
-  lspStatus: null,
-  setLspStatus: (status) => set({ lspStatus: status }),
+  lspStatus: {},
+  setLspStatus: (serverId, status) =>
+    set((state) => {
+      if (serverId === null) return { lspStatus: {} };
+      const lspStatus = { ...state.lspStatus };
+      if (status === null) delete lspStatus[serverId];
+      else lspStatus[serverId] = status;
+      return { lspStatus };
+    }),
   paletteMode: null,
   openPalette: (mode) => set({ paletteMode: mode }),
   closePalette: () => set({ paletteMode: null }),

@@ -194,6 +194,8 @@ async function ensureLanguageServerForFile(path: string): Promise<boolean> {
     requestedExtensions.delete(extension);
     // Retried after a folder switch or restart (e.g. once installed).
     failedExtensions.add(extension);
+    const serverId = SERVER_IDS[extension];
+    if (serverId) useUiStore.getState().setLspStatus(serverId, null);
     useUiStore.getState().setLastError(String(error));
     return false;
   }
@@ -275,7 +277,7 @@ export async function resetLanguageServers(): Promise<void> {
     pending.resolve(null);
     pendingRequests.delete(id);
   }
-  useUiStore.getState().setLspStatus(null);
+  useUiStore.getState().setLspStatus(null, null);
   await invoke("stop_language_servers").catch(() => {});
 }
 
@@ -362,12 +364,13 @@ export function initLspListeners(): void {
         serverCapabilities.set(id, event.payload.capabilities ?? {});
         for (const listener of serverListeners) listener(id, true);
       }
-      if (state === "starting") {
+      const ui = useUiStore.getState();
+      if (state === "starting" && id) {
         // Heavy servers (jdtls, rust-analyzer) index for a while; say so
         // rather than looking dead.
-        useUiStore.getState().setLspStatus(`${server ?? "Language server"}…`);
-      } else if (state === "connected") {
-        useUiStore.getState().setLspStatus(server ?? "Language server");
+        ui.setLspStatus(id, `${server ?? "Language server"}…`);
+      } else if (state === "connected" && id) {
+        ui.setLspStatus(id, server ?? "Language server");
       } else if (state === "disconnected") {
         // Which server? The Rust side reports its display name.
         for (const [serverId] of serverCapabilities) {
@@ -376,11 +379,11 @@ export function initLspListeners(): void {
             for (const listener of serverListeners) listener(serverId, false);
           }
         }
-        // Only clear the label if it belongs to the server that went
-        // away — a killed old server must not blank out its replacement.
-        const current = useUiStore.getState().lspStatus;
-        if (!server || current === server || current === `${server}…`) {
-          useUiStore.getState().setLspStatus(null);
+        // Only clear the label if it's still this server's — a killed
+        // old server must not blank out its replacement.
+        if (id) {
+          const current = ui.lspStatus[id];
+          if (current === server || current === `${server}…`) ui.setLspStatus(id, null);
         }
       }
     },

@@ -668,6 +668,7 @@ async fn spawn_and_handshake(
     let reader_app = app.clone();
     let reader_tx = writer_tx.clone();
     let reader_server_name = server_name.clone();
+    let reader_server_id = server_id.clone();
     tauri::async_runtime::spawn(async move {
         let mut reader = reader;
         loop {
@@ -712,6 +713,7 @@ async fn spawn_and_handshake(
                         json!({
                             "state": "disconnected",
                             "server": reader_server_name,
+                            "id": reader_server_id,
                         }),
                     );
                     break;

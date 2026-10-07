@@ -17,6 +17,7 @@ import { useInterpreterStore } from "../../store/interpreterStore";
 import { useDebugStore } from "../../store/debugStore";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useProblemCounts } from "../../store/problemsStore";
+import { serverIdFor } from "../../lib/lsp/lspClient";
 import { InterpreterPicker } from "./InterpreterPicker";
 import { BranchPicker } from "./BranchPicker";
 import "./StatusBar.css";
@@ -57,7 +58,13 @@ export function StatusBar() {
   const statusMessage = useUiStore((state) => state.statusMessage);
   const setLastError = useUiStore((state) => state.setLastError);
   const cursorPosition = useUiStore((state) => state.cursorPosition);
-  const lspStatus = useUiStore((state) => state.lspStatus);
+  const lastFileForLsp = useTabsStore((state) => state.lastFilePath);
+  // The language server for the file being edited, not whichever
+  // server last reported in.
+  const lspStatus = useUiStore((state) => {
+    const serverId = lastFileForLsp ? serverIdFor(lastFileForLsp) : null;
+    return serverId ? (state.lspStatus[serverId] ?? null) : null;
+  });
   const terminalVisible = useUiStore((state) => state.terminalVisible);
   const toggleTerminal = useUiStore((state) => state.toggleTerminal);
   const activePath = useTabsStore((state) => state.activePath);
