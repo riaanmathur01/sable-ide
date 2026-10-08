@@ -6,16 +6,26 @@ import {
   gitCreateBranch,
   gitDeleteBranch,
   gitFetch,
+  gitAbort,
+  gitCherryPick,
+  gitMerge,
+  gitRevertCommit,
+  gitStashApply,
+  gitStashDrop,
+  gitStashList,
+  gitStashSave,
   gitPull,
   gitPush,
   gitSetIdentity,
   gitStage,
   gitStageAll,
+  gitStageContent,
   gitStatus,
   gitSwitchBranch,
   gitUnstage,
   gitUnstageAll,
   type BranchInfo,
+  type StashInfo,
   type GitFileEntry,
   type GitFileStatus,
 } from "../lib/ipc";
@@ -43,6 +53,9 @@ interface GitState {
   isRepo: boolean;
   branch: string | null;
   statusByPath: Record<string, GitFileEntry>;
+  /** A merge (cherry-pick, …) in progress, and Git's message for it. */
+  operation: string | null;
+  mergeMessage: string | null;
   // Sync state vs upstream.
   ahead: number;
   behind: number;
@@ -62,6 +75,19 @@ interface GitState {
   unstage: (file: string) => Promise<void>;
   stageAll: () => Promise<void>;
   unstageAll: () => Promise<void>;
+  /** Write a file's staged version (hunk staging). */
+  stageContent: (file: string, content: string) => Promise<boolean>;
+  /** Merge a branch into the current one (conflicts are left to resolve). */
+  merge: (branch: string) => Promise<void>;
+  /** Abandon the merge / cherry-pick / revert in progress. */
+  abort: () => Promise<void>;
+  stashes: StashInfo[];
+  loadStashes: () => Promise<void>;
+  stashSave: (message: string | null, includeUntracked: boolean) => Promise<void>;
+  stashApply: (index: number, pop: boolean) => Promise<void>;
+  stashDrop: (index: number) => Promise<void>;
+  cherryPick: (hash: string) => Promise<void>;
+  revertCommit: (hash: string) => Promise<void>;
   commit: (message: string) => Promise<CommitOutcome>;
   setIdentity: (name: string, email: string) => Promise<boolean>;
   loadBranches: () => Promise<void>;
@@ -86,6 +112,8 @@ async function queryStatus(
       isRepo: false,
       branch: null,
       statusByPath: {},
+      operation: null,
+      mergeMessage: null,
       ahead: 0,
       behind: 0,
       hasUpstream: false,
@@ -100,6 +128,8 @@ async function queryStatus(
       isRepo: status.isRepo,
       branch: status.branch,
       statusByPath: status.files,
+      operation: status.operation,
+      mergeMessage: status.mergeMessage,
     });
     if (status.isRepo) {
       // Ahead/behind is a separate, cheap query; failures shouldn't wipe
@@ -125,6 +155,8 @@ export const useGitStore = create<GitState>((set, get) => ({
   isRepo: false,
   branch: null,
   statusByPath: {},
+  operation: null,
+  mergeMessage: null,
   ahead: 0,
   behind: 0,
   hasUpstream: false,
@@ -146,6 +178,8 @@ export const useGitStore = create<GitState>((set, get) => ({
       isRepo: false,
       branch: null,
       statusByPath: {},
+      operation: null,
+      mergeMessage: null,
       ahead: 0,
       behind: 0,
       hasUpstream: false,
@@ -198,6 +232,41 @@ export const useGitStore = create<GitState>((set, get) => ({
       useUiStore.getState().setLastError(String(error));
     }
   },
+
+  stageContent: async (file, content) => {
+    const root = useWorkspaceStore.getState().rootPath;
+    if (!root) return false;
+    try {
+      await gitStageContent(root, file, content);
+      await get().refreshNow();
+      return true;
+    } catch (error) {
+      useUiStore.getState().setLastError(String(error));
+      return false;
+    }
+  },
+
+  merge: (branch) => runNetwork(set, get, (root) => gitMerge(root, branch), `Merged ${branch}`),
+
+  abort: () => runGitOperation(get, gitAbort, "Aborted"),
+
+  stashes: [],
+  loadStashes: async () => {
+    const root = useWorkspaceStore.getState().rootPath;
+    if (!root) return;
+    try {
+      set({ stashes: await gitStashList(root) });
+    } catch {
+      set({ stashes: [] });
+    }
+  },
+  stashSave: (message, includeUntracked) =>
+    runGitOperation(get, (root) => gitStashSave(root, message, includeUntracked), "Changes stashed"),
+  stashApply: (index, pop) =>
+    runGitOperation(get, (root) => gitStashApply(root, index, pop), pop ? "Stash popped" : "Stash applied"),
+  stashDrop: (index) => runGitOperation(get, (root) => gitStashDrop(root, index), "Stash dropped"),
+  cherryPick: (hash) => runGitOperation(get, (root) => gitCherryPick(root, hash), "Cherry-picked"),
+  revertCommit: (hash) => runGitOperation(get, (root) => gitRevertCommit(root, hash), "Commit reverted"),
 
   commit: async (message) => {
     const root = useWorkspaceStore.getState().rootPath;
@@ -278,7 +347,8 @@ export const useGitStore = create<GitState>((set, get) => ({
   sync: async () => {
     // VS Code-style sync: pull then push.
     await runNetwork(set, get, gitPull, "Pulled");
-    if (!get().syncMessage?.startsWith("Error")) {
+    const pulled = get().syncMessage ?? "";
+    if (!pulled.startsWith("Error") && !pulled.startsWith("Conflicts")) {
       await runNetwork(set, get, gitPush, "Pushed");
     }
   },
@@ -298,10 +368,44 @@ async function runNetwork(
     const output = await op(root);
     set({ syncMessage: output ? `${successVerb}: ${output}` : successVerb });
   } catch (error) {
-    set({ syncMessage: `Error: ${String(error)}` });
+    const message = String(error);
+    // Conflicts aren't a failure: the merge is under way, to be finished
+    // in Source Control.
+    if (message.startsWith("Conflicts")) {
+      set({ syncMessage: message });
+      useUiStore.getState().setSidebarView("git");
+    } else {
+      set({ syncMessage: `Error: ${message}` });
+    }
   } finally {
     set({ isSyncing: false });
     await get().refreshNow();
     await get().loadBranches();
+  }
+}
+
+/**
+ * A local git operation that may stop on conflicts (stash, cherry-pick,
+ * revert, abort): report the outcome in the status bar, send conflicts to
+ * Source Control, refresh.
+ */
+async function runGitOperation(get: () => GitState, op: (root: string) => Promise<unknown>, done: string): Promise<void> {
+  const root = useWorkspaceStore.getState().rootPath;
+  if (!root) return;
+  const ui = useUiStore.getState();
+  try {
+    await op(root);
+    ui.showStatus(done);
+  } catch (error) {
+    const message = String(error);
+    if (message.startsWith("Conflicts")) {
+      ui.showStatus(message);
+      ui.setSidebarView("git");
+    } else {
+      ui.setLastError(message);
+    }
+  } finally {
+    await get().refreshNow();
+    await get().loadStashes();
   }
 }

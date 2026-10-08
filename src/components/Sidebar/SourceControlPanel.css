@@ -221,3 +221,53 @@
 .scm-row-badge.git-deleted {
   color: var(--git-deleted);
 }
+.scm-row-name.git-conflicted,
+.scm-row-badge.git-conflicted {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.scm-operation {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px;
+  padding: 6px 8px;
+  background: color-mix(in srgb, var(--danger) 10%, var(--bg-elevated));
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border));
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.scm-operation-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.scm-stash-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 8px 8px;
+}
+
+.scm-stash-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.scm-stash-time {
+  margin-left: auto;
+  padding-left: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.scm-stash-file {
+  padding-left: 34px;
+}

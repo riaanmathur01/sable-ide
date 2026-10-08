@@ -29,9 +29,13 @@ export interface EditorTab {
   path: string;
   name: string;
   isDirty: boolean;
-  kind: "file" | "diff" | "settings";
+  kind: "file" | "diff" | "settings" | "merge" | "history";
   /** Present on diff tabs: what to compare. */
   diff?: DiffSource;
+  /** Present on merge tabs: the conflicted file. */
+  mergeFile?: string;
+  /** On history tabs: the file, or null for "Recover Deleted File". */
+  historyFile?: string | null;
 }
 
 /**
@@ -87,6 +91,10 @@ interface TabsState {
   openFile: (path: string, options?: { groupId?: string }) => Promise<void>;
   /** Open a read-only diff (working change or commit) as its own tab. */
   openDiff: (source: DiffSource) => void;
+  /** Open (or focus) the merge tool for a conflicted file. */
+  openMerge: (filePath: string) => void;
+  /** Open (or focus) a file's local history (null: deleted files). */
+  openHistory: (filePath: string | null) => void;
   /** Activate a tab in a group (default: focused) and focus that group. */
   setActive: (path: string, groupId?: string) => void;
   /** Open (or focus) the Settings tab. */
@@ -327,6 +335,58 @@ export const useTabsStore = create<TabsState>((set, get) => ({
                 tabs: [
                   ...group.tabs,
                   { path: key, name: diffName(source), isDirty: false, kind: "diff", diff: source },
+                ],
+                activePath: key,
+              },
+        ),
+        groupId,
+      ),
+    );
+  },
+
+  openMerge: (filePath) => {
+    const key = `merge:${filePath}`;
+    const groupId = get().activeGroupId;
+    const base = filePath.split(/[/\\]/).filter(Boolean).pop() ?? filePath;
+    set((state) =>
+      withGroups(
+        updateGroup(state.groups, groupId, (group) =>
+          group.tabs.some((tab) => tab.path === key)
+            ? { ...group, activePath: key }
+            : {
+                ...group,
+                tabs: [
+                  ...group.tabs,
+                  { path: key, name: `${base} (Merge)`, isDirty: false, kind: "merge", mergeFile: filePath },
+                ],
+                activePath: key,
+              },
+        ),
+        groupId,
+      ),
+    );
+  },
+
+  openHistory: (filePath) => {
+    const key = `history:${filePath ?? "deleted"}`;
+    const groupId = get().activeGroupId;
+    const base = filePath ? (filePath.split(/[/\\]/).filter(Boolean).pop() ?? filePath) : null;
+    set((state) =>
+      withGroups(
+        updateGroup(state.groups, groupId, (group) =>
+          group.tabs.some((tab) => tab.path === key)
+            ? { ...group, activePath: key }
+            : {
+                ...group,
+                tabs: [
+                  ...group.tabs,
+                  {
+                    path: key,
+                    name: base ? `${base} (History)` : "Deleted Files",
+                    isDirty: false,
+                    kind: "history",
+                    historyFile: filePath,
+                  },
                 ],
                 activePath: key,
               },

@@ -324,6 +324,9 @@ export function FileTree() {
           setRenamingPath(entry.path);
         },
       },
+      ...(entry.isDirectory
+        ? []
+        : [{ label: "Local History", onSelect: () => useTabsStore.getState().openHistory(entry.path) }]),
       {
         label: "Delete",
         danger: true,
@@ -554,4 +557,5 @@ const GIT_BADGES: Record<
   untracked: { letter: "U", colorClass: "git-added" },
   deleted: { letter: "D", colorClass: "git-deleted" },
   renamed: { letter: "R", colorClass: "git-modified" },
+  conflicted: { letter: "!", colorClass: "git-conflicted" },
 };

@@ -13,7 +13,8 @@
 
 use git2::build::CheckoutBuilder;
 use git2::{
-    BranchType, IndexAddOption, ObjectType, Repository, Status, StatusOptions,
+    BranchType, IndexAddOption, ObjectType, Repository, RepositoryState,
+    Status, StatusOptions,
 };
 use serde::Serialize;
 use std::collections::HashMap;
@@ -28,6 +29,8 @@ pub enum FileStatus {
     Untracked,
     Deleted,
     Renamed,
+    /// Both sides of a merge changed it — needs resolving.
+    Conflicted,
 }
 
 /// A changed file's status, split into the two sides the commit panel
@@ -53,6 +56,11 @@ pub struct GitStatus {
     /// Absolute file path → split status, so the frontend matches both
     /// file-tree rows and the source-control panel.
     files: HashMap<String, GitFile>,
+    /// An operation in progress that the next commit finishes: "merge",
+    /// "cherry-pick", "revert" or "rebase".
+    operation: Option<String>,
+    /// The message Git prepared for it (MERGE_MSG), to prefill the box.
+    merge_message: Option<String>,
 }
 
 impl GitStatus {
@@ -61,8 +69,39 @@ impl GitStatus {
             is_repo: false,
             branch: None,
             files: HashMap::new(),
+            operation: None,
+            merge_message: None,
         }
     }
+}
+
+/// The in-progress operation, by Git's name for it.
+fn operation_name(repo: &Repository) -> Option<String> {
+    match repo.state() {
+        RepositoryState::Merge => Some("merge"),
+        RepositoryState::CherryPick | RepositoryState::CherryPickSequence => {
+            Some("cherry-pick")
+        }
+        RepositoryState::Revert | RepositoryState::RevertSequence => Some("revert"),
+        RepositoryState::Rebase
+        | RepositoryState::RebaseInteractive
+        | RepositoryState::RebaseMerge => Some("rebase"),
+        _ => None,
+    }
+    .map(str::to_string)
+}
+
+/// MERGE_MSG without Git's "# ..." comment lines.
+fn merge_message(repo: &Repository) -> Option<String> {
+    let text = std::fs::read_to_string(repo.path().join("MERGE_MSG")).ok()?;
+    let message = text
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_string();
+    (!message.is_empty()).then_some(message)
 }
 
 /// Map the index (staged) side of libgit2's status bitset.
@@ -183,8 +222,12 @@ pub fn git_status(path: String) -> Result<GitStatus, String> {
             continue;
         };
         let status = entry.status();
-        let staged = map_index_status(status);
-        let unstaged = map_worktree_status(status);
+        // A conflicted file shows once, as needing resolution.
+        let (staged, unstaged) = if status.intersects(Status::CONFLICTED) {
+            (None, Some(FileStatus::Conflicted))
+        } else {
+            (map_index_status(status), map_worktree_status(status))
+        };
         if staged.is_none() && unstaged.is_none() {
             continue;
         }
@@ -199,6 +242,8 @@ pub fn git_status(path: String) -> Result<GitStatus, String> {
         is_repo: true,
         branch,
         files,
+        operation: operation_name(&repo),
+        merge_message: merge_message(&repo),
     })
 }
 
@@ -306,6 +351,58 @@ pub fn git_unstage_all(root: String) -> Result<(), String> {
     result
 }
 
+/// Stage exactly `content` as the file's next-commit version — how single
+/// hunks are staged or unstaged: the frontend applies the hunk to the
+/// staged text and sends the result. Keeps the entry's mode; a file new to
+/// the index gets the working file's.
+#[tauri::command]
+pub fn git_stage_content(root: String, file: String, content: String) -> Result<(), String> {
+    let repo = open_repo(&root)?;
+    let relative = relative_to_workdir(&repo, &file)?;
+    let mut index = repo
+        .index()
+        .map_err(|error| format!("Could not open index: {error}"))?;
+    let entry = match index.get_path(&relative, 0) {
+        Some(entry) => entry,
+        None => {
+            let executable = executable_on_disk(&file);
+            git2::IndexEntry {
+                ctime: git2::IndexTime::new(0, 0),
+                mtime: git2::IndexTime::new(0, 0),
+                dev: 0,
+                ino: 0,
+                mode: if executable { 0o100755 } else { 0o100644 },
+                uid: 0,
+                gid: 0,
+                file_size: 0,
+                id: git2::Oid::ZERO_SHA1,
+                flags: 0,
+                flags_extended: 0,
+                path: relative.to_string_lossy().replace('\\', "/").into_bytes(),
+            }
+        }
+    };
+    index
+        .add_frombuffer(&entry, content.as_bytes())
+        .map_err(|error| format!("Could not stage {file}: {error}"))?;
+    index
+        .write()
+        .map_err(|error| format!("Could not write index: {error}"))
+}
+
+#[cfg(unix)]
+fn executable_on_disk(file: &str) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::metadata(file)
+        .map(|metadata| metadata.permissions().mode() & 0o111 != 0)
+        .unwrap_or(false)
+}
+
+#[cfg(not(unix))]
+fn executable_on_disk(_file: &str) -> bool {
+    false
+}
+
 /// Marker the frontend recognizes to offer the set-identity prompt.
 const IDENTITY_UNSET: &str = "identity-unset";
 
@@ -322,6 +419,9 @@ pub fn git_commit(root: String, message: String) -> Result<(), String> {
     let mut index = repo
         .index()
         .map_err(|error| format!("Could not open index: {error}"))?;
+    if index.has_conflicts() {
+        return Err("Resolve the merge conflicts first (Source Control → Merge Conflicts)".to_string());
+    }
     let tree_oid = index
         .write_tree()
         .map_err(|error| format!("Could not write tree: {error}"))?;
@@ -334,6 +434,14 @@ pub fn git_commit(root: String, message: String) -> Result<(), String> {
     let signature = repo
         .signature()
         .map_err(|_| IDENTITY_UNSET.to_string())?;
+    // Finishing a cherry-pick: the change is still its original author's.
+    let picked = (matches!(repo.state(), RepositoryState::CherryPick | RepositoryState::CherryPickSequence))
+        .then(|| std::fs::read_to_string(repo.path().join("CHERRY_PICK_HEAD")).ok())
+        .flatten()
+        .and_then(|head| git2::Oid::from_str(head.trim()).ok())
+        .and_then(|oid| repo.find_commit(oid).ok());
+    let original_author = picked.as_ref().map(|commit| commit.author().to_owned());
+    let author = original_author.as_ref().unwrap_or(&signature);
 
     // 3. Parent = current HEAD commit; none on the very first commit.
     let parent_commit = match repo.head() {
@@ -343,12 +451,24 @@ pub fn git_commit(root: String, message: String) -> Result<(), String> {
         ),
         Err(_) => None, // unborn branch → first commit, no parents
     };
-    let parents: Vec<&git2::Commit> = parent_commit.iter().collect();
+    // Finishing a merge: the merged-in commits are parents too.
+    let mut merge_parents = Vec::new();
+    if repo.state() == RepositoryState::Merge {
+        let heads = std::fs::read_to_string(repo.path().join("MERGE_HEAD"))
+            .map_err(|error| format!("Could not read MERGE_HEAD: {error}"))?;
+        for line in heads.lines().map(str::trim).filter(|line| !line.is_empty()) {
+            let commit = git2::Oid::from_str(line)
+                .and_then(|oid| repo.find_commit(oid))
+                .map_err(|error| format!("Could not read MERGE_HEAD: {error}"))?;
+            merge_parents.push(commit);
+        }
+    }
+    let parents: Vec<&git2::Commit> = parent_commit.iter().chain(merge_parents.iter()).collect();
 
     // 4. Create the commit and move HEAD to it.
     repo.commit(
         Some("HEAD"),
-        &signature,
+        author,
         &signature,
         message.trim(),
         &tree,
@@ -356,7 +476,79 @@ pub fn git_commit(root: String, message: String) -> Result<(), String> {
     )
     .map_err(|error| format!("Could not commit: {error}"))?;
 
+    // The merge (or cherry-pick, revert) is done: clear MERGE_HEAD etc.
+    if repo.state() != RepositoryState::Clean
+        && !matches!(
+            repo.state(),
+            RepositoryState::Rebase | RepositoryState::RebaseInteractive | RepositoryState::RebaseMerge
+        )
+    {
+        repo.cleanup_state()
+            .map_err(|error| format!("Committed, but could not finish the merge: {error}"))?;
+    }
+
     Ok(())
+}
+
+/// The versions of a conflicted file, for the merge tool: the common
+/// ancestor, ours (the current branch) and theirs (being merged in).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConflictVersions {
+    base: String,
+    ours: String,
+    theirs: String,
+    /// Branch names for the column headings.
+    ours_label: String,
+    theirs_label: String,
+}
+
+#[tauri::command]
+pub fn git_conflict_versions(root: String, file: String) -> Result<ConflictVersions, String> {
+    let repo = open_repo(&root)?;
+    let relative = relative_to_workdir(&repo, &file)?;
+    let index = repo
+        .index()
+        .map_err(|error| format!("Could not open index: {error}"))?;
+    let stage = |number: i32| match index.get_path(&relative, number) {
+        Some(entry) => match blob_content(&repo, entry.id) {
+            Content::Text(text) => Ok(text),
+            Content::Binary => Err(format!("{file} is binary — resolve it outside Sable")),
+            Content::Absent => Ok(String::new()),
+        },
+        None => Ok(String::new()),
+    };
+    let theirs_label = std::fs::read_to_string(repo.path().join("MERGE_MSG"))
+        .ok()
+        .and_then(|message| {
+            // "Merge branch 'feature' into main"
+            let start = message.find('\'')? + 1;
+            let end = start + message[start..].find('\'')?;
+            Some(message[start..end].to_string())
+        })
+        .unwrap_or_else(|| "Incoming".to_string());
+    Ok(ConflictVersions {
+        base: stage(1)?,
+        ours: stage(2)?,
+        theirs: stage(3)?,
+        ours_label: current_branch(&repo).unwrap_or_else(|| "Current".to_string()),
+        theirs_label,
+    })
+}
+
+/// Abandon the merge in progress: back to HEAD, MERGE_HEAD cleared (like
+/// `git merge --abort` from a clean tree).
+#[tauri::command]
+pub fn git_merge_abort(root: String) -> Result<(), String> {
+    let repo = open_repo(&root)?;
+    let head = repo
+        .head()
+        .and_then(|head| head.peel(ObjectType::Commit))
+        .map_err(|error| format!("Could not read HEAD: {error}"))?;
+    repo.reset(&head, git2::ResetType::Hard, None)
+        .map_err(|error| format!("Could not abort the merge: {error}"))?;
+    repo.cleanup_state()
+        .map_err(|error| format!("Could not abort the merge: {error}"))
 }
 
 /// Write user.name / user.email to the global git config — backs the
@@ -520,19 +712,32 @@ pub struct CommitInfo {
 /// Paginated commit log from HEAD backward. A revwalk yields commit oids
 /// newest-first; we `skip` past earlier pages and `take` one page so a
 /// repo with thousands of commits never loads all at once. An empty repo
-/// (no HEAD to push) returns an empty page.
+/// (no HEAD to push) returns an empty page. `branch` shows another
+/// branch's history (to cherry-pick from it).
 #[tauri::command]
 pub fn git_log(
     root: String,
     limit: usize,
     skip: usize,
+    branch: Option<String>,
 ) -> Result<Vec<CommitInfo>, String> {
     let repo = open_repo(&root)?;
     let mut revwalk = repo
         .revwalk()
         .map_err(|error| format!("Could not walk history: {error}"))?;
-    if revwalk.push_head().is_err() {
-        return Ok(Vec::new()); // unborn branch / empty repo
+    match branch {
+        Some(branch) => {
+            let tip = repo
+                .revparse_single(&branch)
+                .and_then(|object| object.peel_to_commit())
+                .map_err(|_| format!("No branch {branch}"))?;
+            revwalk.push(tip.id()).map_err(|error| format!("Could not walk history: {error}"))?;
+        }
+        None => {
+            if revwalk.push_head().is_err() {
+                return Ok(Vec::new()); // unborn branch / empty repo
+            }
+        }
     }
     let _ = revwalk.set_sorting(git2::Sort::TIME);
 
@@ -955,8 +1160,7 @@ async fn run_git(cwd: &str, args: &[&str]) -> Result<String, String> {
         } else if lowered.contains("conflict")
             || lowered.contains("automatic merge failed")
         {
-            Err("Pull caused merge conflicts — resolve them before continuing"
-                .to_string())
+            Err("Conflicts — resolve them in Source Control".to_string())
         } else {
             Err(combined.trim().to_string())
         }
@@ -1002,5 +1206,329 @@ pub async fn git_push(root: String) -> Result<String, String> {
     } else {
         // New branch: set the upstream as we push.
         run_git(&workdir, &["push", "-u", "origin", &branch]).await
+    }
+}
+
+/// Merge a branch into the current one. Conflicts are left in the working
+/// tree for the merge tool.
+#[tauri::command]
+pub async fn git_merge(root: String, branch: String) -> Result<String, String> {
+    let workdir = repo_workdir(&root)?;
+    run_git(&workdir, &["merge", "--no-edit", &branch]).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+
+    fn git(dir: &Path, args: &[&str]) {
+        let status = Command::new("git")
+            .args(["-c", "user.name=Test", "-c", "user.email=test@example.com"])
+            .args(args)
+            .current_dir(dir)
+            .output()
+            .unwrap();
+        assert!(
+            status.status.success() || args[0] == "merge",
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&status.stderr)
+        );
+    }
+
+    /// A repo mid-merge with one conflicted file.
+    fn conflicted_repo(name: &str) -> (std::path::PathBuf, String) {
+        let dir = std::env::temp_dir()
+            .join(format!("sable-git-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let dir = dir.canonicalize().unwrap();
+        let file = dir.join("notes.txt");
+        git(&dir, &["init", "-q", "-b", "main"]);
+        std::fs::write(&file, "one\ntwo\nthree\n").unwrap();
+        git(&dir, &["add", "."]);
+        git(&dir, &["commit", "-qm", "base"]);
+        git(&dir, &["checkout", "-qb", "feature"]);
+        std::fs::write(&file, "one\nTWO (feature)\nthree\n").unwrap();
+        git(&dir, &["commit", "-qam", "feature"]);
+        git(&dir, &["checkout", "-q", "main"]);
+        std::fs::write(&file, "one\ntwo (main)\nthree\n").unwrap();
+        git(&dir, &["commit", "-qam", "main"]);
+        git(&dir, &["merge", "feature"]);
+        (dir, file.to_string_lossy().into_owned())
+    }
+
+    #[test]
+    fn resolves_a_merge_conflict_and_commits_both_parents() {
+        let (dir, file) = conflicted_repo("merge");
+        let root = dir.to_string_lossy().into_owned();
+
+        let status = git_status(root.clone()).unwrap();
+        assert_eq!(status.operation.as_deref(), Some("merge"));
+        assert!(status.merge_message.unwrap().contains("feature"));
+        assert!(matches!(status.files[&file].unstaged, Some(FileStatus::Conflicted)));
+        assert!(git_commit(root.clone(), "too early".into()).is_err());
+
+        let versions = git_conflict_versions(root.clone(), file.clone()).unwrap();
+        assert_eq!(versions.base, "one\ntwo\nthree\n");
+        assert_eq!(versions.ours, "one\ntwo (main)\nthree\n");
+        assert_eq!(versions.theirs, "one\nTWO (feature)\nthree\n");
+        assert_eq!(versions.ours_label, "main");
+        assert_eq!(versions.theirs_label, "feature");
+
+        // Resolve, mark resolved (stage), commit.
+        std::fs::write(&file, "one\ntwo (both)\nthree\n").unwrap();
+        git_stage(root.clone(), file.clone()).unwrap();
+        let status = git_status(root.clone()).unwrap();
+        assert!(matches!(status.files[&file].staged, Some(FileStatus::Modified)));
+        git_commit(root.clone(), "Merge feature".into()).unwrap();
+
+        let repo = Repository::open(&dir).unwrap();
+        let head = repo.head().unwrap().peel_to_commit().unwrap();
+        assert_eq!(head.parent_count(), 2);
+        assert_eq!(repo.state(), RepositoryState::Clean);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn aborts_a_merge() {
+        let (dir, file) = conflicted_repo("abort");
+        let root = dir.to_string_lossy().into_owned();
+        git_merge_abort(root.clone()).unwrap();
+        let status = git_status(root).unwrap();
+        assert!(status.operation.is_none());
+        assert!(status.files.is_empty());
+        assert_eq!(std::fs::read_to_string(file).unwrap(), "one\ntwo (main)\nthree\n");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn stages_exact_content() {
+        let (dir, file) = conflicted_repo("hunks");
+        let root = dir.to_string_lossy().into_owned();
+        git_merge_abort(root.clone()).unwrap();
+        // Two changes on disk; stage only the first.
+        std::fs::write(&file, "ONE\ntwo (main)\nTHREE\n").unwrap();
+        git_stage_content(root.clone(), file.clone(), "ONE\ntwo (main)\nthree\n".into()).unwrap();
+        let staged = git_file_diff(root.clone(), file.clone(), true).unwrap();
+        assert_eq!(staged.modified, "ONE\ntwo (main)\nthree\n");
+        let unstaged = git_file_diff(root.clone(), file.clone(), false).unwrap();
+        assert_eq!(unstaged.original, "ONE\ntwo (main)\nthree\n");
+        assert_eq!(unstaged.modified, "ONE\ntwo (main)\nTHREE\n");
+
+        // A new file, staged in part.
+        let new_file = dir.join("new.txt").to_string_lossy().into_owned();
+        std::fs::write(&new_file, "a\nb\n").unwrap();
+        git_stage_content(root.clone(), new_file.clone(), "a\n".into()).unwrap();
+        let status = git_status(root).unwrap();
+        assert!(matches!(status.files[&new_file].staged, Some(FileStatus::Added)));
+        assert!(matches!(status.files[&new_file].unstaged, Some(FileStatus::Modified)));
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// A repo with one commit; returns (dir, root string, file path).
+    fn simple_repo(name: &str) -> (std::path::PathBuf, String, String) {
+        let dir = std::env::temp_dir().join(format!("sable-git-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let dir = dir.canonicalize().unwrap();
+        let file = dir.join("notes.txt");
+        git(&dir, &["init", "-q", "-b", "main"]);
+        std::fs::write(&file, "one\ntwo\nthree\n").unwrap();
+        git(&dir, &["add", "."]);
+        git(&dir, &["commit", "-qm", "base"]);
+        (dir.clone(), dir.to_string_lossy().into_owned(), file.to_string_lossy().into_owned())
+    }
+
+    #[tokio::test]
+    async fn stashes() {
+        let (dir, root, file) = simple_repo("stash");
+        std::fs::write(&file, "one\nTWO\nthree\n").unwrap();
+        std::fs::write(dir.join("new.txt"), "new\n").unwrap();
+        git_stash_save(root.clone(), Some("my work".into()), true).await.unwrap();
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "one\ntwo\nthree\n");
+        assert!(!dir.join("new.txt").exists());
+        let stashes = git_stash_list(root.clone()).unwrap();
+        assert_eq!(stashes.len(), 1);
+        assert!(stashes[0].message.contains("my work"), "{}", stashes[0].message);
+        // Its changes read like a commit's.
+        let files = git_commit_files(root.clone(), stashes[0].hash.clone()).unwrap();
+        assert!(!files.is_empty());
+
+        git_stash_apply(root.clone(), 0, false).await.unwrap();
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "one\nTWO\nthree\n");
+        assert_eq!(git_stash_list(root.clone()).unwrap().len(), 1, "apply keeps it");
+        git(&dir, &["checkout", "--", "."]);
+        std::fs::remove_file(dir.join("new.txt")).unwrap();
+        git_stash_apply(root.clone(), 0, true).await.unwrap();
+        assert!(git_stash_list(root.clone()).unwrap().is_empty(), "pop drops it");
+        git_stash_save(root.clone(), None, true).await.unwrap();
+        git_stash_drop(root.clone(), 0).await.unwrap();
+        assert!(git_stash_list(root.clone()).unwrap().is_empty());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[tokio::test]
+    async fn cherry_picks_and_reverts() {
+        let (dir, root, file) = simple_repo("pick");
+        git(&dir, &["checkout", "-qb", "feature"]);
+        std::fs::write(dir.join("extra.txt"), "extra\n").unwrap();
+        git(&dir, &["add", "."]);
+        Command::new("git")
+            .args(["-c", "user.name=Original Author", "-c", "user.email=original@example.com", "commit", "-qm", "Add extra"])
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        std::fs::write(&file, "one\nTWO (feature)\nthree\n").unwrap();
+        git(&dir, &["commit", "-qam", "Feature edit"]);
+        // (By name: commits made in the same second sort either way.)
+        let (feature_edit, add_extra) = (rev_parse(&dir, "feature"), rev_parse(&dir, "feature~1"));
+        git(&dir, &["checkout", "-q", "main"]);
+        std::fs::write(&file, "one\ntwo (main)\nthree\n").unwrap();
+        git(&dir, &["commit", "-qam", "Main edit"]);
+
+        // A clean pick.
+        git_cherry_pick(root.clone(), add_extra).await.unwrap();
+        assert!(dir.join("extra.txt").exists());
+        let repo = Repository::open(&dir).unwrap();
+        let head = repo.head().unwrap().peel_to_commit().unwrap();
+        assert_eq!(head.summary().ok().flatten(), Some("Add extra"));
+        assert_eq!(head.author().name().ok(), Some("Original Author"));
+
+        // A conflicting pick: resolve, commit — still the original author's
+        // message prefilled and the operation finished.
+        let error = git_cherry_pick(root.clone(), feature_edit).await.unwrap_err();
+        assert!(error.starts_with("Conflicts"), "{error}");
+        let status = git_status(root.clone()).unwrap();
+        assert_eq!(status.operation.as_deref(), Some("cherry-pick"));
+        assert!(status.merge_message.unwrap().contains("Feature edit"));
+        std::fs::write(&file, "one\nTWO (both)\nthree\n").unwrap();
+        git_stage(root.clone(), file.clone()).unwrap();
+        git_commit(root.clone(), "Feature edit".into()).unwrap();
+        assert!(git_status(root.clone()).unwrap().operation.is_none());
+        let head = repo.head().unwrap().peel_to_commit().unwrap();
+        assert_eq!(head.parent_count(), 1);
+        // The conflicting pick, finished by Sable's commit, keeps its
+        // original author (the test identity), whoever commits it.
+        assert_eq!(head.author().name().ok(), Some("Test"));
+
+        // Revert the pick.
+        let head = rev_parse(&dir, "HEAD");
+        git_revert_commit(root.clone(), head).await.unwrap();
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "one\ntwo (main)\nthree\n");
+
+        // Abort a conflicting pick.
+        let error = git_cherry_pick(root.clone(), rev_parse(&dir, "feature")).await.unwrap_err();
+        assert!(error.starts_with("Conflicts"), "{error}");
+        git_abort(root.clone()).await.unwrap();
+        assert!(git_status(root.clone()).unwrap().operation.is_none());
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "one\ntwo (main)\nthree\n");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    fn rev_parse(dir: &Path, name: &str) -> String {
+        let output = Command::new("git").args(["rev-parse", name]).current_dir(dir).output().unwrap();
+        String::from_utf8_lossy(&output.stdout).trim().to_string()
+    }
+}
+
+// --- Stash, cherry-pick, revert ---------------------------------------------
+//
+// These shell out too: `git stash apply` and `git cherry-pick` merge, and
+// leave conflicts for the merge tool exactly as Git users expect.
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StashInfo {
+    /// stash@{index}
+    index: usize,
+    message: String,
+    /// The stash's commit — its changes show like any commit's.
+    hash: String,
+    short_hash: String,
+    /// Unix seconds.
+    timestamp: i64,
+}
+
+#[tauri::command]
+pub fn git_stash_list(root: String) -> Result<Vec<StashInfo>, String> {
+    let mut repo = open_repo(&root)?;
+    let mut found = Vec::new();
+    repo.stash_foreach(|index, message, oid| {
+        found.push((index, message.to_string(), *oid));
+        true
+    })
+    .map_err(|error| format!("Could not list stashes: {error}"))?;
+    Ok(found
+        .into_iter()
+        .map(|(index, message, oid)| {
+            let hash = oid.to_string();
+            StashInfo {
+                index,
+                // "On main: message" / "WIP on main: abc123 summary".
+                message,
+                short_hash: hash[..7].to_string(),
+                timestamp: repo.find_commit(oid).map(|commit| commit.time().seconds()).unwrap_or(0),
+                hash,
+            }
+        })
+        .collect())
+}
+
+/// Stash the working changes (and untracked files, if asked).
+#[tauri::command]
+pub async fn git_stash_save(root: String, message: Option<String>, include_untracked: bool) -> Result<String, String> {
+    let workdir = repo_workdir(&root)?;
+    let mut args = vec!["stash", "push"];
+    if include_untracked {
+        args.push("--include-untracked");
+    }
+    let message = message.filter(|message| !message.trim().is_empty());
+    if let Some(message) = &message {
+        args.extend(["-m", message.as_str()]);
+    }
+    run_git(&workdir, &args).await
+}
+
+/// Apply a stash, keeping it (`pop: false`) or dropping it once applied.
+#[tauri::command]
+pub async fn git_stash_apply(root: String, index: usize, pop: bool) -> Result<String, String> {
+    let workdir = repo_workdir(&root)?;
+    let reference = format!("stash@{{{index}}}");
+    run_git(&workdir, &["stash", if pop { "pop" } else { "apply" }, &reference]).await
+}
+
+#[tauri::command]
+pub async fn git_stash_drop(root: String, index: usize) -> Result<String, String> {
+    let workdir = repo_workdir(&root)?;
+    let reference = format!("stash@{{{index}}}");
+    run_git(&workdir, &["stash", "drop", &reference]).await
+}
+
+/// Apply a commit's change onto the current branch (a new commit).
+#[tauri::command]
+pub async fn git_cherry_pick(root: String, hash: String) -> Result<String, String> {
+    let workdir = repo_workdir(&root)?;
+    run_git(&workdir, &["cherry-pick", &hash]).await
+}
+
+/// Undo a commit with a new commit that reverses it.
+#[tauri::command]
+pub async fn git_revert_commit(root: String, hash: String) -> Result<String, String> {
+    let workdir = repo_workdir(&root)?;
+    run_git(&workdir, &["revert", "--no-edit", &hash]).await
+}
+
+/// Abandon the operation in progress (merge, cherry-pick, revert, rebase).
+#[tauri::command]
+pub async fn git_abort(root: String) -> Result<String, String> {
+    let (workdir, operation) = {
+        let repo = open_repo(&root)?;
+        (repo_workdir(&root)?, operation_name(&repo))
+    };
+    match operation.as_deref() {
+        Some("merge") => git_merge_abort(root).map(|_| String::new()),
+        Some(operation @ ("cherry-pick" | "revert" | "rebase")) => run_git(&workdir, &[operation, "--abort"]).await,
+        _ => Err("Nothing to abort".to_string()),
     }
 }

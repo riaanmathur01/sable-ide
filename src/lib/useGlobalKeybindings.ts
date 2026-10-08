@@ -9,6 +9,8 @@ import { getEditor } from "./editorRegistry";
 import { runActiveFile } from "./runFile";
 import { openFolderDialog } from "./openFolder";
 import { useNavigationStore } from "../store/navigationStore";
+import { useTestStore } from "../store/testStore";
+import { refactor, refactorThis } from "./refactor";
 
 /**
  * App-wide keyboard shortcuts, registered once at the App level in the
@@ -38,6 +40,8 @@ export const KEYBINDINGS: { keys: string; action: string }[] = [
   { keys: "⌘=  /  ⌘-  /  ⌘0", action: "Editor zoom in / out / reset" },
   { keys: "⌥Z", action: "Toggle word wrap" },
   { keys: "F2  /  ⇧F6", action: "Rename symbol (every reference in the project)" },
+  { keys: "⌘[  /  ⌘]", action: "Navigate back / forward (also ⌃- / ⌃⇧- and mouse back/forward buttons)" },
+  { keys: "⌃⇧R  /  ⌃⇧D", action: "Run / debug the test at the cursor" },
   { keys: "⇧ ⇧", action: "Search Everywhere (files, symbols, actions)" },
   { keys: "⌥⌘O  /  ⌘T", action: "Go to symbol in the project" },
   { keys: "⌘F12  /  ⇧⌘O", action: "File structure (go to a symbol in this file)" },
@@ -143,6 +147,13 @@ export function useGlobalKeybindings() {
       if (!(event.metaKey || event.ctrlKey)) return false;
       const key = event.key.toLowerCase();
 
+      // ⌃- / ⌃⇧-: back / forward (VS Code's binding on macOS).
+      if (event.ctrlKey && !event.metaKey && !event.altKey && (event.code === "Minus")) {
+        const navigation = useNavigationStore.getState();
+        void (event.shiftKey ? navigation.goForward() : navigation.goBack());
+        return true;
+      }
+
       // ⌃⇧` — new terminal (VS Code's binding).
       if (event.ctrlKey && event.shiftKey && event.code === "Backquote") {
         useTerminalStore.getState().newTerminal();
@@ -152,6 +163,11 @@ export function useGlobalKeybindings() {
       if (event.shiftKey) {
         // Shift combos: event.key is uppercase/shifted, so match on
         // lowercase key or physical code.
+        // ⌃⇧R / ⌃⇧D: run / debug the test at the cursor (JetBrains).
+        if (event.ctrlKey && !event.metaKey && (event.code === "KeyR" || event.code === "KeyD")) {
+          void useTestStore.getState().atCursor(event.code === "KeyD");
+          return true;
+        }
         switch (key) {
           case "f":
             ui.setSidebarView("search");
@@ -187,6 +203,18 @@ export function useGlobalKeybindings() {
       }
 
       if (event.altKey) {
+        // ⌥⌘V / ⌥⌘M / ⌥⌘C / ⌥⌘N: extract variable / method / constant,
+        // inline (JetBrains). Only in the editor — elsewhere ⌥⌘C etc.
+        // mean nothing to Sable, so leave them to the system.
+        if (event.metaKey && !event.ctrlKey && inEditor(event)) {
+          const refactoring = ({ KeyV: "extractVariable", KeyM: "extractMethod", KeyC: "extractConstant", KeyN: "inline" } as const)[
+            event.code as "KeyV" | "KeyM" | "KeyC" | "KeyN"
+          ];
+          if (refactoring) {
+            void refactor(refactoring);
+            return true;
+          }
+        }
         // ⌥ changes event.key on macOS (⌥B = "∫"), so match the code.
         // ⌥⌘B: Go to Implementation (JetBrains); the agent panel moved
         // to ⌥⌘A.
@@ -214,6 +242,12 @@ export function useGlobalKeybindings() {
           return true;
         }
         return false;
+      }
+
+      // ⌃T: Refactor This (JetBrains, macOS — elsewhere Ctrl is ⌘).
+      if (event.ctrlKey && !event.metaKey && event.code === "KeyT" && isMacPlatform() && inEditor(event)) {
+        refactorThis();
+        return true;
       }
 
       if (/^[1-9]$/.test(event.key)) {
@@ -258,6 +292,13 @@ export function useGlobalKeybindings() {
         case "\\":
           void tabs.splitRight();
           return true;
+        case "[":
+          // ⌘[ / ⌘]: back / forward (JetBrains' macOS binding).
+          void useNavigationStore.getState().goBack();
+          return true;
+        case "]":
+          void useNavigationStore.getState().goForward();
+          return true;
         case "l":
           ui.focusAgent();
           return true;
@@ -294,13 +335,32 @@ export function useGlobalKeybindings() {
       otherKeySinceShift = false;
     }
 
+    // Mouse back/forward buttons.
+    function onMouseUp(event: MouseEvent) {
+      if (event.button !== 3 && event.button !== 4) return;
+      event.preventDefault();
+      const navigation = useNavigationStore.getState();
+      void (event.button === 3 ? navigation.goBack() : navigation.goForward());
+    }
+
     window.addEventListener("keydown", onKeyDown, { capture: true });
+    window.addEventListener("mouseup", onMouseUp, { capture: true });
     window.addEventListener("keydown", onShiftKeyDown, { capture: true });
     window.addEventListener("keyup", onShiftKeyUp, { capture: true });
     return () => {
       window.removeEventListener("keydown", onKeyDown, { capture: true });
+      window.removeEventListener("mouseup", onMouseUp, { capture: true });
       window.removeEventListener("keydown", onShiftKeyDown, { capture: true });
       window.removeEventListener("keyup", onShiftKeyUp, { capture: true });
     };
   }, []);
+}
+
+/** Whether the key went to a code editor (not the terminal, a text box, …). */
+function inEditor(event: KeyboardEvent): boolean {
+  return event.target instanceof Element && !!event.target.closest(".monaco-editor");
+}
+
+function isMacPlatform(): boolean {
+  return /mac/i.test(navigator.userAgent);
 }

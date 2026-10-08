@@ -3,6 +3,7 @@ import {
   Check,
   Download,
   GitBranch,
+  GitMerge,
   Plus,
   Trash2,
   Upload,
@@ -24,6 +25,7 @@ export function BranchPicker({ onClose }: { onClose: () => void }) {
   const switchBranch = useGitStore((state) => state.switchBranch);
   const createBranch = useGitStore((state) => state.createBranch);
   const deleteBranch = useGitStore((state) => state.deleteBranch);
+  const merge = useGitStore((state) => state.merge);
   const fetch = useGitStore((state) => state.fetch);
   const pull = useGitStore((state) => state.pull);
   const push = useGitStore((state) => state.push);
@@ -104,6 +106,19 @@ export function BranchPicker({ onClose }: { onClose: () => void }) {
             </span>
             <GitBranch size={13} strokeWidth={1.5} className="branch-icon" />
             <span className="branch-name">{branch.name}</span>
+            {!branch.isCurrent && (
+              <button
+                className="branch-delete branch-merge"
+                title={`Merge ${branch.name} into the current branch`}
+                disabled={isSyncing}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void merge(branch.name);
+                }}
+              >
+                <GitMerge size={12} strokeWidth={1.5} />
+              </button>
+            )}
             {!branch.isCurrent && (
               <button
                 className="branch-delete"

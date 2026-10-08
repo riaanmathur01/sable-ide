@@ -11,7 +11,8 @@ push/pull/fetch, and the AI agent when you message it).
 - **Editor** — Monaco with tabs, a minimap (with errors, search matches
   and breakpoints marked), split editor (up to three groups),
   auto-save, format on save, bracket-pair colors, sticky scroll, font
-  zoom, and session restore. JetBrains Mono is bundled; the font picker
+  zoom, Back/Forward through the places you've been (⌘[ / ⌘], ⌃- / ⌃⇧-,
+  mouse side buttons), and session restore. JetBrains Mono is bundled; the font picker
   lists every monospace font installed on your machine.
 - **Highlighting** — the same TextMate grammars VS Code uses (via
   [Shiki](https://shiki.style)), plus semantic highlighting from the
@@ -26,8 +27,16 @@ push/pull/fetch, and the AI agent when you message it).
   create/rename/delete/drag-to-move and a live file watcher.
 - **Search** — project-wide content + file-name search and replace
   (ripgrep engine), with case/word/regex options.
+- **Formatting** — Format Document (⇧⌥F) and format on save for every
+  supported language: Go, Rust, C/C++ and Java through their language
+  servers (gofmt, rustfmt, clang-format, Eclipse's formatter), Python
+  through Ruff (from your venv, PATH, or one-click install) or Black, and
+  TS/JS, JSON, CSS and HTML built in.
 - **Terminal** — real PTY shells (xterm.js), several at once; ⌘R runs the
   active file.
+- **Run configurations** — per-file program arguments, environment
+  variables and working directory (the sliders button next to Run, or
+  "Run: Edit Configuration…"), used by both Run and Debug.
 - **Language intelligence** — squiggles, a Problems panel, quick fixes
   (⌘.), completions, hover, go-to-definition, and signature help over LSP:
   Python (basedpyright or Pyright), TypeScript/JavaScript
@@ -48,6 +57,15 @@ push/pull/fetch, and the AI agent when you message it).
   Rust, Go, C and C++. CSS, SCSS, Less and HTML use Monaco's built-in
   rename; other languages (Kotlin, PHP, Ruby, C#, …) rename within the
   file, skipping strings and comments.
+- **Refactorings** (JetBrains shortcuts) — Extract Variable (⌥⌘V),
+  Extract Method (⌥⌘M), Extract Constant (⌥⌘C), Inline (⌥⌘N), and
+  Refactor This (⌃T) for everything available at the cursor. An
+  extraction then renames the new name in place. Go, Rust, C/C++, Java
+  and TypeScript/JavaScript refactor through their language servers;
+  Python through [Rope](https://github.com/python-rope/rope) (installed
+  into Sable's tools folder on first use), with two safety nets: an
+  inlined value keeps its meaning (`x = 2 + 3; x * 2` → `(2 + 3) * 2`),
+  and a result that doesn't parse is refused.
 - **Debugger** — breakpoints (saved per project, and they follow your
   edits), continue/step/pause, call stack, variables, debug console, and
   stop on uncaught exceptions, for:
@@ -60,11 +78,37 @@ push/pull/fetch, and the AI agent when you message it).
   | Java | java-debug inside jdtls | one-click install |
   | C, C++, Rust | lldb-dap | Xcode Command Line Tools / rustup |
 
+  Programs being debugged run in a terminal tab, so they can read
+  keyboard input (`input()`, `scanf`, `bufio.Reader`, …).
+
   C, C++, and Rust files are compiled with debug info first (Cargo
   projects build with `cargo build`). TypeScript runs directly on Node 22.18+
   (type stripping keeps line numbers, so no source maps are needed).
+- **Tests** — "▶ Run | Debug" above every test, with ✓/✗ from the last
+  run, and a Tests panel (rerun, rerun failed, failure details) for
+  pytest, Vitest, Jest, Go, Cargo and JUnit (Maven/Gradle). ⌃⇧R / ⌃⇧D
+  run or debug the test at the cursor — debugging works for every one of
+  them (Java tests: Maven/Gradle start the test JVM, which connects to
+  Sable, and java-debug attaches through it).
 - **Git** — status, stage/commit, diffs, history, blame, branches,
-  push/pull/fetch.
+  push/pull/fetch, and:
+  - **partial commits** — "Stage hunk" / "Unstage hunk" above each change
+    in a diff, so one file's changes can go into different commits;
+  - **merges** — merge a branch from the branch picker; conflicts get
+    "Accept Current | Accept Incoming | Accept Both" in the editor and a
+    three-way merge tool (current / result / incoming). Commits made
+    during a merge record both parents; a merge can be aborted;
+  - **stash** — stash changes (with a message, optionally new files too),
+    see a stash's files and diffs, apply / pop / drop;
+  - **cherry-pick and revert** — the History view shows any branch's
+    commits; right-click one to cherry-pick it onto the current branch
+    (keeping its author) or revert it. Conflicts go to the merge tool.
+- **Local history** — every version Sable saves of a file is kept
+  (also the original before your first save, and a file's contents when
+  it's deleted), git or not: right-click a file → Local History to compare
+  any version with the current one and revert; "Local History: Recover
+  Deleted File…" brings deleted files back. Up to 100 versions per file
+  for 30 days; rapid auto-saves merge into one version per minute.
 - **AI agent** — a chat panel (⌘L) that can read, search, and edit your
   code, run commands, and use git and the GitHub CLI. Replies stream in;
   chats are saved per project, and you can keep several. Works with
@@ -78,7 +122,9 @@ push/pull/fetch, and the AI agent when you message it).
 - **Node.js** 18+ and npm
 - macOS: Xcode Command Line Tools (`xcode-select --install`)
 - Optional, per language (Sable tells you what's missing and how to get
-  it): `npm install -g pyright typescript-language-server typescript`,
+  it): `npm install -g pyright`, the TypeScript server (“TypeScript:
+  Install Language Server” in the command palette — it pins TypeScript 5,
+  as TypeScript 7 lacks the `tsserver` the server needs),
   `brew install jdtls`, `rustup component add rust-analyzer`,
   `brew install go delve` (gopls: `go install golang.org/x/tools/gopls@latest`).
   clangd and lldb-dap come with the Xcode Command Line Tools.
@@ -190,9 +236,14 @@ essentials:
 | `⌘L` | Ask the AI agent |
 | `⌘S` | Save (auto-save also runs after typing stops) |
 | `⌘R` | Run the active file in the terminal |
+| `⇧⌥F` | Format document |
+| `⌘[` / `⌘]` | Back / forward |
+| `⌃⇧R` / `⌃⇧D` | Run / debug the test at the cursor |
 | `⌘\` | Split editor right |
 | `⌘.`, `F8` | Quick fix, next problem |
 | `F2` / `⇧F6` | Rename symbol (project-wide) |
+| `⌃T` | Refactor This |
+| `⌥⌘V` / `⌥⌘M` / `⌥⌘C` / `⌥⌘N` | Extract variable / method / constant, inline |
 | `⌘J` | Toggle the bottom panel (terminal / debug console) |
 | `⌘B` / `⌥⌘A` | Toggle sidebar / agent panel |
 | `⇧⇧` | Search Everywhere |
@@ -205,7 +256,7 @@ essentials:
 ## Testing
 
 ```sh
-cd src-tauri && cargo test --lib   # shell runner, search, AI streaming, debugger
+cd src-tauri && cargo test --lib   # shell runner, search, AI streaming, debugger, git
 npx tsc --noEmit                    # type-check the frontend
 ```
 
@@ -217,7 +268,54 @@ variables:
 - `SABLE_TEST_PYTHON=/path/to/python` — an interpreter with debugpy
 - `SABLE_TEST_INSTALL_JS_DEBUG=1`, `SABLE_TEST_INSTALL_JAVA_DEBUG=1` —
   download js-debug / java-debug into Sable's tools folder first
+- `SABLE_TEST_PYTEST_PYTHON=/path/to/python` — an interpreter with pytest
+  and debugpy (debugging a single pytest test)
+- `SABLE_TEST_VITEST_DIR=/path/to/project` — a project with Vitest in
+  `node_modules` (debugging a single Vitest test)
+- `SABLE_TEST_INSTALL_RUFF=1` — download Ruff for the formatter test
+- `SABLE_TEST_INSTALL_ROPE=1` — install Rope for the Python refactoring test
+- `SABLE_TEST_INSTALL_TS_SERVER=1` — install the TypeScript server
+- `SABLE_TEST_MAVEN=/path/to/mvn`, `SABLE_TEST_GRADLE=/path/to/gradle` —
+  debugging a single JUnit test
 
-## Bundle size
+**UI tests against the real backend.** `src-tauri/src/ui_bridge.rs` serves
+the backend's commands (files, git, shell, local history, refactoring)
+over local HTTP:
 
-Reported after the first production build (Phase 5).
+```sh
+SABLE_UI_BRIDGE_PORT=1531 cargo test --lib ui_bridge -- --ignored
+```
+
+so the frontend can run in Chrome (`npx vite --port 1530`), driven by a
+script (e.g. puppeteer) that forwards `invoke()` to it and stands in for
+what needs the app window (terminals, language servers).
+
+## Installers and updates
+
+`npm run tauri build` builds installers for the machine you're on
+(`src-tauri/target/release/bundle/`): a `.dmg` and `.app` on macOS, an
+`.msi` and NSIS `.exe` on Windows, `.deb`, `.rpm` and `.AppImage` on
+Linux.
+
+**Releases.** Pushing a version tag builds all of them on GitHub Actions
+(`.github/workflows/release.yml`) — macOS (Apple silicon and Intel),
+Windows and Linux — into a draft release:
+
+```sh
+# bump "version" in package.json, src-tauri/Cargo.toml, src-tauri/tauri.conf.json
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+Publish the draft and installed copies of Sable offer the update
+(“Check for Updates…”, and a status-bar note on startup). Updates are
+signed: the workflow needs the `TAURI_SIGNING_PRIVATE_KEY` secret (the
+private key matching the public key in `tauri.conf.json`); without it
+the installers build but can't update themselves.
+
+**Code signing** (optional, but without it users see a warning once):
+macOS needs an Apple Developer ID certificate and notarization (secrets
+listed at the top of the workflow); Windows, a code-signing certificate.
+
+The app icon's source is `src-tauri/icons-source/icon.html` (rendered to
+`icon.png`); `npx tauri icon src-tauri/icons-source/icon.png` regenerates
+every size.

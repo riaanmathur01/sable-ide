@@ -1,0 +1,28 @@
+/* Conflict regions in an editor (see conflictEditor.ts). Green: the
+   current branch; blue: the incoming one; grey: the common ancestor. */
+.monaco-editor .conflict-marker {
+  background: color-mix(in srgb, var(--text-muted) 16%, transparent);
+}
+.monaco-editor .conflict-marker-ours {
+  background: color-mix(in srgb, #3fb950 30%, transparent);
+}
+.monaco-editor .conflict-marker-theirs {
+  background: color-mix(in srgb, #4f8fe6 30%, transparent);
+}
+.monaco-editor .conflict-ours {
+  background: color-mix(in srgb, #3fb950 13%, transparent);
+}
+.monaco-editor .conflict-theirs {
+  background: color-mix(in srgb, #4f8fe6 13%, transparent);
+}
+.monaco-editor .conflict-base {
+  background: color-mix(in srgb, var(--text-muted) 9%, transparent);
+}
+
+/* The merge tool's side panes: what each side changed from the base. */
+.monaco-editor .merge-changed-ours {
+  background: color-mix(in srgb, #3fb950 14%, transparent);
+}
+.monaco-editor .merge-changed-theirs {
+  background: color-mix(in srgb, #4f8fe6 14%, transparent);
+}

@@ -80,6 +80,18 @@ export function resizeTerminal(
   return invoke<void>("resize_terminal", { id, cols, rows });
 }
 
+/** A terminal running one program (not a shell); resolves to its pid. */
+export function createCommandTerminal(
+  id: string,
+  args: string[],
+  cwd: string | null,
+  env: Record<string, string | null> | null,
+  cols: number,
+  rows: number,
+): Promise<number> {
+  return invoke<number>("create_command_terminal", { id, args, cwd, env, cols, rows });
+}
+
 export function killTerminal(id: string): Promise<void> {
   return invoke<void>("kill_terminal", { id });
 }
@@ -89,7 +101,8 @@ export type GitFileStatus =
   | "added"
   | "untracked"
   | "deleted"
-  | "renamed";
+  | "renamed"
+  | "conflicted";
 
 /** A file's status split into staged (index) and unstaged (working tree). */
 export interface GitFileEntry {
@@ -103,6 +116,10 @@ export interface GitStatus {
   branch: string | null;
   /** Absolute file path → split status, matching file-tree node keys. */
   files: Record<string, GitFileEntry>;
+  /** An operation the next commit finishes ("merge", "cherry-pick", …). */
+  operation: string | null;
+  /** Git's prepared message for it (MERGE_MSG). */
+  mergeMessage: string | null;
 }
 
 /** Read git status for the workspace; non-repo folders return isRepo:false. */
@@ -158,8 +175,9 @@ export function gitLog(
   root: string,
   limit: number,
   skip: number,
+  branch: string | null = null,
 ): Promise<CommitInfo[]> {
-  return invoke<CommitInfo[]>("git_log", { root, limit, skip });
+  return invoke<CommitInfo[]>("git_log", { root, limit, skip, branch });
 }
 
 /** Files changed by a commit (vs its first parent). */
@@ -197,6 +215,86 @@ export function gitUnstageAll(root: string): Promise<void> {
 
 export function gitCommit(root: string, message: string): Promise<void> {
   return invoke<void>("git_commit", { root, message });
+}
+
+// --- Local history ---------------------------------------------------------
+
+export interface HistorySnapshot {
+  id: string;
+  /** Unix milliseconds. */
+  timestamp: number;
+  /** "Saved", "Deleted", "Before first save". */
+  label: string;
+  size: number;
+}
+
+export function historyList(path: string): Promise<HistorySnapshot[]> {
+  return invoke<HistorySnapshot[]>("history_list", { path });
+}
+
+export function historyRead(path: string, id: string): Promise<string> {
+  return invoke<string>("history_read", { path, id });
+}
+
+export function historyDeletedFiles(root: string): Promise<{ path: string; deletedAt: number }[]> {
+  return invoke("history_deleted_files", { root });
+}
+
+/** Stage exactly `content` as the file's next-commit version (hunks). */
+export function gitStageContent(root: string, file: string, content: string): Promise<void> {
+  return invoke<void>("git_stage_content", { root, file, content });
+}
+
+export interface ConflictVersions {
+  base: string;
+  ours: string;
+  theirs: string;
+  oursLabel: string;
+  theirsLabel: string;
+}
+
+export function gitConflictVersions(root: string, file: string): Promise<ConflictVersions> {
+  return invoke<ConflictVersions>("git_conflict_versions", { root, file });
+}
+
+export function gitMerge(root: string, branch: string): Promise<string> {
+  return invoke<string>("git_merge", { root, branch });
+}
+
+export interface StashInfo {
+  index: number;
+  message: string;
+  hash: string;
+  shortHash: string;
+  timestamp: number;
+}
+
+export function gitStashList(root: string): Promise<StashInfo[]> {
+  return invoke<StashInfo[]>("git_stash_list", { root });
+}
+
+export function gitStashSave(root: string, message: string | null, includeUntracked: boolean): Promise<string> {
+  return invoke<string>("git_stash_save", { root, message, includeUntracked });
+}
+
+export function gitStashApply(root: string, index: number, pop: boolean): Promise<string> {
+  return invoke<string>("git_stash_apply", { root, index, pop });
+}
+
+export function gitStashDrop(root: string, index: number): Promise<string> {
+  return invoke<string>("git_stash_drop", { root, index });
+}
+
+export function gitCherryPick(root: string, hash: string): Promise<string> {
+  return invoke<string>("git_cherry_pick", { root, hash });
+}
+
+export function gitRevertCommit(root: string, hash: string): Promise<string> {
+  return invoke<string>("git_revert_commit", { root, hash });
+}
+
+export function gitAbort(root: string): Promise<string> {
+  return invoke<string>("git_abort", { root });
 }
 
 export function gitSetIdentity(name: string, email: string): Promise<void> {
@@ -326,6 +424,10 @@ export function lspSetPythonPath(path: string | null): Promise<void> {
 }
 
 /** Install basedpyright into Sable's tools folder (semantic highlighting). */
+export function installTypeScriptServer(): Promise<void> {
+  return invoke<void>("install_typescript_server");
+}
+
 export function installBasedpyright(): Promise<void> {
   return invoke<void>("install_basedpyright");
 }

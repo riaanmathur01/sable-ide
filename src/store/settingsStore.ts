@@ -63,6 +63,7 @@ export interface Settings {
   "ai.includeEditorContext": boolean;
   "ai.customInstructions": string;
   "ai.quickFixes": boolean;
+  "updates.checkOnStartup": boolean;
 }
 
 export type SettingKey = keyof Settings;
@@ -148,6 +149,7 @@ export const SETTINGS_SCHEMA: SettingSpec[] = [
   { key: "ai.commandTimeout", section: "AI Agent", type: "number", min: 5, max: 1800, label: "Command Timeout (s)", description: "Commands the agent runs are killed after this long.", default: 120 },
   { key: "ai.includeEditorContext", section: "AI Agent", type: "boolean", label: "Include Editor Context", description: "Send the active file, cursor, selection, and open tabs with each message.", default: true },
   { key: "ai.quickFixes", section: "AI Agent", type: "boolean", label: "Agent Quick Fixes", description: "Offer “Fix with Agent” and “Explain with Agent” in the quick-fix menu (lightbulb or ⌘.) for every error and warning.", default: true },
+  { key: "updates.checkOnStartup", section: "Updates", type: "boolean", label: "Check for Updates on Startup", description: "Look for a newer Sable when it starts, and say so in the status bar. “Check for Updates” in the command palette installs it.", default: true },
   { key: "ai.customInstructions", section: "AI Agent", type: "string", multiline: true, placeholder: "e.g. Prefer functional components. Always add tests.", label: "Custom Instructions", description: "Extra guidance appended to the agent's system prompt.", default: "" },
 ];
 

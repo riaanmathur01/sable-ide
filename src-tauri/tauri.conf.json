@@ -28,12 +28,41 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
+    "category": "DeveloperTool",
+    "shortDescription": "A fast, minimal code editor",
+    "longDescription": "Sable is a fast, minimal IDE: Monaco editing, language servers, a debugger, tests, Git and an AI agent.",
+    "copyright": "\u00a9 2026 Riaan Mathur",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "minimumSystemVersion": "11.0"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDg2QTI0QzFGNzM3ODMyMTMKUldRVE1uaHpIMHlpaHNPNGpGaE0xM3ZEK0QvWnlWT1RsZmFKaUdZMnZmdms0VW1rdkZ2TlFZdWYK",
+      "endpoints": [
+        "https://github.com/riaanmathur01/sable-ide/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

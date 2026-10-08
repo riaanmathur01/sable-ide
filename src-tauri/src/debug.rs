@@ -82,6 +82,11 @@ pub enum Transport {
     /// An adapter already listening on this local port (Java: jdtls
     /// starts it).
     Tcp(u16),
+    /// Sable listens; the adapter is started in a terminal tab and dials
+    /// in (`--client-addr`). The program it launches inherits that
+    /// terminal, so it can read keyboard input (Delve has no
+    /// runInTerminal of its own).
+    TerminalDialIn,
 }
 
 /// Everything needed to start debugging one program.
@@ -110,6 +115,60 @@ struct SessionShared {
     connections: Mutex<Vec<mpsc::UnboundedSender<String>>>,
     /// `seq` for requests Rust originates.
     seq: AtomicI64,
+    /// runInTerminal requests waiting for the frontend to start the
+    /// program: id → (the asking connection, the request).
+    pending_terminals: Mutex<HashMap<u64, (mpsc::UnboundedSender<String>, Value)>>,
+    next_terminal: AtomicI64,
+}
+
+/// How to run the program: arguments, environment, working directory,
+/// and whether it gets a terminal (so it can read keyboard input).
+#[derive(Default, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct RunOptions {
+    pub args: Vec<String>,
+    pub env: HashMap<String, String>,
+    pub cwd: Option<String>,
+    pub terminal: bool,
+    /// C/C++/Rust: debug this already-built executable instead of
+    /// building the file (e.g. a Cargo test binary).
+    pub binary: Option<String>,
+    /// Merged into the launch configuration last; a null value removes a
+    /// key. E.g. debugging one test: `{"module": "pytest", "program":
+    /// null, "args": [...]}` or Delve's `{"mode": "test", …}`.
+    pub overrides: Option<Value>,
+}
+
+/// Apply run options to a launch configuration, in each adapter's terms.
+fn apply_run_options(launch: &mut Value, adapter_id: &str, options: &RunOptions) {
+    if let Some(cwd) = options.cwd.as_ref().filter(|cwd| !cwd.is_empty()) {
+        launch["cwd"] = json!(cwd);
+    }
+    if !options.args.is_empty() {
+        launch["args"] = json!(options.args);
+    }
+    if !options.env.is_empty() {
+        launch["env"] = if adapter_id == "lldb-dap" {
+            // lldb-dap takes "NAME=value" strings.
+            json!(options.env.iter().map(|(name, value)| format!("{name}={value}")).collect::<Vec<_>>())
+        } else {
+            json!(options.env)
+        };
+    }
+    if options.terminal {
+        match adapter_id {
+            "lldb-dap" => launch["runInTerminal"] = json!(true),
+            _ => launch["console"] = json!("integratedTerminal"),
+        }
+        if let Some(object) = launch.as_object_mut() {
+            // Output goes to the terminal, not (also) the debug console.
+            object.remove("outputCapture");
+            object.insert("redirectOutput".into(), json!(false));
+        }
+        if adapter_id != "debugpy" {
+            launch.as_object_mut().map(|object| object.remove("redirectOutput"));
+        }
+    }
 }
 
 pub struct DebugSession {
@@ -225,6 +284,34 @@ pub async fn prepare_launch(
     program: &str,
     cwd: &str,
     python: Option<&str>,
+    options: &RunOptions,
+) -> Result<LaunchPlan, String> {
+    let mut plan = plan_launch(events, program, cwd, python, options.binary.as_deref()).await?;
+    apply_run_options(&mut plan.launch, plan.adapter_id, options);
+    if let (Some(launch), Some(Value::Object(overrides))) = (plan.launch.as_object_mut(), &options.overrides) {
+        for (key, value) in overrides {
+            if value.is_null() {
+                launch.remove(key);
+            } else {
+                launch.insert(key.clone(), value.clone());
+            }
+        }
+    }
+    if options.terminal && plan.adapter_id == "go" {
+        plan.transport = Transport::TerminalDialIn;
+        if let Some(object) = plan.launch.as_object_mut() {
+            object.remove("console");
+        }
+    }
+    Ok(plan)
+}
+
+async fn plan_launch(
+    events: &dyn DebugEvents,
+    program: &str,
+    cwd: &str,
+    python: Option<&str>,
+    prebuilt: Option<&str>,
 ) -> Result<LaunchPlan, String> {
     let language = debug_language(program).ok_or_else(|| {
         "Debugging supports Python, JavaScript/TypeScript, Go, C, C++, and Rust files".to_string()
@@ -279,8 +366,23 @@ pub async fn prepare_launch(
          (`xcode-select --install`) or LLVM (`brew install llvm`)"
             .to_string()
     })?;
+    let binary = match (language, prebuilt) {
+        (_, Some(prebuilt)) => PathBuf::from(prebuilt),
+        _ => build_native(events, language, program, program_path, cwd_path).await?,
+    };
+    native_plan(events, adapter, binary, cwd)
+}
+
+/// Compile a C/C++/Rust file (or its Cargo project) with debug info.
+async fn build_native(
+    events: &dyn DebugEvents,
+    language: &str,
+    program: &str,
+    program_path: &Path,
+    cwd_path: &Path,
+) -> Result<PathBuf, String> {
     console_output(events, "console", "Building with debug info…");
-    let binary = match language {
+    Ok(match language {
         "c" | "cpp" => {
             let compiler = if language == "c" { "clang" } else { "clang++" };
             let compiler = resolve_binary(compiler)
@@ -334,7 +436,11 @@ pub async fn prepare_launch(
                 output
             }
         }
-    };
+    })
+}
+
+/// lldb-dap on a built executable.
+fn native_plan(events: &dyn DebugEvents, adapter: PathBuf, binary: PathBuf, cwd: &str) -> Result<LaunchPlan, String> {
     console_output(events, "console", &format!("Debugging {}", binary.display()));
     Ok(LaunchPlan {
         adapter: Some(Adapter { program: adapter, args: vec![], extra_path: vec![] }),
@@ -605,6 +711,26 @@ where
                                 }
                             }
                         });
+                    } else if message["command"] == "runInTerminal" {
+                        // The frontend starts it in a terminal tab and
+                        // answers with the process id (complete_terminal).
+                        let id = reader_shared.next_terminal.fetch_add(1, Ordering::SeqCst) as u64;
+                        let arguments = message["arguments"].clone();
+                        reader_shared
+                            .pending_terminals
+                            .lock()
+                            .unwrap()
+                            .insert(id, (reader_sender.clone(), message));
+                        reader_shared.events.emit(
+                            "debug:run-in-terminal",
+                            json!({
+                                "id": id,
+                                "args": arguments["args"],
+                                "cwd": arguments["cwd"],
+                                "env": arguments["env"],
+                                "title": arguments["title"],
+                            }),
+                        );
                     } else {
                         let _ = reader_sender.send(response(
                             &message,
@@ -647,7 +773,8 @@ where
                 "columnsStartAt1": true,
                 "pathFormat": "path",
                 "supportsVariableType": true,
-                "supportsRunInTerminalRequest": false,
+                // Programs run in a Sable terminal so they can read input.
+                "supportsRunInTerminalRequest": true,
                 // js-debug runs targets as child sessions.
                 "supportsStartDebuggingRequest": true,
             }),
@@ -695,6 +822,52 @@ pub async fn start_session(
     plan: LaunchPlan,
     breakpoints: HashMap<String, Vec<i64>>,
 ) -> Result<DebugSession, String> {
+    // The adapter runs in a terminal tab and dials in to us.
+    if matches!(plan.transport, Transport::TerminalDialIn) {
+        let adapter = plan.adapter.as_ref().ok_or("no debug adapter")?;
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .map_err(|error| format!("Could not listen for the debugger: {error}"))?;
+        let address = listener.local_addr().map_err(|error| error.to_string())?;
+        let mut args = vec![adapter.program.to_string_lossy().into_owned()];
+        args.extend(adapter.args.iter().filter(|arg| !arg.starts_with("--listen")).cloned());
+        args.extend(["--client-addr".to_string(), address.to_string()]);
+        let mut env = serde_json::Map::new();
+        if !adapter.extra_path.is_empty() {
+            let mut paths = adapter.extra_path.clone();
+            if let Some(existing) = std::env::var_os("PATH") {
+                paths.extend(std::env::split_paths(&existing));
+            }
+            if let Ok(joined) = std::env::join_paths(paths) {
+                env.insert("PATH".into(), json!(joined.to_string_lossy()));
+            }
+        }
+        // id 0: nothing waits for the process id.
+        events.emit(
+            "debug:run-in-terminal",
+            json!({ "id": 0, "args": args, "cwd": plan.launch["cwd"], "env": env, "title": "Debug" }),
+        );
+        let (stream, _) = tokio::time::timeout(Duration::from_secs(60), listener.accept())
+            .await
+            .map_err(|_| format!("{} didn't connect", plan.adapter_id))?
+            .map_err(|error| format!("{} didn't connect: {error}", plan.adapter_id))?;
+        let shared = Arc::new(SessionShared {
+            events,
+            breakpoints: Mutex::new(breakpoints),
+            exception_filters: plan.exception_filters,
+            adapter_id: plan.adapter_id,
+            address: None,
+            connections: Mutex::new(Vec::new()),
+            seq: AtomicI64::new(1),
+            pending_terminals: Mutex::new(HashMap::new()),
+            next_terminal: AtomicI64::new(1),
+        });
+        let request_command = plan.launch["request"].as_str().unwrap_or("launch").to_string();
+        let (read_half, write_half) = stream.into_split();
+        open_connection(shared.clone(), read_half, write_half, request_command, plan.launch, true).await?;
+        return Ok(DebugSession { child: None, shared });
+    }
+
     let mut child = match &plan.adapter {
         Some(adapter) => {
             let mut command = Command::new(&adapter.program);
@@ -724,6 +897,7 @@ pub async fn start_session(
     let address = match &plan.transport {
         Transport::Stdio => None,
         Transport::Tcp(port) => Some(format!("127.0.0.1:{port}")),
+        Transport::TerminalDialIn => unreachable!("handled above"),
         Transport::TcpFromOutput => {
             let stdout = child
                 .as_mut()
@@ -741,6 +915,8 @@ pub async fn start_session(
         address: address.clone(),
         connections: Mutex::new(Vec::new()),
         seq: AtomicI64::new(1),
+        pending_terminals: Mutex::new(HashMap::new()),
+        next_terminal: AtomicI64::new(1),
     });
     let request_command = plan.launch["request"].as_str().unwrap_or("launch").to_string();
 
@@ -782,6 +958,29 @@ impl DebugSession {
             .map_err(|error| format!("Failed to send {command}: {error}"))
     }
 
+    /// Answer a runInTerminal request: the program started (with its
+    /// process id) or couldn't.
+    pub fn complete_terminal(&self, id: u64, process_id: Option<u32>, error: Option<String>) {
+        let Some((sender, request)) = self.shared.pending_terminals.lock().unwrap().remove(&id) else {
+            return;
+        };
+        let mut reply = json!({
+            "seq": 0,
+            "type": "response",
+            "request_seq": request["seq"],
+            "command": "runInTerminal",
+            "success": error.is_none(),
+            "body": {},
+        });
+        if let Some(pid) = process_id {
+            reply["body"]["processId"] = json!(pid);
+        }
+        if let Some(message) = error {
+            reply["message"] = json!(message);
+        }
+        let _ = sender.send(reply.to_string());
+    }
+
     /// Ask every connection to disconnect+terminate, then stop the adapter.
     pub async fn shutdown(mut self) {
         let connections: Vec<_> = self.shared.connections.lock().unwrap().iter().rev().cloned().collect();
@@ -808,12 +1007,13 @@ pub async fn start_debug(
     cwd: String,
     python: Option<String>,
     breakpoints: HashMap<String, Vec<i64>>,
+    options: Option<RunOptions>,
 ) -> Result<(), String> {
     // Tear down any previous session first.
     if let Some(old) = manager.0.lock().await.take() {
         old.shutdown().await;
     }
-    let plan = prepare_launch(&app, &program, &cwd, python.as_deref()).await?;
+    let plan = prepare_launch(&app, &program, &cwd, python.as_deref(), &options.unwrap_or_default()).await?;
     let session = start_session(Arc::new(app.clone()), plan, breakpoints).await?;
     *manager.0.lock().await = Some(session);
     Ok(())
@@ -835,6 +1035,20 @@ pub async fn start_java_debug(
     }
     let session = start_session(Arc::new(app.clone()), java_plan(port, launch), breakpoints).await?;
     *manager.0.lock().await = Some(session);
+    Ok(())
+}
+
+/// The frontend started a runInTerminal program (or couldn't).
+#[tauri::command]
+pub async fn debug_terminal_started(
+    manager: State<'_, DebugManager>,
+    id: u64,
+    process_id: Option<u32>,
+    error: Option<String>,
+) -> Result<(), String> {
+    if let Some(session) = manager.0.lock().await.as_ref() {
+        session.complete_terminal(id, process_id, error);
+    }
     Ok(())
 }
 
@@ -896,6 +1110,62 @@ pub async fn install_js_debug() -> Result<(), String> {
         return Err("Could not unpack js-debug".to_string());
     }
     Ok(())
+}
+
+// --- Debugging a JVM started by a build tool (Java tests) ---------------------
+//
+// Maven/Gradle start the test JVM themselves. Rather than have it listen
+// on a fixed port (and guess when it's up — Surefire hides its "Listening"
+// line), the JVM connects *to Sable* (`server=n`) as soon as it starts.
+// Sable then relays that connection to java-debug, which attaches to the
+// relay as if to the JVM.
+
+/// Listeners waiting for a test JVM, by port.
+static JVM_LISTENERS: std::sync::LazyLock<Mutex<HashMap<u16, tokio::net::TcpListener>>> =
+    std::sync::LazyLock::new(Default::default);
+
+/// Start waiting for a JVM; returns the port for its
+/// `-agentlib:jdwp=transport=dt_socket,server=n,address=localhost:<port>`.
+#[tauri::command]
+pub async fn jvm_debug_listen() -> Result<u16, String> {
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+        .await
+        .map_err(|error| format!("Could not listen for the JVM: {error}"))?;
+    let port = listener.local_addr().map_err(|error| error.to_string())?.port();
+    JVM_LISTENERS.lock().unwrap().insert(port, listener);
+    Ok(port)
+}
+
+/// Wait for the JVM to connect; returns the port java-debug attaches to.
+#[tauri::command]
+pub async fn jvm_debug_accept(port: u16, timeout_secs: u64) -> Result<u16, String> {
+    let listener = JVM_LISTENERS
+        .lock()
+        .unwrap()
+        .remove(&port)
+        .ok_or("Not waiting for a JVM on that port")?;
+    let (mut jvm, _) = tokio::time::timeout(Duration::from_secs(timeout_secs), listener.accept())
+        .await
+        .map_err(|_| "The test JVM didn't start in time — see the terminal".to_string())?
+        .map_err(|error| format!("The test JVM couldn't connect: {error}"))?;
+    let relay = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+        .await
+        .map_err(|error| format!("Could not listen for the debugger: {error}"))?;
+    let relay_port = relay.local_addr().map_err(|error| error.to_string())?.port();
+    tokio::spawn(async move {
+        if let Ok(Ok((mut debugger, _))) =
+            tokio::time::timeout(Duration::from_secs(120), relay.accept()).await
+        {
+            let _ = tokio::io::copy_bidirectional(&mut debugger, &mut jvm).await;
+        }
+    });
+    Ok(relay_port)
+}
+
+/// Stop waiting (the build ended, or debugging was cancelled).
+#[tauri::command]
+pub fn jvm_debug_cancel(port: u16) {
+    JVM_LISTENERS.lock().unwrap().remove(&port);
 }
 
 /// Whether the java-debug plugin is installed (jdtls loads it at start).
@@ -963,10 +1233,80 @@ mod tests {
     use super::*;
     use std::sync::Mutex;
 
-    /// Collects every event; tests wait on it.
-    struct Recorder(Mutex<mpsc::UnboundedSender<Value>>);
+    /// Stands in for Sable's terminal: runs a program with piped stdio,
+    /// types the test's input, and collects what it prints.
+    #[derive(Clone, Default)]
+    struct TerminalStandIn {
+        input: Arc<Mutex<String>>,
+        output: Arc<Mutex<String>>,
+        children: Arc<Mutex<Vec<std::process::Child>>>,
+    }
+
+    impl TerminalStandIn {
+        /// Start a runInTerminal request's program; returns its pid.
+        fn run(&self, request: &Value) -> u32 {
+            use std::io::{Read, Write};
+            let args: Vec<String> = request["args"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|arg| arg.as_str().unwrap().to_string())
+                .collect();
+            let mut command = std::process::Command::new(&args[0]);
+            command.args(&args[1..]);
+            if let Some(cwd) = request["cwd"].as_str().filter(|cwd| !cwd.is_empty()) {
+                command.current_dir(cwd);
+            }
+            if let Some(env) = request["env"].as_object() {
+                for (name, value) in env {
+                    match value.as_str() {
+                        Some(value) => command.env(name, value),
+                        None => command.env_remove(name),
+                    };
+                }
+            }
+            let mut child = command
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::inherit())
+                .spawn()
+                .expect("start the program");
+            let mut stdin = child.stdin.take().unwrap();
+            stdin.write_all(self.input.lock().unwrap().as_bytes()).unwrap();
+            drop(stdin);
+            let mut stdout = child.stdout.take().unwrap();
+            let sink = self.output.clone();
+            std::thread::spawn(move || {
+                let mut buffer = [0u8; 4096];
+                while let Ok(count) = stdout.read(&mut buffer) {
+                    if count == 0 {
+                        break;
+                    }
+                    sink.lock().unwrap().push_str(&String::from_utf8_lossy(&buffer[..count]));
+                }
+            });
+            let pid = child.id();
+            self.children.lock().unwrap().push(child);
+            pid
+        }
+
+        fn kill_all(&self) {
+            for child in self.children.lock().unwrap().iter_mut() {
+                let _ = child.kill();
+            }
+        }
+    }
+
+    /// Collects every event; tests wait on it. Adapters that dial in from
+    /// a terminal (id 0) are started right away, as the app does — the
+    /// session can't start until they connect.
+    struct Recorder(Mutex<mpsc::UnboundedSender<Value>>, TerminalStandIn);
     impl DebugEvents for Recorder {
-        fn emit(&self, _event: &str, payload: Value) {
+        fn emit(&self, event: &str, payload: Value) {
+            if event == "debug:run-in-terminal" && payload["id"] == 0 {
+                self.1.run(&payload);
+                return;
+            }
             let _ = self.0.lock().unwrap().send(payload);
         }
     }
@@ -976,15 +1316,27 @@ mod tests {
         incoming: mpsc::UnboundedReceiver<Value>,
         next_seq: i64,
         output: String,
+        /// Programs the adapter asked to run in a terminal.
+        terminal: TerminalStandIn,
+        /// Messages that arrived while waiting for a response.
+        backlog: std::collections::VecDeque<Value>,
     }
 
     impl Harness {
-        async fn start(program: &Path, python: Option<&str>, breakpoint_line: i64) -> Option<Harness> {
+        async fn start(
+            program: &Path,
+            python: Option<&str>,
+            breakpoint_line: i64,
+            options: RunOptions,
+            input: &str,
+        ) -> Option<Harness> {
             let (sender, incoming) = mpsc::unbounded_channel();
-            let events = Arc::new(Recorder(Mutex::new(sender)));
+            let terminal = TerminalStandIn::default();
+            *terminal.input.lock().unwrap() = input.to_string();
+            let events = Arc::new(Recorder(Mutex::new(sender), terminal.clone()));
             let program_str = program.to_string_lossy().into_owned();
             let cwd = program.parent().unwrap().to_string_lossy().into_owned();
-            let plan = match prepare_launch(events.as_ref(), &program_str, &cwd, python).await {
+            let plan = match prepare_launch(events.as_ref(), &program_str, &cwd, python, &options).await {
                 Ok(plan) => plan,
                 Err(error) => {
                     eprintln!("skipping: {error}");
@@ -993,19 +1345,54 @@ mod tests {
             };
             let breakpoints = HashMap::from([(program_str, vec![breakpoint_line])]);
             let session = start_session(events, plan, breakpoints).await.unwrap();
-            Some(Harness { session, incoming, next_seq: 500_000, output: String::new() })
+            Some(Harness {
+                session,
+                incoming,
+                next_seq: 500_000,
+                output: String::new(),
+                terminal,
+                backlog: Default::default(),
+            })
+        }
+
+        /// The next adapter message. Answers runInTerminal the way the app
+        /// does — start the program, type the input, report its pid — and
+        /// collects program output.
+        async fn next(&mut self, waiting_for: &str) -> Value {
+            loop {
+                let message = tokio::time::timeout(Duration::from_secs(30), self.incoming.recv())
+                    .await
+                    .unwrap_or_else(|_| panic!("timed out waiting for {waiting_for}"))
+                    .unwrap_or_else(|| panic!("session ended before {waiting_for}"));
+                if std::env::var("SABLE_TRACE").is_ok() {
+                    eprintln!("<< {}", message.to_string().chars().take(220).collect::<String>());
+                }
+                if message.get("args").is_some() && message.get("type").is_none() {
+                    self.run_in_terminal(&message);
+                    continue;
+                }
+                if message["event"] == "output" {
+                    self.output.push_str(message["body"]["output"].as_str().unwrap_or(""));
+                }
+                return message;
+            }
+        }
+
+        fn run_in_terminal(&mut self, request: &Value) {
+            let pid = self.terminal.run(request);
+            let id = request["id"].as_u64().unwrap();
+            self.session.complete_terminal(id, Some(pid), None);
+        }
+
+        /// Everything the program printed (debug console or terminal).
+        fn all_output(&self) -> String {
+            format!("{}{}", self.output, self.terminal.output.lock().unwrap())
         }
 
         /// Wait for an event, recording program output along the way.
         async fn event(&mut self, name: &str) -> Value {
             loop {
-                let message = tokio::time::timeout(Duration::from_secs(30), self.incoming.recv())
-                    .await
-                    .unwrap_or_else(|_| panic!("timed out waiting for {name}"))
-                    .unwrap_or_else(|| panic!("session ended before {name}"));
-                if message["event"] == "output" {
-                    self.output.push_str(message["body"]["output"].as_str().unwrap_or(""));
-                }
+                let message = self.message(name).await;
                 if message["type"] == "event" && message["event"] == name {
                     return message;
                 }
@@ -1018,13 +1405,7 @@ mod tests {
         /// Wait for whichever of several events comes first.
         async fn event_any(&mut self, names: &[&str]) -> Value {
             loop {
-                let message = tokio::time::timeout(Duration::from_secs(30), self.incoming.recv())
-                    .await
-                    .unwrap_or_else(|_| panic!("timed out waiting for {names:?}"))
-                    .unwrap_or_else(|| panic!("session ended before {names:?}"));
-                if message["event"] == "output" {
-                    self.output.push_str(message["body"]["output"].as_str().unwrap_or(""));
-                }
+                let message = self.message(&format!("{names:?}")).await;
                 if message["type"] == "event"
                     && names.iter().any(|name| message["event"] == *name)
                 {
@@ -1042,17 +1423,24 @@ mod tests {
             let seq = self.next_seq;
             self.session.send(seq, command, arguments).unwrap();
             loop {
-                let message = tokio::time::timeout(Duration::from_secs(30), self.incoming.recv())
-                    .await
-                    .unwrap_or_else(|_| panic!("timed out waiting for {command} response"))
-                    .unwrap();
-                if message["event"] == "output" {
-                    self.output.push_str(message["body"]["output"].as_str().unwrap_or(""));
-                }
+                let message = self.next(&format!("{command} response")).await;
                 if message["type"] == "response" && message["request_seq"] == seq {
                     assert_eq!(message["success"], true, "{command} failed: {message}");
                     return message;
                 }
+                // An event can arrive before the response (e.g. the
+                // program ends before "continue" is answered): keep it
+                // for whoever waits for it next.
+                self.backlog.push_back(message);
+            }
+        }
+
+        /// The next message, starting with any that arrived during a
+        /// request.
+        async fn message(&mut self, waiting_for: &str) -> Value {
+            match self.backlog.pop_front() {
+                Some(message) => message,
+                None => self.next(waiting_for).await,
             }
         }
 
@@ -1091,7 +1479,23 @@ mod tests {
 
     /// Breakpoint hit → inspect a local → step over → continue → exit.
     async fn exercise(program: PathBuf, python: Option<&str>, breakpoint: i64, local: &str, expect: &str) {
-        let Some(mut harness) = Harness::start(&program, python, breakpoint).await else {
+        exercise_with(program, python, breakpoint, local, expect, RunOptions::default(), "", "done").await;
+    }
+
+    /// `exercise`, with run options (args, env, a terminal) and keyboard
+    /// input for the program; `printed` must appear in its output.
+    #[allow(clippy::too_many_arguments)]
+    async fn exercise_with(
+        program: PathBuf,
+        python: Option<&str>,
+        breakpoint: i64,
+        local: &str,
+        expect: &str,
+        options: RunOptions,
+        input: &str,
+        printed: &str,
+    ) {
+        let Some(mut harness) = Harness::start(&program, python, breakpoint, options, input).await else {
             return;
         };
         // Thread ids are adapter-specific (lldb uses real OS thread ids).
@@ -1119,8 +1523,83 @@ mod tests {
             resumes += 1;
             assert!(resumes < 5, "kept stopping after continue");
         }
-        assert!(harness.output.contains("done"), "program output missing: {:?}", harness.output);
-        harness.session.shutdown().await;
+        // Output from a terminal arrives asynchronously; give it a moment.
+        for _ in 0..30 {
+            // Late output events may still be queued after "terminated".
+            while let Ok(message) = harness.incoming.try_recv() {
+                if message["event"] == "output" {
+                    harness.output.push_str(message["body"]["output"].as_str().unwrap_or(""));
+                }
+            }
+            if harness.all_output().contains(printed) {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+        assert!(harness.all_output().contains(printed), "program output missing: {:?}", harness.all_output());
+        let Harness { session, terminal, .. } = harness;
+        session.shutdown().await;
+        terminal.kill_all();
+    }
+
+    /// Run options for the input tests: an argument, an environment
+    /// variable, and a terminal (so the program can read input).
+    fn terminal_options() -> RunOptions {
+        RunOptions {
+            args: vec!["arg1".into()],
+            env: HashMap::from([("SABLE_GREETING".to_string(), "env1".to_string())]),
+            cwd: None,
+            terminal: true,
+            ..RunOptions::default()
+        }
+    }
+
+    #[tokio::test]
+    async fn python_reads_input_args_and_env() {
+        let python = std::env::var("SABLE_TEST_PYTHON").unwrap_or_else(|_| "python3".into());
+        let program = write_program(
+            "input_sample.py",
+            "import os, sys\nname = input()\ngreeting = 'hi ' + name + ' ' + sys.argv[1] + ' ' + os.environ['SABLE_GREETING']\nprint('done', greeting)\nfinished = True\n",
+        );
+        exercise_with(program, Some(&python), 4, "greeting", "hi sable arg1 env1", terminal_options(), "sable\n", "done hi sable arg1 env1").await;
+    }
+
+    #[tokio::test]
+    async fn javascript_reads_input_args_and_env() {
+        use_app_tools().await;
+        let program = write_program(
+            "input_sample.js",
+            "function main() {\n  const name = require('fs').readFileSync(0, 'utf8').trim();\n  const greeting = 'hi ' + name + ' ' + process.argv[2] + ' ' + process.env.SABLE_GREETING;\n  console.log('done', greeting);\n}\nmain();\n",
+        );
+        exercise_with(program, None, 4, "greeting", "hi sable arg1 env1", terminal_options(), "sable\n", "done hi sable arg1 env1").await;
+    }
+
+    #[tokio::test]
+    async fn go_reads_input_args_and_env() {
+        let program = write_program(
+            "input_sample.go",
+            "package main\n\nimport (\n\t\"bufio\"\n\t\"fmt\"\n\t\"os\"\n\t\"strings\"\n)\n\nfunc main() {\n\tname, _ := bufio.NewReader(os.Stdin).ReadString('\\n')\n\tgreeting := \"hi \" + strings.TrimSpace(name) + \" \" + os.Args[1] + \" \" + os.Getenv(\"SABLE_GREETING\")\n\tfmt.Println(\"done\", greeting)\n}\n",
+        );
+        exercise_with(program, None, 13, "greeting", "hi sable arg1 env1", terminal_options(), "sable\n", "done hi sable arg1 env1").await;
+    }
+
+    #[tokio::test]
+    async fn c_reads_input_args_and_env() {
+        let program = write_program(
+            "input_sample.c",
+            "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nint main(int argc, char **argv) {\n    char name[64] = {0};\n    fgets(name, sizeof name, stdin);\n    name[strcspn(name, \"\\n\")] = 0;\n    char greeting[256];\n    snprintf(greeting, sizeof greeting, \"hi %s %s %s\", name, argv[1], getenv(\"SABLE_GREETING\"));\n    printf(\"done %s\\n\", greeting);\n    return 0;\n}\n",
+        );
+        exercise_with(program, None, 11, "greeting", "hi sable arg1 env1", terminal_options(), "sable\n", "done hi sable arg1 env1").await;
+    }
+
+    #[tokio::test]
+    async fn rust_reads_input_args_and_env() {
+        let program = write_program(
+            "input_sample.rs",
+            "use std::io::BufRead;\n\nfn main() {\n    let mut name = String::new();\n    std::io::stdin().lock().read_line(&mut name).unwrap();\n    let greeting = format!(\"hi {} {} {}\", name.trim(), std::env::args().nth(1).unwrap(), std::env::var(\"SABLE_GREETING\").unwrap());\n    println!(\"done {greeting}\");\n}\n",
+        );
+        // lldb shows a Rust String's fields, not its text: check the output.
+        exercise_with(program, None, 7, "greeting", "", terminal_options(), "sable\n", "done hi sable arg1 env1").await;
     }
 
     /// Point the tools folder at Sable's real one (where the app installs
@@ -1330,7 +1809,7 @@ mod tests {
             .expect("no debug port") as u16;
 
         let (sender, incoming) = mpsc::unbounded_channel();
-        let events = Arc::new(Recorder(Mutex::new(sender)));
+        let events = Arc::new(Recorder(Mutex::new(sender), TerminalStandIn::default()));
         let launch = json!({
             "type": "java",
             "request": "launch",
@@ -1345,7 +1824,14 @@ mod tests {
         let program_str = program.to_string_lossy().into_owned();
         let breakpoints = HashMap::from([(program_str, vec![5])]);
         let session = start_session(events, java_plan(port, launch), breakpoints).await.unwrap();
-        let mut harness = Harness { session, incoming, next_seq: 500_000, output: String::new() };
+        let mut harness = Harness {
+            session,
+            incoming,
+            next_seq: 500_000,
+            output: String::new(),
+            terminal: TerminalStandIn::default(),
+            backlog: Default::default(),
+        };
 
         let (thread_id, line, value) = harness.stopped_at("total").await;
         assert_eq!(line, 5);
@@ -1357,6 +1843,278 @@ mod tests {
         assert!(harness.output.contains("done 10"), "output: {:?}", harness.output);
         harness.session.shutdown().await;
         let _ = jdtls.child.kill().await;
+    }
+
+    #[tokio::test]
+    async fn debugs_one_junit_test_with_maven() {
+        // Needs Maven: SABLE_TEST_MAVEN=/path/to/mvn.
+        let Ok(maven) = std::env::var("SABLE_TEST_MAVEN") else {
+            eprintln!("skipping: set SABLE_TEST_MAVEN");
+            return;
+        };
+        debug_junit_test("maven", |root, jvm_port| {
+            let mut command = Command::new(&maven);
+            command
+                .arg(format!(
+                    "-Dmaven.surefire.debug=-agentlib:jdwp=transport=dt_socket,server=n,suspend=y,address=localhost:{jvm_port}"
+                ))
+                .args(["test", "-Dtest=CalcTest#adds", "-DfailIfNoTests=false", "-Dsurefire.failIfNoSpecifiedTests=false"])
+                .current_dir(root);
+            command
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn debugs_one_junit_test_with_gradle() {
+        // Needs Gradle: SABLE_TEST_GRADLE=/path/to/gradle.
+        let Ok(gradle) = std::env::var("SABLE_TEST_GRADLE") else {
+            eprintln!("skipping: set SABLE_TEST_GRADLE");
+            return;
+        };
+        debug_junit_test("gradle", |root, jvm_port| {
+            // The same init script the Tests feature writes.
+            let script = root.join("sable-debug.gradle");
+            std::fs::write(
+                &script,
+                format!(
+                    "allprojects {{\n  tasks.withType(Test).configureEach {{\n    jvmArgs '-agentlib:jdwp=transport=dt_socket,server=n,suspend=y,address=localhost:{jvm_port}'\n    outputs.upToDateWhen {{ false }}\n  }}\n}}\n"
+                ),
+            )
+            .unwrap();
+            let mut command = Command::new(&gradle);
+            command
+                .arg("--init-script")
+                .arg(&script)
+                .args(["test", "--tests", "CalcTest.adds", "-i"])
+                .current_dir(root);
+            command
+        })
+        .await;
+    }
+
+    /// Debug CalcTest.adds as the Tests feature does: wait for the test
+    /// JVM, have the build tool start it, attach java-debug through the
+    /// relay, stop at a breakpoint in the test, let it finish.
+    async fn debug_junit_test(tool: &str, build_command: impl FnOnce(&Path, u16) -> Command) {
+        use_app_tools().await;
+        if crate::lsp::java_debug_bundle().is_none() {
+            eprintln!("skipping: java-debug not installed");
+            return;
+        }
+        let build_file = if tool == "maven" {
+            (
+                    "pom.xml",
+                    "<project xmlns=\"http://maven.apache.org/POM/4.0.0\">\n  <modelVersion>4.0.0</modelVersion>\n  <groupId>demo</groupId>\n  <artifactId>demo</artifactId>\n  <version>1.0</version>\n  <properties>\n    <maven.compiler.release>21</maven.compiler.release>\n  </properties>\n  <dependencies>\n    <dependency>\n      <groupId>org.junit.jupiter</groupId>\n      <artifactId>junit-jupiter</artifactId>\n      <version>5.11.4</version>\n      <scope>test</scope>\n    </dependency>\n  </dependencies>\n  <build>\n    <plugins>\n      <plugin>\n        <artifactId>maven-surefire-plugin</artifactId>\n        <version>3.5.2</version>\n      </plugin>\n    </plugins>\n  </build>\n</project>\n",
+            )
+        } else {
+            (
+                "build.gradle",
+                "plugins { id 'java' }\nrepositories { mavenCentral() }\ndependencies {\n    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'\n    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'\n}\ntest {\n    useJUnitPlatform()\n    testLogging { showStandardStreams = true }\n}\n",
+            )
+        };
+        let root = write_project(
+            &format!("junit-{tool}"),
+            &[
+                build_file,
+                (
+                    "src/test/java/demo/CalcTest.java",
+                    "package demo;\n\nimport org.junit.jupiter.api.Test;\nimport static org.junit.jupiter.api.Assertions.assertEquals;\n\nclass CalcTest {\n    @Test\n    void adds() {\n        int total = 0;\n        for (int i = 0; i < 5; i++) total += i;\n        System.out.println(\"done \" + total);\n        assertEquals(10, total);\n    }\n}\n",
+                ),
+            ],
+        );
+        let test_file = root.join("src/test/java/demo/CalcTest.java");
+
+        // As the Tests feature does: Sable waits for the test JVM, the
+        // build tool starts it, and it connects to Sable…
+        let jvm_port = jvm_debug_listen().await.unwrap();
+        let mut build = build_command(&root, jvm_port)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .kill_on_drop(true)
+            .spawn()
+            .unwrap();
+        let mut lines = BufReader::new(build.stdout.take().unwrap()).lines();
+        let (output_tx, mut output_rx) = mpsc::unbounded_channel::<String>();
+        tokio::spawn(async move {
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = output_tx.send(line);
+            }
+        });
+        let port = jvm_debug_accept(jvm_port, 300).await.expect("the test JVM never connected");
+
+        // …and java-debug (inside jdtls) attaches to it.
+        let Some(mut jdtls) = Jdtls::start(&root).await else {
+            eprintln!("skipping: jdtls unavailable");
+            return;
+        };
+        let text = std::fs::read_to_string(&test_file).unwrap();
+        jdtls
+            .notify(
+                "textDocument/didOpen",
+                json!({ "textDocument": {
+                    "uri": crate::lsp::path_to_uri(&test_file.to_string_lossy()),
+                    "languageId": "java", "version": 1, "text": text,
+                }}),
+            )
+            .await;
+        let debug_port = jdtls
+            .execute("vscode.java.startDebugSession", json!([]))
+            .await
+            .unwrap()
+            .as_u64()
+            .expect("no debug port") as u16;
+        let (sender, incoming) = mpsc::unbounded_channel();
+        let events = Arc::new(Recorder(Mutex::new(sender), TerminalStandIn::default()));
+        let launch = json!({
+            "type": "java",
+            "request": "attach",
+            "hostName": "localhost",
+            "port": port,
+            "timeout": 30_000,
+        });
+        let breakpoints = HashMap::from([(test_file.to_string_lossy().into_owned(), vec![11])]);
+        let session = start_session(events, java_plan(debug_port, launch), breakpoints).await.unwrap();
+        let mut harness = Harness {
+            session,
+            incoming,
+            next_seq: 600_000,
+            output: String::new(),
+            terminal: TerminalStandIn::default(),
+            backlog: Default::default(),
+        };
+        let (thread_id, line, value) = harness.stopped_at("total").await;
+        assert_eq!(line, 11);
+        assert!(value.contains("10"), "total = {value:?}");
+        harness.request("continue", json!({ "threadId": thread_id })).await;
+        harness.event_any(&["terminated", "exited"]).await;
+        harness.session.shutdown().await;
+
+        let status = tokio::time::timeout(Duration::from_secs(120), build.wait()).await.unwrap().unwrap();
+        let mut rest = String::new();
+        while let Ok(line) = output_rx.try_recv() {
+            rest.push_str(&line);
+            rest.push('\n');
+        }
+        assert!(status.success(), "{tool} failed:\n{rest}");
+        assert!(rest.contains("done 10"), "test output missing:\n{rest}");
+        let _ = jdtls.child.kill().await;
+    }
+
+    // --- Debugging one test (the launch settings the Tests feature sends) ---
+
+    /// A project directory for a test-framework sample.
+    fn write_project(name: &str, files: &[(&str, &str)]) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("sable-test-debug-{}-{name}", std::process::id()));
+        for (path, contents) in files {
+            let file = dir.join(path);
+            std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+            std::fs::write(file, contents).unwrap();
+        }
+        // The temp dir is behind a symlink on macOS (/var → /private/var);
+        // Go rejects a package path that differs from its module's.
+        dir.canonicalize().unwrap()
+    }
+
+    fn test_options(overrides: Value, binary: Option<String>, args: Vec<String>, cwd: &Path) -> RunOptions {
+        RunOptions {
+            args,
+            cwd: Some(cwd.to_string_lossy().into_owned()),
+            terminal: true,
+            binary,
+            overrides: Some(overrides),
+            ..RunOptions::default()
+        }
+    }
+
+    #[tokio::test]
+    async fn debugs_one_pytest_test() {
+        // Needs an interpreter with pytest and debugpy.
+        let Ok(python) = std::env::var("SABLE_TEST_PYTEST_PYTHON") else {
+            eprintln!("skipping: set SABLE_TEST_PYTEST_PYTHON");
+            return;
+        };
+        let dir = write_project(
+            "pytest",
+            &[("test_sample.py", "def test_total():\n    total = sum(range(5))\n    assert total == 10\n    print('done')\n\n\ndef test_other():\n    assert True\n")],
+        );
+        let file = dir.join("test_sample.py");
+        let overrides = json!({
+            "module": "pytest",
+            "program": null,
+            "args": [format!("{}::test_total", file.display()), "-q", "-s", "-p", "no:cacheprovider"],
+        });
+        exercise_with(file, Some(&python), 3, "total", "10", test_options(overrides, None, vec![], &dir), "", "done").await;
+    }
+
+    #[tokio::test]
+    async fn debugs_one_go_test() {
+        let dir = write_project(
+            "go",
+            &[
+                ("go.mod", "module demo\n\ngo 1.22\n"),
+                (
+                    "sample_test.go",
+                    "package demo\n\nimport (\n\t\"fmt\"\n\t\"testing\"\n)\n\nfunc TestTotal(t *testing.T) {\n\ttotal := 0\n\tfor i := 0; i < 5; i++ {\n\t\ttotal += i\n\t}\n\tfmt.Println(\"done\", total)\n\tif total != 10 {\n\t\tt.Fatal(total)\n\t}\n}\n",
+                ),
+            ],
+        );
+        let file = dir.join("sample_test.go");
+        let overrides = json!({ "mode": "test", "program": dir, "args": ["-test.run", "^TestTotal$", "-test.v"] });
+        exercise_with(file, None, 13, "total", "10", test_options(overrides, None, vec![], &dir), "", "done").await;
+    }
+
+    #[tokio::test]
+    async fn debugs_one_cargo_test() {
+        let dir = write_project(
+            "cargo",
+            &[
+                ("Cargo.toml", "[package]\nname = \"demo\"\nversion = \"0.1.0\"\nedition = \"2021\"\n"),
+                (
+                    "src/lib.rs",
+                    "#[cfg(test)]\nmod tests {\n    #[test]\n    fn total() {\n        let total: i32 = (0..5).sum();\n        println!(\"done {total}\");\n        assert_eq!(total, 10);\n    }\n}\n",
+                ),
+            ],
+        );
+        // As the frontend does: build the test binary, find it in Cargo's
+        // JSON messages.
+        let output = std::process::Command::new(resolve_binary("cargo").unwrap())
+            .args(["test", "--no-run", "--message-format=json"])
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        let binary = String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+            .find(|message| message["profile"]["test"] == true && message["executable"].is_string())
+            .map(|message| message["executable"].as_str().unwrap().to_string())
+            .expect("test binary");
+        let file = dir.join("src/lib.rs");
+        let args = vec!["total".into(), "--test-threads=1".into(), "--nocapture".into()];
+        exercise_with(file, None, 6, "total", "10", test_options(json!({}), Some(binary), args, &dir), "", "done 10").await;
+    }
+
+    #[tokio::test]
+    async fn debugs_one_vitest_test() {
+        // Needs a project with vitest installed (node_modules).
+        let Ok(project) = std::env::var("SABLE_TEST_VITEST_DIR") else {
+            eprintln!("skipping: set SABLE_TEST_VITEST_DIR");
+            return;
+        };
+        use_app_tools().await;
+        let dir = PathBuf::from(project);
+        let file = dir.join("debug_sample.test.ts");
+        std::fs::write(
+            &file,
+            "import { expect, test } from \"vitest\";\n\ntest(\"total\", () => {\n  let total = 0;\n  for (let i = 0; i < 5; i++) total += i;\n  console.log(\"done\", total);\n  expect(total).toBe(10);\n});\n",
+        )
+        .unwrap();
+        let overrides = json!({
+            "program": dir.join("node_modules/vitest/vitest.mjs"),
+            "args": ["run", file, "-t", "^(total$)", "--no-file-parallelism"],
+        });
+        exercise_with(file.clone(), None, 6, "total", "10", test_options(overrides, None, vec![], &dir), "", "1 passed").await;
+        let _ = std::fs::remove_file(file);
     }
 
     #[tokio::test]

@@ -79,6 +79,12 @@
   color: var(--git-deleted);
 }
 
+.tree-row-name.git-conflicted,
+.tree-row-git.git-conflicted {
+  color: var(--danger);
+  font-weight: 600;
+}
+
 .tree-row-git {
   margin-left: auto;
   padding-left: 6px;

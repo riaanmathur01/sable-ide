@@ -140,3 +140,8 @@
 .tab-bar.focused {
   box-shadow: inset 0 1px 0 var(--accent);
 }
+
+/* The run configuration button when the file has arguments/env set. */
+.tab-bar-run.configured {
+  color: var(--accent);
+}

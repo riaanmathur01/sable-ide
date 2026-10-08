@@ -19,7 +19,7 @@ pub(crate) mod framing;
 
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use tauri::{AppHandle, Emitter, State};
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -103,8 +103,9 @@ fn server_for_extension(extension: &str, root: &str) -> Option<ServerSpec> {
             name: "TypeScript".into(),
             binary: "typescript-language-server".into(),
             args: vec!["--stdio".into()],
-            install_hint: "typescript-language-server not found — run \
-                `npm install -g typescript-language-server typescript`"
+            install_hint: "typescript-language-server not found — run “TypeScript: Install \
+                Language Server” from the command palette (or `npm install -g \
+                typescript-language-server typescript@5`)"
                 .into(),
         },
         // jdtls is the Eclipse JDT server; the Homebrew wrapper figures out
@@ -278,6 +279,20 @@ pub fn java_debug_bundle() -> Option<PathBuf> {
     jar.exists().then_some(jar)
 }
 
+/// TypeScript 7 (the native rewrite) has no `tsserver.js`, which
+/// typescript-language-server needs: a project — or a global install —
+/// on TypeScript 7 leaves the server silently doing nothing. When the
+/// project has no usable tsserver, point the server at the TypeScript 5
+/// Sable installs (`install_typescript_server`).
+fn fallback_tsserver(root_path: &str) -> Option<PathBuf> {
+    let own = Path::new(root_path).join("node_modules/typescript/lib/tsserver.js");
+    if own.exists() {
+        return None; // the server finds the project's own
+    }
+    let tools = tools_dir()?.join("node_modules/typescript/lib/tsserver.js");
+    tools.exists().then_some(tools)
+}
+
 pub(crate) fn initialize_params(root_path: &str, server_id: &str) -> Value {
     let mut params = base_initialize_params(root_path);
     // gopls only sends semantic tokens (packages, exported names, …) and
@@ -300,6 +315,9 @@ pub(crate) fn initialize_params(root_path: &str, server_id: &str) -> Value {
                 "includeInlayEnumMemberValueHints": true
             }
         });
+        if let Some(tsserver) = fallback_tsserver(root_path) {
+            params["initializationOptions"]["tsserver"] = json!({ "path": tsserver });
+        }
     }
     if server_id == "java" {
         if let Some(jar) = java_debug_bundle() {
@@ -915,6 +933,18 @@ pub async fn lsp_set_python_path(
 /// command). Language servers restart afterwards to pick it up.
 #[tauri::command]
 pub async fn install_basedpyright() -> Result<(), String> {
+    npm_install_tools(&["basedpyright"]).await
+}
+
+/// Install typescript-language-server with TypeScript 5 into Sable's tools
+/// folder (TypeScript 7 lacks the tsserver it needs — see
+/// `fallback_tsserver`).
+#[tauri::command]
+pub async fn install_typescript_server() -> Result<(), String> {
+    npm_install_tools(&["typescript-language-server", "typescript@5"]).await
+}
+
+async fn npm_install_tools(packages: &[&str]) -> Result<(), String> {
     let bin = TOOLS_BIN.get().ok_or_else(|| "Tools folder unavailable".to_string())?;
     let prefix = bin
         .parent()
@@ -925,7 +955,8 @@ pub async fn install_basedpyright() -> Result<(), String> {
     let output = Command::new(&npm)
         .args(["install", "--prefix"])
         .arg(prefix)
-        .args(["basedpyright", "--no-fund", "--no-audit"])
+        .args(packages)
+        .args(["--no-fund", "--no-audit"])
         .stdin(Stdio::null())
         .output()
         .await
@@ -943,4 +974,42 @@ pub async fn install_basedpyright() -> Result<(), String> {
 #[tauri::command]
 pub fn python_server_has_semantic_tokens() -> bool {
     resolve_binary("basedpyright-langserver").is_some()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn typescript_server_gets_a_working_tsserver() {
+        if let Some(home) = std::env::var_os("HOME") {
+            set_tools_dir(PathBuf::from(home).join("Library/Application Support/com.riaanmathur.sable/tools"));
+        }
+        if std::env::var("SABLE_TEST_INSTALL_TS_SERVER").is_ok() {
+            install_typescript_server().await.unwrap();
+        }
+        if resolve_binary("typescript-language-server").is_none() {
+            eprintln!("skipping: set SABLE_TEST_INSTALL_TS_SERVER=1");
+            return;
+        }
+        // A project without its own TypeScript gets Sable's TypeScript 5.
+        let bare = std::env::temp_dir().join(format!("sable-ts-{}", std::process::id()));
+        std::fs::create_dir_all(&bare).unwrap();
+        let params = initialize_params(&bare.to_string_lossy(), "typescript");
+        let tsserver = params["initializationOptions"]["tsserver"]["path"].as_str().map(PathBuf::from);
+        if let Some(path) = &tsserver {
+            assert!(path.exists(), "{path:?}");
+            let package = std::fs::read_to_string(path.parent().unwrap().parent().unwrap().join("package.json")).unwrap();
+            assert!(package.contains("\"version\": \"5."), "not TypeScript 5");
+        } else {
+            panic!("no fallback tsserver although Sable's tools have one");
+        }
+        // A project with its own keeps it.
+        let own = bare.join("node_modules/typescript/lib");
+        std::fs::create_dir_all(&own).unwrap();
+        std::fs::write(own.join("tsserver.js"), "").unwrap();
+        let params = initialize_params(&bare.to_string_lossy(), "typescript");
+        assert!(params["initializationOptions"]["tsserver"].is_null());
+        let _ = std::fs::remove_dir_all(bare);
+    }
 }

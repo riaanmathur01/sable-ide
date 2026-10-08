@@ -465,13 +465,13 @@ async function provideSignatureHelp(
 
 // --- Code actions / quick fixes ----------------------------------------------
 
-interface LspCommand {
+export interface LspCommand {
   title: string;
   command: string;
   arguments?: unknown[];
 }
 
-interface LspCodeAction {
+export interface LspCodeAction {
   title: string;
   kind?: string;
   isPreferred?: boolean;
@@ -498,6 +498,22 @@ async function executeLspCommand(extension: string, command: LspCommand) {
     command: command.command,
     arguments: command.arguments,
   });
+}
+
+/** Apply a server's code action: resolve it if needed, apply its edit,
+ *  run its command (which may push edits back via workspace/applyEdit). */
+export async function applyLspCodeAction(extension: string, action: LspCodeAction | LspCommand) {
+  if (typeof action.command === "string") {
+    await executeLspCommand(extension, action as LspCommand);
+    return;
+  }
+  let resolved = action as LspCodeAction;
+  if (!resolved.edit && resolved.data !== undefined) {
+    resolved =
+      ((await sendRequest(extension, "codeAction/resolve", resolved)) as LspCodeAction | null) ?? resolved;
+  }
+  if (resolved.edit) await applyWorkspaceEdit(resolved.edit);
+  if (resolved.command) await executeLspCommand(extension, resolved.command);
 }
 
 async function provideLspCodeActions(
@@ -629,14 +645,7 @@ function registerCodeActions(monaco: Monaco) {
     APPLY_CODE_ACTION,
     async (_accessor, extension: string, action: LspCodeAction) => {
       try {
-        let resolved = action;
-        if (!action.edit && action.data !== undefined) {
-          resolved =
-            ((await sendRequest(extension, "codeAction/resolve", action)) as LspCodeAction | null) ??
-            action;
-        }
-        if (resolved.edit) await applyWorkspaceEdit(resolved.edit);
-        if (resolved.command) await executeLspCommand(extension, resolved.command);
+        await applyLspCodeAction(extension, action);
       } catch (error) {
         useUiStore.getState().setLastError(String(error));
       }

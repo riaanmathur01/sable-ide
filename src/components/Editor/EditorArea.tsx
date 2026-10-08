@@ -10,6 +10,8 @@ import "./EditorArea.css";
 // (Cmd/Ctrl+S and the rest live in lib/useGlobalKeybindings.)
 const MonacoPane = lazy(() => import("./MonacoPane"));
 const DiffView = lazy(() => import("./DiffView"));
+const MergeView = lazy(() => import("./MergeView"));
+const LocalHistoryView = lazy(() => import("./LocalHistoryView"));
 const SettingsView = lazy(() => import("../Settings/SettingsView"));
 
 const MIN_GROUP_WIDTH = 220;
@@ -121,7 +123,9 @@ function EditorGroupView({
   const activeTab = group.tabs.find((tab) => tab.path === group.activePath);
   const diffActive = activeTab?.kind === "diff";
   const settingsActive = activeTab?.kind === "settings";
-  const fileActive = !diffActive && !settingsActive;
+  const mergeActive = activeTab?.kind === "merge";
+  const historyActive = activeTab?.kind === "history";
+  const fileActive = !diffActive && !settingsActive && !mergeActive && !historyActive;
   const hasFileTab = group.tabs.some((tab) => tab.kind === "file");
 
   return (
@@ -139,6 +143,20 @@ function EditorGroupView({
           <div className="editor-layer">
             <Suspense fallback={null}>
               <DiffView key={activeTab.path} source={activeTab.diff} />
+            </Suspense>
+          </div>
+        )}
+        {mergeActive && activeTab.mergeFile && (
+          <div className="editor-layer">
+            <Suspense fallback={null}>
+              <MergeView key={activeTab.path} filePath={activeTab.mergeFile} />
+            </Suspense>
+          </div>
+        )}
+        {historyActive && activeTab.historyFile !== undefined && (
+          <div className="editor-layer">
+            <Suspense fallback={null}>
+              <LocalHistoryView key={activeTab.path} filePath={activeTab.historyFile} />
             </Suspense>
           </div>
         )}

@@ -83,14 +83,18 @@ pub fn read_file(path: String) -> Result<String, String> {
 /// Write editor contents back to disk (Cmd/Ctrl+S).
 #[tauri::command]
 pub fn write_file(path: String, contents: String) -> Result<(), String> {
-    std::fs::write(&path, contents)
-        .map_err(|error| format!("Could not save {path}: {error}"))
+    super::history::record_original(&path);
+    std::fs::write(&path, &contents)
+        .map_err(|error| format!("Could not save {path}: {error}"))?;
+    let _ = super::history::record(&path, &contents, "Saved");
+    Ok(())
 }
 
 /// Permanently delete a file or folder (recursively). The frontend shows
 /// a native confirm dialog before calling this.
 #[tauri::command]
 pub fn delete_path(path: String) -> Result<(), String> {
+    super::history::record_deletion(&path);
     let target = Path::new(&path);
     let result = if target.is_dir() {
         std::fs::remove_dir_all(target)

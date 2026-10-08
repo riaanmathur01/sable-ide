@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useDebugStore, type StackFrame } from "../../store/debugStore";
+import { useTerminalStore } from "../../store/terminalStore";
 
 /**
  * Frontend side of the DAP bridge. Rust owns the debugpy process and
@@ -125,6 +126,29 @@ let listenersReady = false;
 export function initDebugListeners(): void {
   if (listenersReady) return;
   listenersReady = true;
+
+  // The debugger asks to start the program in a terminal, so it can read
+  // keyboard input. It runs in the "Debug" terminal tab (reused each run);
+  // the process id goes back to the debugger.
+  listen<{
+    id: number;
+    args: string[];
+    cwd?: string;
+    env?: Record<string, string | null>;
+    title?: string;
+  }>("debug:run-in-terminal", async (event) => {
+    const { id, args, cwd, env } = event.payload;
+    const program = useDebugStore.getState().lastProgram?.split(/[/\\]/).pop();
+    try {
+      const pid = await useTerminalStore
+        .getState()
+        .startCommandSession({ args, cwd: cwd ?? null, env: env ?? null }, `Debug${program ? `: ${program}` : ""}`, "debug");
+      if (id !== 0) await invoke("debug_terminal_started", { id, processId: pid });
+    } catch (error) {
+      if (id !== 0) await invoke("debug_terminal_started", { id, error: String(error) });
+      useDebugStore.getState().appendConsole("error", `Couldn't start the program in a terminal: ${String(error)}`);
+    }
+  });
 
   listen<DapMessage>("debug:message", (event) => {
     const message = event.payload;

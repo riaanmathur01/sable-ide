@@ -9,6 +9,8 @@ mod commands;
 mod debug;
 mod lsp;
 mod watcher;
+#[cfg(test)]
+mod ui_bridge;
 
 use std::collections::HashMap;
 use std::sync::atomic::AtomicU64;
@@ -18,11 +20,15 @@ use std::sync::{Arc, Mutex};
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        // Updates: signed builds from the GitHub releases (see README).
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             // Sable's private tools folder (e.g. basedpyright).
             use tauri::Manager;
             if let Ok(data) = app.path().app_data_dir() {
                 lsp::set_tools_dir(data.join("tools"));
+                commands::history::set_history_dir(data.join("history"));
             }
             Ok(())
         })
@@ -36,6 +42,9 @@ pub fn run() {
         .manage(commands::ai::AiState::default())
         .invoke_handler(tauri::generate_handler![
             commands::fs::read_directory,
+            commands::history::history_list,
+            commands::history::history_read,
+            commands::history::history_deleted_files,
             commands::fs::read_file,
             commands::fs::write_file,
             commands::fs::is_directory,
@@ -57,6 +66,11 @@ pub fn run() {
             commands::settings::load_settings,
             commands::settings::save_settings,
             commands::shell::run_shell,
+            commands::format::python_formatter,
+            commands::format::format_with,
+            commands::format::install_ruff,
+            commands::refactor::python_refactor,
+            commands::refactor::install_rope,
             commands::ai::ai_set_api_key,
             commands::ai::ai_delete_api_key,
             commands::ai::ai_key_status,
@@ -77,6 +91,17 @@ pub fn run() {
             commands::git::git_stage_all,
             commands::git::git_unstage_all,
             commands::git::git_commit,
+            commands::git::git_stage_content,
+            commands::git::git_conflict_versions,
+            commands::git::git_merge_abort,
+            commands::git::git_merge,
+            commands::git::git_stash_list,
+            commands::git::git_stash_save,
+            commands::git::git_stash_apply,
+            commands::git::git_stash_drop,
+            commands::git::git_cherry_pick,
+            commands::git::git_revert_commit,
+            commands::git::git_abort,
             commands::git::git_set_identity,
             commands::git::git_branches,
             commands::git::git_create_branch,
@@ -94,15 +119,21 @@ pub fn run() {
             lsp::stop_language_servers,
             lsp::lsp_set_python_path,
             lsp::install_basedpyright,
+            lsp::install_typescript_server,
             lsp::python_server_has_semantic_tokens,
             debug::start_debug,
             debug::debug_request,
             debug::debug_stop,
             debug::install_debugpy,
             debug::install_js_debug,
+            debug::debug_terminal_started,
+            commands::terminal::create_command_terminal,
             debug::install_java_debug,
             debug::java_debug_installed,
             debug::start_java_debug,
+            debug::jvm_debug_listen,
+            debug::jvm_debug_accept,
+            debug::jvm_debug_cancel,
             watcher::watch_workspace,
         ])
         .run(tauri::generate_context!())

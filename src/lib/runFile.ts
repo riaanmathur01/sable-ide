@@ -2,6 +2,8 @@ import { useTabsStore } from "../store/tabsStore";
 import { useTerminalStore } from "../store/terminalStore";
 import { useUiStore } from "../store/uiStore";
 import { useInterpreterStore } from "../store/interpreterStore";
+import { useRunConfigStore } from "../store/runConfigStore";
+import { commandLineFor, isEmptyConfig } from "./runConfig";
 
 /**
  * "Run" (▶ button / Cmd+R): force-save the active file, open the
@@ -33,22 +35,33 @@ const RUNNERS_BY_EXTENSION: Record<string, (path: string) => string> = {
   lua: (path) => `lua "${path}"`,
   go: (path) => `go run "${path}"`,
   // Runs in the terminal's cwd (the workspace root), so this works for
-  // Cargo projects rather than single .rs files.
-  rs: () => "cargo run",
+  // Cargo projects rather than single .rs files. `--` passes arguments
+  // to the program rather than to Cargo.
+  rs: () => "cargo run --",
 };
 
-export async function runActiveFile(): Promise<void> {
-  const { activePath, lastFilePath, tabs, saveTab } = useTabsStore.getState();
-  const { setLastError, setBottomPanel } = useUiStore.getState();
-
-  // Run the active file; if a non-file tab is active, fall back to the last
-  // real file (diff and settings tabs aren't runnable).
+/** The file Run acts on: the active file, or the last real file when a
+ *  settings/diff tab is active. */
+export function runnableFile(): string | null {
+  const { activePath, lastFilePath, tabs } = useTabsStore.getState();
   const activeTab = tabs.find((tab) => tab.path === activePath);
-  const filePath = activeTab && activeTab.kind !== "file" ? lastFilePath : activePath;
+  return activeTab && activeTab.kind !== "file" ? lastFilePath : activePath;
+}
+
+export async function runActiveFile(): Promise<void> {
+  const filePath = runnableFile();
   if (!filePath) {
-    setLastError("No file to run — open one first");
+    useUiStore.getState().setLastError("No file to run — open one first");
     return;
   }
+  await runFile(filePath);
+}
+
+/** Run a file in the terminal, with its run configuration (arguments,
+ *  environment, working directory). */
+export async function runFile(filePath: string): Promise<void> {
+  const { saveTab } = useTabsStore.getState();
+  const { setLastError, setBottomPanel } = useUiStore.getState();
 
   const extension = filePath.split(".").pop()?.toLowerCase() ?? "";
   const buildCommand = RUNNERS_BY_EXTENSION[extension];
@@ -61,5 +74,9 @@ export async function runActiveFile(): Promise<void> {
   setBottomPanel("terminal");
   // Queue the command; the terminal view runs it once mounted and
   // listening (the panel lazy-loads, so it may not exist yet).
-  useTerminalStore.getState().enqueueCommand(buildCommand(filePath));
+  const config = useRunConfigStore.getState().configFor(filePath);
+  const base = buildCommand(filePath);
+  useTerminalStore
+    .getState()
+    .enqueueCommand(isEmptyConfig(config) ? base.replace(/ --$/, "") : commandLineFor(base, config));
 }

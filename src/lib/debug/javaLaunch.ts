@@ -29,10 +29,48 @@ function execute(command: string, args: unknown[], timeoutMs = 30_000) {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Attach to a JVM (a test the build tool started) through java-debug.
+ * jdtls only has to be running — the JVM already has its classpath.
+ */
+export async function attachJavaLaunch(
+  program: string,
+  jvmPort: number,
+  report: (message: string) => void,
+): Promise<{ port: number; launch: Record<string, unknown> }> {
+  if (!(await invoke<boolean>("java_debug_installed"))) throw new Error(JAVA_DEBUG_MISSING);
+  let restarted = false;
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const port = await execute("vscode.java.startDebugSession", [], 15_000);
+    if (typeof port === "number") {
+      return {
+        port,
+        launch: {
+          type: "java",
+          name: `Sable: Debug ${program.split(/[/\\]/).pop()}`,
+          request: "attach",
+          hostName: "127.0.0.1",
+          port: jvmPort,
+          timeout: 30_000,
+        },
+      };
+    }
+    if (attempt === 0) report("Waiting for the Java language server…");
+    if (port === null && attempt >= 2 && !restarted) {
+      restarted = true;
+      report("Restarting jdtls to load the Java debugger…");
+      await restartLanguageServers();
+    }
+    await sleep(1000);
+  }
+  throw new Error("jdtls didn't start the Java debugger");
+}
+
 export async function resolveJavaLaunch(
   program: string,
   root: string,
   report: (message: string) => void,
+  options: { args: string[]; env: Record<string, string>; cwd: string; terminal: boolean },
 ): Promise<{ port: number; launch: Record<string, unknown> }> {
   if (!(await invoke<boolean>("java_debug_installed"))) throw new Error(JAVA_DEBUG_MISSING);
 
@@ -84,8 +122,11 @@ export async function resolveJavaLaunch(
       modulePaths: classpath[0] ?? [],
       classPaths: classpath[1] ?? [],
       ...(typeof javaExec === "string" ? { javaExec } : {}),
-      cwd: root,
-      console: "internalConsole",
+      cwd: options.cwd || root,
+      args: options.args,
+      env: options.env,
+      // In a terminal tab, so the program can read keyboard input.
+      console: options.terminal ? "integratedTerminal" : "internalConsole",
     },
   };
 }

@@ -166,3 +166,9 @@
   font-size: 10px;
   letter-spacing: 0;
 }
+
+/* Failed-test count on the Tests tab. */
+.terminal-panel-badge.failed {
+  background: color-mix(in srgb, var(--danger) 30%, transparent);
+  color: var(--text);
+}

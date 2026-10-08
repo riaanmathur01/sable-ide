@@ -10,6 +10,9 @@ import { useWorkspaceStore } from "../../store/workspaceStore";
 import { useGitStore } from "../../store/gitStore";
 import { useTabsStore } from "../../store/tabsStore";
 import { iconForFile } from "../../lib/fileIcons";
+import { ask as confirmNative } from "@tauri-apps/plugin-dialog";
+import { ContextMenu, type ContextMenuItem } from "../ContextMenu/ContextMenu";
+import { useUiStore } from "../../store/uiStore";
 import "./HistoryPanel.css";
 
 const PAGE_SIZE = 50;
@@ -50,13 +53,53 @@ export function HistoryPanel() {
   const [filesByHash, setFilesByHash] = useState<Record<string, CommitFile[]>>(
     {},
   );
+  const [menu, setMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+  const cherryPick = useGitStore((state) => state.cherryPick);
+  const revertCommit = useGitStore((state) => state.revertCommit);
+  const branch = useGitStore((state) => state.branch);
+  const branches = useGitStore((state) => state.branches);
+  const loadBranches = useGitStore((state) => state.loadBranches);
+  /** Another branch's history (null: the current branch). */
+  const [viewing, setViewing] = useState<string | null>(null);
+
+  /** Right-click a commit: cherry-pick, revert, copy its hash. */
+  function commitMenu(commit: CommitInfo): ContextMenuItem[] {
+    const reload = () => {
+      setCommits([]);
+      setReachedEnd(false);
+      void loadMore(0);
+    };
+    return [
+      // Picking from the branch you're on would re-apply its own commit.
+      ...(viewing
+        ? [{ label: `Cherry-Pick onto ${branch ?? "HEAD"}`, onSelect: () => void cherryPick(commit.hash) }]
+        : []),
+      {
+        label: "Revert Commit",
+        onSelect: () =>
+          void confirmNative(`Make a new commit that undoes “${commit.summary}”?`, {
+            title: "Revert Commit",
+            kind: "warning",
+          }).then((yes) => {
+            if (yes) void revertCommit(commit.hash).then(reload);
+          }),
+      },
+      {
+        label: "Copy Hash",
+        onSelect: () => {
+          void navigator.clipboard.writeText(commit.hash);
+          useUiStore.getState().showStatus(`Copied ${commit.shortHash}`);
+        },
+      },
+    ];
+  }
 
   async function loadMore(skip: number) {
     const root = useWorkspaceStore.getState().rootPath;
     if (!root || loading) return;
     setLoading(true);
     try {
-      const page = await gitLog(root, PAGE_SIZE, skip);
+      const page = await gitLog(root, PAGE_SIZE, skip, viewing);
       setCommits((current) => (skip === 0 ? page : [...current, ...page]));
       if (page.length < PAGE_SIZE) setReachedEnd(true);
     } finally {
@@ -64,13 +107,18 @@ export function HistoryPanel() {
     }
   }
 
-  // Load the first page when the view mounts.
+  // Load the first page when the view mounts (or the branch changes).
   useEffect(() => {
     setCommits([]);
     setReachedEnd(false);
+    setExpanded(null);
     void loadMore(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [viewing]);
+
+  useEffect(() => {
+    void loadBranches();
+  }, [loadBranches]);
 
   async function toggleCommit(hash: string) {
     if (expanded === hash) {
@@ -108,6 +156,24 @@ export function HistoryPanel() {
         }
       }}
     >
+      {branches.length > 1 && (
+        <div className="history-branch">
+          <select
+            value={viewing ?? ""}
+            onChange={(event) => setViewing(event.target.value || null)}
+            title="Show another branch's commits — right-click one to cherry-pick it"
+          >
+            <option value="">{branch ?? "HEAD"} (current)</option>
+            {branches
+              .filter((candidate) => !candidate.isCurrent)
+              .map((candidate) => (
+                <option key={candidate.name} value={candidate.name}>
+                  {candidate.name}
+                </option>
+              ))}
+          </select>
+        </div>
+      )}
       {commits.map((commit) => {
         const isOpen = expanded === commit.hash;
         const Chevron = isOpen ? ChevronDown : ChevronRight;
@@ -116,7 +182,11 @@ export function HistoryPanel() {
             <div
               className="history-row"
               onClick={() => toggleCommit(commit.hash)}
-              title={commit.summary}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                setMenu({ x: event.clientX, y: event.clientY, items: commitMenu(commit) });
+              }}
+              title={`${commit.summary} — right-click for Cherry-Pick, Revert…`}
             >
               <Chevron size={13} strokeWidth={1.5} className="history-chevron" />
               <div className="history-main">
@@ -167,6 +237,7 @@ export function HistoryPanel() {
           </div>
         );
       })}
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} />}
       {loading && <div className="history-status">Loading…</div>}
       {reachedEnd && commits.length === 0 && (
         <div className="history-status">No commits yet</div>

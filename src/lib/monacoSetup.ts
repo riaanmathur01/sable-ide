@@ -32,6 +32,10 @@ import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 import cssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
 import htmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker";
 import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker";
+import { registerFormatting } from "./formatting";
+import { registerTestCodeLenses } from "./testing/codeLens";
+import { registerConflictSupport } from "./git/conflictEditor";
+import { registerPythonRefactorings } from "./refactor";
 
 self.MonacoEnvironment = {
   getWorker(_workerId: string, label: string) {
@@ -67,6 +71,10 @@ monaco.editor.onDidCreateModel((model) => {
 // Wire LSP-backed language features (completions, hover, definitions,
 // signature help) onto Monaco.
 registerLspProviders(monaco);
+registerFormatting(monaco);
+registerTestCodeLenses(monaco);
+registerConflictSupport(monaco);
+registerPythonRefactorings(monaco);
 
 // Cross-file navigation (go to definition, peek → open): Monaco asks us
 // to open the target; route it through the tab store so it becomes a

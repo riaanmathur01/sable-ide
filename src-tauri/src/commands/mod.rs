@@ -1,8 +1,11 @@
 pub mod ai;
 pub mod fonts;
+pub mod format;
 pub mod fs;
 pub mod git;
+pub mod history;
 pub mod interpreter;
+pub mod refactor;
 pub mod search;
 pub mod settings;
 pub mod shell;

@@ -54,3 +54,11 @@
   color: var(--text-muted);
   font-size: 13px;
 }
+
+.diff-stage-file {
+  gap: 4px;
+  margin-right: auto;
+  padding: 3px 8px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+}

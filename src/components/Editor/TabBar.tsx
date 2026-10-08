@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
-import { Bug, Columns2, Play, Settings, X } from "lucide-react";
+import { Bug, Columns2, Play, Settings, SlidersHorizontal, X } from "lucide-react";
 import { MAX_GROUPS, useTabsStore, type EditorGroup } from "../../store/tabsStore";
 import { isDebuggable, useDebugStore } from "../../store/debugStore";
 import { runActiveFile } from "../../lib/runFile";
+import { useRunConfigStore } from "../../store/runConfigStore";
+import { isEmptyConfig } from "../../lib/runConfig";
 import "./TabBar.css";
 
 /**
@@ -94,7 +96,25 @@ export function TabBar({
         <button className="tab-bar-run" title="Run File (⌘R)" onClick={() => runActiveFile()}>
           <Play size={14} strokeWidth={1.5} />
         </button>
+        {group.lastFilePath && <RunConfigButton path={group.lastFilePath} />}
       </div>
     </div>
+  );
+}
+
+/** Edit the file's run configuration; highlighted when it has one. */
+function RunConfigButton({ path }: { path: string }) {
+  const configured = useRunConfigStore((state) => {
+    const config = state.configs[path];
+    return config !== undefined && !isEmptyConfig(config);
+  });
+  return (
+    <button
+      className={configured ? "tab-bar-run configured" : "tab-bar-run"}
+      title={configured ? "Run Configuration (arguments/environment set)" : "Run Configuration: arguments, environment, working directory"}
+      onClick={() => useRunConfigStore.getState().edit(path)}
+    >
+      <SlidersHorizontal size={13} strokeWidth={1.5} />
+    </button>
   );
 }

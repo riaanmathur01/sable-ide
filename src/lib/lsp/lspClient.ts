@@ -6,7 +6,7 @@ import { useDiagnosticsStore } from "../../store/diagnosticsStore";
 import { parentDirectoryOf } from "../ipc";
 import { applyDiagnostics, getModelValue, type LspDiagnostic } from "../editorRegistry";
 import { allOpenFiles } from "../../store/tabsStore";
-import { installBasedpyright, readFile } from "../ipc";
+import { installBasedpyright, installTypeScriptServer, readFile } from "../ipc";
 import { useProblemsStore } from "../../store/problemsStore";
 import { applyWorkspaceEdit, type LspWorkspaceEdit } from "./workspaceEdit";
 
@@ -341,6 +341,19 @@ export async function setUpPythonSemanticHighlighting(): Promise<void> {
     await installBasedpyright();
     await restartLanguageServers();
     ui.showStatus("basedpyright installed — Python semantic highlighting is on");
+  } catch (error) {
+    ui.setLastError(String(error));
+  }
+}
+
+/** Install the TypeScript/JavaScript server (with TypeScript 5), then restart. */
+export async function setUpTypeScriptServer(): Promise<void> {
+  const ui = useUiStore.getState();
+  ui.showStatus("Installing the TypeScript language server…");
+  try {
+    await installTypeScriptServer();
+    await restartLanguageServers();
+    ui.showStatus("TypeScript language server installed");
   } catch (error) {
     ui.setLastError(String(error));
   }

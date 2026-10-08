@@ -11,7 +11,11 @@ import {
   sendDebugRequest,
   type DebugVariable,
 } from "../lib/debug/debugClient";
-import { JAVA_DEBUG_MISSING, resolveJavaLaunch } from "../lib/debug/javaLaunch";
+import { JAVA_DEBUG_MISSING, attachJavaLaunch, resolveJavaLaunch } from "../lib/debug/javaLaunch";
+import { useTerminalStore } from "./terminalStore";
+import { listen } from "@tauri-apps/api/event";
+import { useRunConfigStore } from "./runConfigStore";
+import { parseArgs, parseEnv } from "../lib/runConfig";
 
 /**
  * Debug session state (DAP). The protocol traffic is handled by
@@ -32,6 +36,19 @@ export interface ConsoleLine {
   id: number;
   category: "stdout" | "stderr" | "console" | "input" | "result" | "error";
   text: string;
+}
+
+/** Adjustments to a debug launch (see start). */
+export interface DebugLaunch {
+  overrides?: Record<string, unknown>;
+  binary?: string;
+  args?: string[];
+  cwd?: string;
+  /**
+   * Java tests: a build tool starts the JVM. Given the port Sable waits
+   * on, the command that starts it connecting there (run in a terminal).
+   */
+  jvm?: { command: (port: number) => Promise<string> };
 }
 
 export interface VariableScope {
@@ -93,7 +110,9 @@ interface DebugState {
   missingTool: MissingTool | null;
   isInstallingTool: boolean;
 
-  start: (program?: string) => Promise<void>;
+  /** Debug a file. `launch` adjusts how (debugging one test: run
+   *  pytest/vitest/jest/a Cargo test binary instead of the file). */
+  start: (program?: string, launch?: DebugLaunch) => Promise<void>;
   stop: () => Promise<void>;
   /** Install the missing debugger component, then retry. */
   installMissingTool: () => Promise<void>;
@@ -149,7 +168,7 @@ export const useDebugStore = create<DebugState>((set, get) => {
     missingTool: null,
     isInstallingTool: false,
 
-    start: async (programOverride) => {
+    start: async (programOverride, launch) => {
       if (get().isDebugging) {
         // F5 while paused means "continue".
         if (get().isPaused) await get().continue();
@@ -174,8 +193,20 @@ export const useDebugStore = create<DebugState>((set, get) => {
       const python = isPython
         ? (useInterpreterStore.getState().selectedPath ?? "python3")
         : null;
+      const config = useRunConfigStore.getState().configFor(program);
       const cwd =
-        useWorkspaceStore.getState().rootPath ?? parentDirectoryOf(program);
+        config.cwd.trim() || (useWorkspaceStore.getState().rootPath ?? parentDirectoryOf(program));
+      // Arguments, environment and working directory from the run
+      // configuration; the program runs in a terminal tab so it can read
+      // keyboard input.
+      const options = {
+        args: launch?.args ?? parseArgs(config.args),
+        env: parseEnv(config.env),
+        cwd: launch?.cwd ?? cwd,
+        terminal: true,
+        binary: launch?.binary,
+        overrides: launch?.overrides,
+      };
       const breakpoints = useBreakpointsStore.getState().breakpointsByFile;
 
       set({ ...IDLE, isDebugging: true, lastProgram: program, missingTool: null });
@@ -183,13 +214,18 @@ export const useDebugStore = create<DebugState>((set, get) => {
       get().appendConsole("console", `Debugging ${program}`);
       useUiStore.getState().setBottomPanel("debug");
       try {
-        if (/\.java$/i.test(program)) {
-          const { port, launch } = await resolveJavaLaunch(program, cwd, (line) =>
-            get().appendConsole("console", line),
+        if (launch?.jvm) {
+          await startJvmTest(program, launch.jvm, options.cwd, breakpoints, (line) => get().appendConsole("console", line));
+        } else if (/\.java$/i.test(program)) {
+          const { port, launch } = await resolveJavaLaunch(
+            program,
+            useWorkspaceStore.getState().rootPath ?? cwd,
+            (line) => get().appendConsole("console", line),
+            options,
           );
           await invoke("start_java_debug", { port, launch, breakpoints });
         } else {
-          await invoke("start_debug", { python, program, cwd, breakpoints });
+          await invoke("start_debug", { python, program, cwd, breakpoints, options });
         }
       } catch (error) {
         set({ isDebugging: false });
@@ -400,3 +436,50 @@ useBreakpointsStore.subscribe((state, previous) => {
     });
   }
 });
+
+/** A login shell running `command` (so mvn/gradle are on PATH). */
+function shellArgs(command: string): string[] {
+  if (/windows/i.test(navigator.userAgent)) return ["cmd.exe", "/d", "/c", command];
+  return [/mac/i.test(navigator.userAgent) ? "/bin/zsh" : "/bin/bash", "-l", "-c", command];
+}
+
+/**
+ * Debug a Java test: Sable waits for the test JVM, the build tool starts
+ * it (in the Debug terminal) connecting to Sable, and java-debug attaches
+ * through Sable's relay.
+ */
+async function startJvmTest(
+  program: string,
+  jvm: NonNullable<DebugLaunch["jvm"]>,
+  cwd: string,
+  breakpoints: unknown,
+  report: (line: string) => void,
+) {
+  const port = await invoke<number>("jvm_debug_listen");
+  let unlisten: (() => void) | undefined;
+  try {
+    const command = await jvm.command(port);
+    report(`Starting the test: ${command}`);
+    const started = useTerminalStore
+      .getState()
+      .startCommandSession({ args: shellArgs(command), cwd, env: null }, "Debug test", "debug");
+    const terminalId = useTerminalStore.getState().activeId;
+    const buildEnded = new Promise<never>((_, reject) => {
+      void listen<string>("terminal:exit", (event) => {
+        if (event.payload === terminalId) {
+          reject(new Error("The build ended before the test started — see the terminal"));
+        }
+      }).then((stop) => (unlisten = stop));
+    });
+    await started;
+    report("Waiting for the test JVM (the build compiles first)…");
+    const attachPort = await Promise.race([invoke<number>("jvm_debug_accept", { port, timeoutSecs: 900 }), buildEnded]);
+    const { port: debugPort, launch } = await attachJavaLaunch(program, attachPort, report);
+    await invoke("start_java_debug", { port: debugPort, launch, breakpoints });
+  } catch (error) {
+    void invoke("jvm_debug_cancel", { port });
+    throw error;
+  } finally {
+    unlisten?.();
+  }
+}

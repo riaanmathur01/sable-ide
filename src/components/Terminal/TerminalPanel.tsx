@@ -9,6 +9,8 @@ import { useProblemCounts } from "../../store/problemsStore";
 import { useNavigationStore } from "../../store/navigationStore";
 import { UsagesPanel } from "../Navigation/UsagesPanel";
 import { CallHierarchyPanel } from "../Navigation/CallHierarchyPanel";
+import { TestsPanel } from "../Tests/TestsPanel";
+import { useTestStore } from "../../store/testStore";
 import "./TerminalPanel.css";
 
 const TerminalView = lazy(() => import("./TerminalView"));
@@ -40,6 +42,9 @@ export function TerminalPanel() {
   const hasHierarchy = useNavigationStore((state) => state.hierarchy !== null);
   const usageCount = useNavigationStore((state) => state.usages?.usages.length ?? 0);
   const { clearUsages, clearHierarchy } = useNavigationStore.getState();
+  const hasTestRun = useTestStore((state) => state.run !== null);
+  const failedTests = useTestStore((state) => state.lastResults.filter((result) => result.status === "failed").length);
+  const testsRunning = useTestStore((state) => state.run?.running ?? false);
 
   const terminalShown = panelVisible && bottomPanel === "terminal";
   useEffect(() => {
@@ -82,6 +87,21 @@ export function TerminalPanel() {
           >
             Debug Console
           </button>
+          {(hasTestRun || bottomPanel === "tests") && (
+            <button
+              role="tab"
+              aria-selected={bottomPanel === "tests"}
+              className={bottomPanel === "tests" ? "active" : undefined}
+              onClick={() => setBottomPanel("tests")}
+            >
+              Tests
+              {testsRunning ? (
+                <span className="terminal-panel-badge">…</span>
+              ) : (
+                failedTests > 0 && <span className="terminal-panel-badge failed">{failedTests}</span>
+              )}
+            </button>
+          )}
           {(hasUsages || bottomPanel === "usages") && (
             <button
               role="tab"
@@ -105,7 +125,7 @@ export function TerminalPanel() {
           )}
         </div>
         <div className="terminal-panel-actions">
-          {bottomPanel === "usages" || bottomPanel === "hierarchy" ? (
+          {bottomPanel === "tests" ? null : bottomPanel === "usages" || bottomPanel === "hierarchy" ? (
             <button
               className="terminal-panel-action"
               title="Clear"
@@ -211,6 +231,7 @@ export function TerminalPanel() {
       {bottomPanel === "debug" && <DebugConsole />}
       {bottomPanel === "problems" && <ProblemsPanel />}
       {bottomPanel === "usages" && <UsagesPanel />}
+      {bottomPanel === "tests" && <TestsPanel />}
       {bottomPanel === "hierarchy" && <CallHierarchyPanel />}
     </div>
   );

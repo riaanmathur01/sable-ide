@@ -1,0 +1,105 @@
+.tests-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.tests-headline {
+  font-weight: 600;
+}
+
+.tests-headline.passed {
+  color: var(--git-added);
+}
+
+.tests-headline.failed {
+  color: var(--danger);
+}
+
+.tests-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  padding: 0 16px 0 0;
+}
+
+.problems-panel > .tests-actions {
+  margin: 4px 16px;
+  padding: 0;
+}
+
+.tests-actions button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.tests-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.tests-row {
+  padding-left: 14px;
+}
+
+.tests-twisty {
+  display: flex;
+  color: var(--text-muted);
+}
+
+.tests-twisty.empty {
+  visibility: hidden;
+}
+
+.tests-icon.passed {
+  color: var(--git-added);
+}
+
+.tests-icon.failed {
+  color: var(--danger);
+}
+
+.tests-icon.skipped {
+  color: var(--text-muted);
+}
+
+.tests-message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--danger);
+  font-size: 11.5px;
+}
+
+.tests-output {
+  margin: 2px 16px 6px 54px;
+  padding: 6px 8px;
+  overflow-x: auto;
+  background: var(--bg-elevated);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.45;
+  white-space: pre;
+  user-select: text;
+}
+
+.tests-log {
+  margin-left: 16px;
+}
+
+.tests-spin {
+  animation: nav-spin 0.9s linear infinite;
+}

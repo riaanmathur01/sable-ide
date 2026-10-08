@@ -51,6 +51,18 @@ export interface RecentLocation {
 }
 
 const MAX_RECENT = 50;
+/** Back/Forward history length. */
+const MAX_HISTORY = 100;
+/** A cursor move of more than this many lines is a jump (a new place). */
+const JUMP_LINES = 10;
+/** Set while Back/Forward moves the cursor, so the move isn't recorded. */
+let navigatingHistory = false;
+
+export interface Place {
+  path: string;
+  line: number;
+  column: number;
+}
 let nodeId = 0;
 
 /** Where the cursor is in the focused editor. */
@@ -89,6 +101,14 @@ interface NavigationState {
   toggleHierarchyNode: (id: string) => Promise<void>;
   clearUsages: () => void;
   clearHierarchy: () => void;
+
+  /** Back/Forward history and the current entry in it. */
+  history: Place[];
+  historyIndex: number;
+  /** Called on every cursor move; jumps become new history entries. */
+  recordPosition: (place: Place) => void;
+  goBack: () => Promise<void>;
+  goForward: () => Promise<void>;
 
   recordFile: (path: string) => void;
   recordLocation: (location: RecentLocation) => void;
@@ -267,6 +287,37 @@ export const useNavigationStore = create<NavigationState>((set, get) => ({
   clearUsages: () => set({ usages: null }),
   clearHierarchy: () => set({ hierarchy: null }),
 
+  history: [],
+  historyIndex: -1,
+
+  recordPosition: (place) => {
+    if (navigatingHistory) return;
+    const { history, historyIndex } = get();
+    const current = history[historyIndex];
+    if (current && current.path === place.path && Math.abs(current.line - place.line) <= JUMP_LINES) {
+      // Still the same place: follow the cursor within it.
+      const updated = [...history];
+      updated[historyIndex] = place;
+      set({ history: updated });
+      return;
+    }
+    // A jump: drop any Forward entries, then add the new place.
+    const next = [...history.slice(0, historyIndex + 1), place].slice(-MAX_HISTORY);
+    set({ history: next, historyIndex: next.length - 1 });
+  },
+
+  goBack: async () => {
+    const { history, historyIndex } = get();
+    if (historyIndex <= 0) return;
+    await navigateHistory(history[historyIndex - 1], historyIndex - 1);
+  },
+
+  goForward: async () => {
+    const { history, historyIndex } = get();
+    if (historyIndex >= history.length - 1) return;
+    await navigateHistory(history[historyIndex + 1], historyIndex + 1);
+  },
+
   recordFile: (path) => {
     const recentFiles = [path, ...get().recentFiles.filter((existing) => existing !== path)].slice(0, MAX_RECENT);
     set({ recentFiles });
@@ -305,3 +356,16 @@ useNavigationStore.getState().loadRecent(useWorkspaceStore.getState().rootPath);
 useWorkspaceStore.subscribe((state, previous) => {
   if (state.rootPath !== previous.rootPath) useNavigationStore.getState().loadRecent(state.rootPath);
 });
+
+/** Move to a history entry without recording the move as a new one. */
+async function navigateHistory(place: Place, index: number) {
+  navigatingHistory = true;
+  useNavigationStore.setState({ historyIndex: index });
+  try {
+    await goTo(place.path, place.line, place.column);
+    // The editor reports the move a frame or two later.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  } finally {
+    navigatingHistory = false;
+  }
+}

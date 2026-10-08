@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { createTerminal, killTerminal } from "../lib/ipc";
+import { createCommandTerminal, createTerminal, killTerminal } from "../lib/ipc";
 import { useWorkspaceStore } from "./workspaceStore";
 import { useUiStore } from "./uiStore";
 
@@ -16,12 +16,26 @@ function nextId(): string {
   return `term-${sessionCounter}`;
 }
 
+/** A program a terminal runs instead of a shell (e.g. one being debugged). */
+export interface TerminalCommand {
+  args: string[];
+  cwd: string | null;
+  env: Record<string, string | null> | null;
+}
+
 export interface TerminalSession {
   id: string;
   /** Shown on the tab; follows the shell's title escape sequence. */
   title: string;
   isRunning: boolean;
+  /** Runs this program instead of a shell. */
+  command?: TerminalCommand;
+  /** Sessions sharing a reuse key replace each other (one Debug tab). */
+  reuseKey?: string;
 }
+
+/** Program sessions waiting for their view to mount and start them. */
+const pendingStarts = new Map<string, { resolve: (pid: number) => void; reject: (error: unknown) => void }>();
 
 interface PendingCommand {
   terminalId: string;
@@ -55,6 +69,13 @@ interface TerminalState {
   restartSession: (id?: string) => Promise<void>;
   /** Kill every shell and start over with one (workspace switch). */
   restartAll: () => Promise<void>;
+  /**
+   * Run a program in a new terminal tab (shown straight away) and resolve
+   * to its process id once it has started. The program starts when its
+   * view mounts, so its first output (e.g. a prompt) is never missed. A
+   * `reuseKey` replaces the previous tab with the same key.
+   */
+  startCommandSession: (command: TerminalCommand, title: string, reuseKey?: string) => Promise<number>;
   /** Queue a command for the active terminal. */
   enqueueCommand: (commandLine: string) => void;
   clearPendingCommand: () => void;
@@ -75,6 +96,24 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   ensureSession: async (id, size) => {
     const session = get().sessions.find((candidate) => candidate.id === id);
     if (!session || session.isRunning) return;
+    if (session.command) {
+      const start = pendingStarts.get(id);
+      if (!start) return; // already ran and ended
+      pendingStarts.delete(id);
+      try {
+        const { args, cwd, env } = session.command;
+        const pid = await createCommandTerminal(id, args, cwd, env, size?.cols ?? 80, size?.rows ?? 24);
+        set((state) => ({
+          sessions: state.sessions.map((candidate) =>
+            candidate.id === id ? { ...candidate, isRunning: true } : candidate,
+          ),
+        }));
+        start.resolve(pid);
+      } catch (error) {
+        start.reject(error);
+      }
+      return;
+    }
     const workspaceRoot = useWorkspaceStore.getState().rootPath;
     try {
       // 80x24 only if the caller doesn't know its size yet; the view
@@ -141,6 +180,27 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
     await Promise.all(get().sessions.map((session) => killTerminal(session.id).catch(() => {})));
     const session = freshSession();
     set({ sessions: [session], activeId: session.id, pendingCommand: null });
+  },
+
+  startCommandSession: (command, title, reuseKey) => {
+    const session: TerminalSession = { ...freshSession(), title, command, reuseKey };
+    const previous = reuseKey ? get().sessions.find((candidate) => candidate.reuseKey === reuseKey) : undefined;
+    if (previous) void killTerminal(previous.id).catch(() => {});
+    set((state) => ({
+      sessions: previous
+        ? state.sessions.map((candidate) => (candidate.id === previous.id ? session : candidate))
+        : [...state.sessions, session],
+      activeId: session.id,
+    }));
+    useUiStore.getState().setBottomPanel("terminal");
+    return new Promise<number>((resolve, reject) => {
+      pendingStarts.set(session.id, { resolve, reject });
+      // If the view never mounts (it should within a frame), fail rather
+      // than leave the debugger waiting forever.
+      setTimeout(() => {
+        if (pendingStarts.delete(session.id)) reject(new Error("The terminal didn't open"));
+      }, 15_000);
+    });
   },
 
   enqueueCommand: (commandLine) =>

@@ -1,0 +1,127 @@
+.merge-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.merge-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 8px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.merge-count {
+  color: var(--danger);
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+.merge-count.done {
+  color: var(--git-added);
+}
+
+.merge-spacer {
+  flex: 1;
+}
+
+.merge-icon-button,
+.merge-button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.merge-icon-button {
+  padding: 3px;
+}
+
+.merge-button {
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.merge-icon-button:hover:not(:disabled),
+.merge-button:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.merge-button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.merge-button.primary:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--on-accent);
+  opacity: 0.9;
+}
+
+.merge-icon-button:disabled,
+.merge-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.merge-columns {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.merge-column {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  border-right: 1px solid var(--border);
+}
+
+.merge-column.result {
+  flex: 1.25;
+}
+
+.merge-column:last-of-type {
+  border-right: none;
+}
+
+.merge-heading {
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.merge-heading.ours {
+  color: #3fb950;
+}
+
+.merge-heading.theirs {
+  color: #4f8fe6;
+}
+
+.merge-surface {
+  flex: 1;
+  min-height: 0;
+}

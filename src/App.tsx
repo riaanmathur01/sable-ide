@@ -6,6 +6,9 @@ import { EditorArea } from "./components/Editor/EditorArea";
 import { TerminalPanel } from "./components/Terminal/TerminalPanel";
 import { StatusBar } from "./components/StatusBar/StatusBar";
 import { CommandPalette } from "./components/CommandPalette/CommandPalette";
+import { RunConfigDialog } from "./components/Run/RunConfigDialog";
+import { RefactorPicker } from "./components/ContextMenu/RefactorPicker";
+import { checkForUpdatesQuietly } from "./lib/updates";
 import { AgentPanel } from "./components/Agent/AgentPanel";
 import { Resizer } from "./components/Layout/Resizer";
 import { useUiStore, lastTerminalVisible } from "./store/uiStore";
@@ -53,7 +56,8 @@ function App() {
   useEffect(() => {
     initLspListeners();
     initDebugListeners();
-    void useSettingsStore.getState().load();
+    // Settings first: whether to check for updates is one of them.
+    void useSettingsStore.getState().load().then(() => checkForUpdatesQuietly());
   }, []);
 
   // Session restore: reopen the folder from last launch, then its tabs
@@ -190,6 +194,8 @@ function App() {
         <div className="drop-overlay">Drop folder to open</div>
       )}
       <CommandPalette />
+      <RunConfigDialog />
+      <RefactorPicker />
     </div>
   );
 }

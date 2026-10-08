@@ -25,10 +25,17 @@ import {
   type SettingKey,
 } from "../../store/settingsStore";
 import { getEditor } from "../../lib/editorRegistry";
+import { installRuff } from "../../lib/formatting";
+import { runnableFile } from "../../lib/runFile";
+import { useRunConfigStore } from "../../store/runConfigStore";
+import { useTestStore } from "../../store/testStore";
+import { refactor, refactorThis } from "../../lib/refactor";
+import { checkForUpdates } from "../../lib/updates";
 import { THEMES } from "../../lib/themes";
 import {
   restartLanguageServers,
   setUpPythonSemanticHighlighting,
+  setUpTypeScriptServer,
 } from "../../lib/lsp/lspClient";
 import "./CommandPalette.css";
 
@@ -403,6 +410,11 @@ function buildCommands(): PaletteItem[] {
       run: () => void setUpPythonSemanticHighlighting(),
     },
     {
+      id: "install-typescript-server",
+      label: "TypeScript: Install Language Server",
+      run: () => void setUpTypeScriptServer(),
+    },
+    {
       id: "restart-lsp",
       label: "Restart Language Servers",
       run: () => void restartLanguageServers(),
@@ -432,6 +444,35 @@ function buildCommands(): PaletteItem[] {
         void editor?.getAction("editor.action.marker.nextInFiles")?.run();
       },
     },
+    { id: "check-updates", label: "Check for Updates…", run: () => void checkForUpdates() },
+    { id: "refactor-this", label: "Refactor: Refactor This… (⌃T)", run: refactorThis },
+    {
+      id: "local-history",
+      label: "Local History: Show History for Current File",
+      run: () => {
+        const file = useTabsStore.getState().lastFilePath;
+        if (file) useTabsStore.getState().openHistory(file);
+      },
+    },
+    {
+      id: "git-stash",
+      label: "Git: Stash Changes (including new files)",
+      run: () => void useGitStore.getState().stashSave(null, true),
+    },
+    {
+      id: "git-stash-pop",
+      label: "Git: Pop Latest Stash",
+      run: () => void useGitStore.getState().stashApply(0, true),
+    },
+    {
+      id: "local-history-deleted",
+      label: "Local History: Recover Deleted File…",
+      run: () => useTabsStore.getState().openHistory(null),
+    },
+    { id: "refactor-variable", label: "Refactor: Extract Variable (⌥⌘V)", run: () => void refactor("extractVariable") },
+    { id: "refactor-method", label: "Refactor: Extract Method (⌥⌘M)", run: () => void refactor("extractMethod") },
+    { id: "refactor-constant", label: "Refactor: Extract Constant (⌥⌘C)", run: () => void refactor("extractConstant") },
+    { id: "refactor-inline", label: "Refactor: Inline (⌥⌘N)", run: () => void refactor("inline") },
     {
       id: "format",
       label: "Format Document",
@@ -526,6 +567,18 @@ function buildCommands(): PaletteItem[] {
       run: () => ui.openPalette("files"),
     },
     {
+      id: "navigate-back",
+      label: "Navigate: Back",
+      detail: "⌘[",
+      run: () => void useNavigationStore.getState().goBack(),
+    },
+    {
+      id: "navigate-forward",
+      label: "Navigate: Forward",
+      detail: "⌘]",
+      run: () => void useNavigationStore.getState().goForward(),
+    },
+    {
       id: "search-everywhere",
       label: "Navigate: Search Everywhere",
       detail: "⇧ ⇧",
@@ -578,6 +631,54 @@ function buildCommands(): PaletteItem[] {
       label: "Navigate: Call Hierarchy",
       detail: "⌃⌥H",
       run: () => void useNavigationStore.getState().showCallHierarchy(),
+    },
+    {
+      id: "tests-at-cursor",
+      label: "Tests: Run Test at Cursor",
+      detail: "⌃⇧R",
+      run: () => void useTestStore.getState().atCursor(false),
+    },
+    {
+      id: "tests-debug-at-cursor",
+      label: "Tests: Debug Test at Cursor",
+      detail: "⌃⇧D",
+      run: () => void useTestStore.getState().atCursor(true),
+    },
+    {
+      id: "tests-file",
+      label: "Tests: Run All Tests in File",
+      run: () => {
+        const path = runnableFile();
+        if (path) void useTestStore.getState().runFileTests(path);
+      },
+    },
+    {
+      id: "tests-project",
+      label: "Tests: Run All Tests in Project",
+      run: () => void useTestStore.getState().runProject(),
+    },
+    {
+      id: "tests-rerun-failed",
+      label: "Tests: Rerun Failed Tests",
+      run: () => void useTestStore.getState().rerunFailed(),
+    },
+    {
+      id: "tests-show",
+      label: "Tests: Show Results",
+      run: () => ui.setBottomPanel("tests"),
+    },
+    {
+      id: "run-config",
+      label: "Run: Edit Configuration… (arguments, environment, working directory)",
+      run: () => {
+        const path = runnableFile();
+        if (path) useRunConfigStore.getState().edit(path);
+      },
+    },
+    {
+      id: "install-ruff",
+      label: "Python: Install Ruff (formatter)",
+      run: () => void installRuff(),
     },
     {
       id: "inlay-hints",

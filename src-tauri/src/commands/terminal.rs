@@ -48,7 +48,56 @@ pub fn create_terminal(
     if sessions.contains_key(&id) {
         return Ok(());
     }
+    let mut shell_command = CommandBuilder::new(default_shell());
+    shell_command.env("TERM", "xterm-256color");
+    if let Some(directory) = cwd {
+        shell_command.cwd(directory);
+    }
+    spawn_session(&app, &mut sessions, id, cols, rows, shell_command).map(|_| ())
+}
 
+/// A terminal running one program instead of a shell — e.g. a program
+/// being debugged, so it can read keyboard input. Returns its process id.
+#[tauri::command]
+#[allow(clippy::too_many_arguments)] // each is a separate argument from the frontend
+pub fn create_command_terminal(
+    app: AppHandle,
+    state: State<TerminalState>,
+    id: String,
+    args: Vec<String>,
+    cwd: Option<String>,
+    env: Option<HashMap<String, Option<String>>>,
+    cols: u16,
+    rows: u16,
+) -> Result<u32, String> {
+    let (program, rest) = args.split_first().ok_or("Nothing to run")?;
+    let mut command = CommandBuilder::new(program);
+    command.args(rest);
+    command.env("TERM", "xterm-256color");
+    if let Some(directory) = cwd.filter(|directory| !directory.is_empty()) {
+        command.cwd(directory);
+    }
+    // DAP: a null value removes the variable.
+    for (name, value) in env.unwrap_or_default() {
+        match value {
+            Some(value) => command.env(name, value),
+            None => command.env_remove(name),
+        }
+    }
+    let mut sessions = state.0.lock().unwrap();
+    spawn_session(&app, &mut sessions, id, cols, rows, command)
+}
+
+/// Start `command` in a new PTY and stream its output. Returns the
+/// process id (0 if the platform doesn't report one).
+fn spawn_session(
+    app: &AppHandle,
+    sessions: &mut HashMap<String, PtySession>,
+    id: String,
+    cols: u16,
+    rows: u16,
+    command: CommandBuilder,
+) -> Result<u32, String> {
     let pty_pair = native_pty_system()
         .openpty(PtySize {
             rows,
@@ -58,16 +107,11 @@ pub fn create_terminal(
         })
         .map_err(|error| format!("Could not open a terminal: {error}"))?;
 
-    let mut shell_command = CommandBuilder::new(default_shell());
-    shell_command.env("TERM", "xterm-256color");
-    if let Some(directory) = cwd {
-        shell_command.cwd(directory);
-    }
-
     let child = pty_pair
         .slave
-        .spawn_command(shell_command)
-        .map_err(|error| format!("Could not start the shell: {error}"))?;
+        .spawn_command(command)
+        .map_err(|error| format!("Could not start: {error}"))?;
+    let process_id = child.process_id().unwrap_or(0);
     // The slave end belongs to the child now; dropping our handle lets
     // the reader see EOF when the shell exits.
     drop(pty_pair.slave);
@@ -126,7 +170,7 @@ pub fn create_terminal(
             child,
         },
     );
-    Ok(())
+    Ok(process_id)
 }
 
 #[tauri::command]
