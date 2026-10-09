@@ -68,6 +68,9 @@ jobs:
 
       - uses: tauri-apps/tauri-action@v0
         env:
+          # The frontend build (Monaco, Shiki grammars) outgrows Node's
+          # default heap on the macOS runners.
+          NODE_OPTIONS: --max-old-space-size=6144
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
