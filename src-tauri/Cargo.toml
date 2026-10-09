@@ -1,6 +1,6 @@
 [package]
 name = "sable"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sable — a fast, minimal, dark code editor"
 authors = ["Riaan Mathur"]
 edition = "2021"
