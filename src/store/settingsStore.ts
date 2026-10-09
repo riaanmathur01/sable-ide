@@ -125,7 +125,7 @@ export const SETTINGS_SCHEMA: SettingSpec[] = [
   { key: "editor.bracketPairColorization", section: "Editor Appearance", type: "boolean", label: "Bracket Pair Colors", description: "Color matching brackets by nesting depth (rainbow brackets).", default: false },
   { key: "editor.bracketPairGuides", section: "Editor Appearance", type: "boolean", label: "Bracket Pair Guides", description: "Draw guides connecting the active bracket pair.", default: true },
   { key: "editor.stickyScroll", section: "Editor Appearance", type: "boolean", label: "Sticky Scroll", description: "Pin the enclosing function/class headers to the top while scrolling.", default: true },
-  { key: "editor.smoothScrolling", section: "Editor Appearance", type: "boolean", label: "Smooth Scrolling", description: "Animate scrolling.", default: true },
+  { key: "editor.smoothScrolling", section: "Editor Appearance", type: "boolean", label: "Smooth Scrolling", description: "Ease scrolling: each wheel scroll goes as far as usual, speeding up and slowing down along a bell curve, and settles on a whole line.", default: true },
   // --- Editor: behavior -----------------------------------------------------
   { key: "editor.autoClosingBrackets", section: "Editing", type: "boolean", label: "Auto-close Brackets & Quotes", description: "Insert the closing bracket or quote as you type the opening one.", default: true },
   { key: "editor.linkedEditing", section: "Editing", type: "boolean", label: "Linked Editing", description: "Rename matching HTML/JSX tags together.", default: true },
