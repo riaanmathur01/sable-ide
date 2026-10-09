@@ -15,6 +15,7 @@ import { useDebugStore } from "./debugStore";
 import { useTabsStore } from "./tabsStore";
 import { useUiStore } from "./uiStore";
 import { useWorkspaceStore } from "./workspaceStore";
+import { useCoverageStore } from "./coverageStore";
 
 /**
  * Test runs: what's running, the latest results per file (shown in the
@@ -30,7 +31,9 @@ export interface TestRunSummary {
   error?: string;
   log?: string;
   /** Run again (the same scope). */
-  rerun?: { context: TestContext; scope: TestScope };
+  rerun?: { context: TestContext; scope: TestScope; coverage?: boolean };
+  /** A coverage run that produced no coverage: why. */
+  coverageError?: string;
 }
 
 interface TestState {
@@ -42,9 +45,9 @@ interface TestState {
   /** Bumps on every change (editor annotations refresh on it). */
   version: number;
 
-  runFileTests: (file: string, items?: TestItem[]) => Promise<void>;
-  runProject: () => Promise<void>;
-  rerun: () => Promise<void>;
+  runFileTests: (file: string, items?: TestItem[], coverage?: boolean) => Promise<void>;
+  runProject: (coverage?: boolean) => Promise<void>;
+  rerun: (coverage?: boolean) => Promise<void>;
   rerunFailed: () => Promise<void>;
   debugTest: (file: string, item: TestItem) => Promise<void>;
   /** Run (or debug) the test the cursor is in — ⌃⇧R / ⌃⇧D. */
@@ -89,20 +92,24 @@ function describeScope(scope: TestScope, items?: TestItem[]): string {
   return `Tests in ${name}`;
 }
 
-async function execute(context: TestContext, scope: TestScope, label: string) {
+async function execute(context: TestContext, scope: TestScope, label: string, coverage = false) {
   const store = useTestStore;
   if (store.getState().run?.running) {
     useUiStore.getState().showStatus("Tests are already running");
     return;
   }
   const startedAt = Date.now();
-  store.setState((state) => ({ run: { label, running: true, startedAt, rerun: { context, scope } }, version: state.version + 1 }));
+  store.setState((state) => ({
+    run: { label, running: true, startedAt, rerun: { context, scope, coverage } },
+    version: state.version + 1,
+  }));
   useUiStore.getState().setBottomPanel("tests");
   // Run what's on screen, not stale files.
   const tabs = useTabsStore.getState();
   if ("file" in scope && tabs.tabs.some((tab) => tab.path === scope.file)) await tabs.saveTab(scope.file);
   try {
-    const run = await runTests(context, scope);
+    const run = await runTests(context, scope, { coverage });
+    if (run.coverage) useCoverageStore.getState().set(run.coverage);
     const byFile: Record<string, TestResult[]> = { ...store.getState().resultsByFile };
     for (const result of run.results) {
       if (!result.file) continue;
@@ -121,7 +128,8 @@ async function execute(context: TestContext, scope: TestScope, label: string) {
         durationMs: Date.now() - startedAt,
         error: run.error ?? (run.results.length === 0 ? "No tests ran" : undefined),
         log: run.log,
-        rerun: { context, scope },
+        rerun: { context, scope, coverage },
+        coverageError: run.coverageError,
       },
       version: state.version + 1,
     }));
@@ -132,7 +140,7 @@ async function execute(context: TestContext, scope: TestScope, label: string) {
       .showStatus(run.error ? run.error : failed ? `Tests: ${failed} failed, ${passed} passed` : `Tests: ${passed} passed`);
   } catch (error) {
     store.setState((state) => ({
-      run: { label, running: false, startedAt, error: String(error), rerun: { context, scope } },
+      run: { label, running: false, startedAt, error: String(error), rerun: { context, scope, coverage } },
       version: state.version + 1,
     }));
   }
@@ -144,17 +152,17 @@ export const useTestStore = create<TestState>((_set, get) => ({
   run: null,
   version: 0,
 
-  runFileTests: async (file, items) => {
+  runFileTests: async (file, items, coverage) => {
     const found = await testsIn(file);
     if (!found) {
       useUiStore.getState().showStatus("No test runner found for this file (pytest, Vitest, Jest, Go, Cargo, JUnit)");
       return;
     }
     const scope: TestScope = items ? { file, items } : { file, items: "all" };
-    await execute(found.context, scope, describeScope(scope, items));
+    await execute(found.context, scope, describeScope(scope, items), coverage);
   },
 
-  runProject: async () => {
+  runProject: async (coverage) => {
     const active = useTabsStore.getState().lastFilePath;
     const context = active ? await testContext(active) : null;
     if (!context) {
@@ -163,12 +171,17 @@ export const useTestStore = create<TestState>((_set, get) => ({
     }
     // The project root of that runner (Go: the module, not the package).
     const root = useWorkspaceStore.getState().rootPath ?? context.projectDir;
-    await execute({ ...context, projectDir: context.framework === "go" ? root : context.projectDir }, { project: true }, "All tests");
+    await execute(
+      { ...context, projectDir: context.framework === "go" ? root : context.projectDir },
+      { project: true },
+      "All tests",
+      coverage,
+    );
   },
 
-  rerun: async () => {
+  rerun: async (coverage) => {
     const run = get().run;
-    if (run?.rerun) await execute(run.rerun.context, run.rerun.scope, run.label);
+    if (run?.rerun) await execute(run.rerun.context, run.rerun.scope, run.label, coverage ?? run.rerun.coverage);
   },
 
   rerunFailed: async () => {

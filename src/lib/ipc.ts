@@ -150,6 +150,10 @@ export interface CommitInfo {
   timestamp: number; // Unix seconds
   summary: string;
   body: string;
+  /** Parent hashes (the graph's edges). */
+  parents: string[];
+  /** Branches and tags pointing here ("main", "origin/main", "tag: v1.0"). */
+  refs: string[];
 }
 
 export interface CommitFile {
@@ -291,6 +295,24 @@ export function gitCherryPick(root: string, hash: string): Promise<string> {
 
 export function gitRevertCommit(root: string, hash: string): Promise<string> {
   return invoke<string>("git_revert_commit", { root, hash });
+}
+
+export interface RebaseStep {
+  action: "pick" | "reword" | "squash" | "fixup" | "drop";
+  hash: string;
+  message?: string;
+}
+
+export function gitRebase(root: string, onto: string): Promise<string> {
+  return invoke<string>("git_rebase", { root, onto });
+}
+
+export function gitRebaseInteractive(root: string, base: string, steps: RebaseStep[]): Promise<string> {
+  return invoke<string>("git_rebase_interactive", { root, base, steps });
+}
+
+export function gitRebaseContinue(root: string, skip: boolean): Promise<string> {
+  return invoke<string>("git_rebase_continue", { root, skip });
 }
 
 export function gitAbort(root: string): Promise<string> {

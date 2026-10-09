@@ -21,6 +21,20 @@
   background: var(--danger);
 }
 
+/* Conditional / hit-count breakpoint: a dot with a ring. */
+.debug-breakpoint.conditional::before {
+  box-shadow: inset 0 0 0 2px var(--danger), inset 0 0 0 3.5px var(--bg-base);
+}
+
+/* Logpoint (prints, doesn't stop): a diamond. */
+.debug-breakpoint.logpoint::before {
+  width: 9px;
+  height: 9px;
+  margin: 5px 0 0 6px;
+  border-radius: 1px;
+  transform: rotate(45deg);
+}
+
 /* The line where execution is paused. */
 .debug-stopped-line {
   background: color-mix(in srgb, var(--git-modified) 16%, transparent);
@@ -32,4 +46,22 @@
   margin-left: 4px;
   color: var(--git-modified);
   font-size: 11px;
+}
+
+/* Test coverage bars (Tests panel → Coverage). */
+.coverage-covered,
+.coverage-partial,
+.coverage-uncovered {
+  margin-left: 3px;
+  width: 3px !important;
+  border-radius: 1px;
+}
+.coverage-covered {
+  background: color-mix(in srgb, var(--git-added) 75%, transparent);
+}
+.coverage-partial {
+  background: color-mix(in srgb, var(--git-modified) 85%, transparent);
+}
+.coverage-uncovered {
+  background: color-mix(in srgb, var(--danger) 80%, transparent);
 }

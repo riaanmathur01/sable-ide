@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { layoutGraph, type GraphRow } from "../../lib/git/graph";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import {
   gitCommitFiles,
@@ -72,7 +73,16 @@ export function HistoryPanel() {
     return [
       // Picking from the branch you're on would re-apply its own commit.
       ...(viewing
-        ? [{ label: `Cherry-Pick onto ${branch ?? "HEAD"}`, onSelect: () => void cherryPick(commit.hash) }]
+        ? [
+            {
+              label: `Cherry-Pick onto ${branch ?? "HEAD"}`,
+              onSelect: () => void cherryPick(commit.hash),
+            },
+            {
+              label: `Rebase ${branch ?? "HEAD"} onto This Commit`,
+              onSelect: () => void useGitStore.getState().rebase(commit.hash),
+            },
+          ]
         : []),
       {
         label: "Revert Commit",
@@ -84,6 +94,25 @@ export function HistoryPanel() {
             if (yes) void revertCommit(commit.hash).then(reload);
           }),
       },
+      // Rewrite what's above this commit on the current branch.
+      ...(!viewing
+        ? [
+            {
+              label: "Interactive Rebase from Here…",
+              onSelect: () => {
+                const index = commits.findIndex((candidate) => candidate.hash === commit.hash);
+                const above = commits.slice(0, index).reverse();
+                if (above.length === 0) {
+                  useUiStore.getState().showStatus("Choose an older commit — the rebase rewrites the commits after it");
+                } else if (above.some((candidate) => candidate.parents.length > 1)) {
+                  useUiStore.getState().showStatus("Those commits include a merge — interactive rebase works on a straight line of commits");
+                } else {
+                  useGitStore.getState().setRebaseDialog({ base: commit.hash, commits: above });
+                }
+              },
+            },
+          ]
+        : []),
       {
         label: "Copy Hash",
         onSelect: () => {
@@ -138,6 +167,9 @@ export function HistoryPanel() {
     }
   }
 
+  const graph = useMemo(() => layoutGraph(commits), [commits]);
+  const graphWidth = Math.min(8, Math.max(1, ...graph.map((row) => row.width)));
+
   if (!isRepo) {
     return <div className="history-empty">This folder isn’t a Git repository.</div>;
   }
@@ -164,6 +196,7 @@ export function HistoryPanel() {
             title="Show another branch's commits — right-click one to cherry-pick it"
           >
             <option value="">{branch ?? "HEAD"} (current)</option>
+            <option value="*">All branches</option>
             {branches
               .filter((candidate) => !candidate.isCurrent)
               .map((candidate) => (
@@ -174,7 +207,7 @@ export function HistoryPanel() {
           </select>
         </div>
       )}
-      {commits.map((commit) => {
+      {commits.map((commit, index) => {
         const isOpen = expanded === commit.hash;
         const Chevron = isOpen ? ChevronDown : ChevronRight;
         return (
@@ -188,9 +221,17 @@ export function HistoryPanel() {
               }}
               title={`${commit.summary} — right-click for Cherry-Pick, Revert…`}
             >
+              {graph[index] && <GraphCell row={graph[index]} width={graphWidth} />}
               <Chevron size={13} strokeWidth={1.5} className="history-chevron" />
               <div className="history-main">
-                <div className="history-summary">{commit.summary}</div>
+                <div className="history-summary">
+                  {commit.refs.map((ref) => (
+                    <span key={ref} className={ref.startsWith("tag: ") ? "history-ref tag" : ref === branch ? "history-ref head" : "history-ref"}>
+                      {ref.replace(/^tag: /, "")}
+                    </span>
+                  ))}
+                  {commit.summary}
+                </div>
                 <div className="history-meta">
                   <span className="history-hash">{commit.shortHash}</span>
                   {commit.author} · {relativeTime(commit.timestamp)}
@@ -198,7 +239,8 @@ export function HistoryPanel() {
               </div>
             </div>
             {isOpen && (
-              <div className="history-files">
+              <div className="history-files" style={{ paddingLeft: 24 + graphWidth * LANE }}>
+                {graph[index] && <GraphContinuation row={graph[index]} />}
                 {(filesByHash[commit.hash] ?? []).map((file) => {
                   const name =
                     file.path.split(/[/\\]/).filter(Boolean).pop() ?? file.path;
@@ -243,5 +285,53 @@ export function HistoryPanel() {
         <div className="history-status">No commits yet</div>
       )}
     </div>
+  );
+}
+
+/** Pixels per graph lane. */
+const LANE = 12;
+const ROW_HEIGHT = 44;
+const LANE_COLORS = ["#7c93ff", "#6cc070", "#d6a55c", "#e879a6", "#4fc1d6", "#f87171", "#a78bfa", "#9ca3af"];
+const laneColor = (index: number) => LANE_COLORS[index % LANE_COLORS.length];
+const laneX = (column: number) => LANE / 2 + column * LANE;
+
+/** One row of the commit graph: lines to the rows above and below, and
+ *  the commit's dot. */
+function GraphCell({ row, width }: { row: GraphRow; width: number }) {
+  const visible = (column: number) => column < 8;
+  return (
+    <svg className="history-graph" width={width * LANE} height={ROW_HEIGHT} aria-hidden>
+      {row.segments
+        .filter((segment) => visible(segment.x1) && visible(segment.x2))
+        .map((segment, index) => {
+          const x1 = laneX(segment.x1);
+          const x2 = laneX(segment.x2);
+          const y1 = segment.y1 * ROW_HEIGHT;
+          const y2 = segment.y2 * ROW_HEIGHT;
+          const d =
+            x1 === x2 ? `M${x1} ${y1}V${y2}` : `M${x1} ${y1}C${x1} ${(y1 + y2) / 2} ${x2} ${(y1 + y2) / 2} ${x2} ${y2}`;
+          return <path key={index} d={d} stroke={laneColor(segment.color)} strokeWidth={1.5} fill="none" />;
+        })}
+      {visible(row.column) && (
+        <circle cx={laneX(row.column)} cy={ROW_HEIGHT / 2} r={3.5} fill={laneColor(row.color)} stroke="var(--bg-base)" strokeWidth={1.5} />
+      )}
+    </svg>
+  );
+}
+
+/** The lanes running past an expanded commit's file list. */
+function GraphContinuation({ row }: { row: GraphRow }) {
+  return (
+    <>
+      {row.lanesBelow
+        .filter((lane) => lane.column < 8)
+        .map((lane) => (
+          <span
+            key={lane.column}
+            className="history-graph-lane"
+            style={{ left: 8 + laneX(lane.column) - 0.75, background: laneColor(lane.color) }}
+          />
+        ))}
+    </>
   );
 }

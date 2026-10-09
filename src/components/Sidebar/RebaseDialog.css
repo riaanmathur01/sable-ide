@@ -1,0 +1,151 @@
+.rebase-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 10vh;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.rebase-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 640px;
+  max-width: calc(100vw - 32px);
+  max-height: 76vh;
+  padding: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.rebase-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rebase-note {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.rebase-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.rebase-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: var(--bg-base);
+}
+
+.rebase-row.drop .rebase-summary {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.rebase-row.squash,
+.rebase-row.fixup {
+  margin-left: 18px;
+}
+
+.rebase-row select {
+  width: 86px;
+  flex-shrink: 0;
+  padding: 2px 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+}
+
+.rebase-hash {
+  padding-top: 3px;
+  font-family: var(--font-mono);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.rebase-summary {
+  flex: 1;
+  min-width: 0;
+  padding-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rebase-row textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  resize: vertical;
+  outline: none;
+  user-select: text;
+}
+
+.rebase-move {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.rebase-move button,
+.rebase-actions button {
+  display: flex;
+  align-items: center;
+  padding: 3px 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.rebase-move button:disabled,
+.rebase-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.rebase-problem {
+  color: var(--danger);
+}
+
+.rebase-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.rebase-actions button {
+  padding: 4px 12px;
+}
+
+.rebase-actions button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}

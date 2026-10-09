@@ -36,6 +36,7 @@ import { registerFormatting } from "./formatting";
 import { registerTestCodeLenses } from "./testing/codeLens";
 import { registerConflictSupport } from "./git/conflictEditor";
 import { registerPythonRefactorings } from "./refactor";
+import { registerInlineCompletions } from "./ai/inlineCompletions";
 
 self.MonacoEnvironment = {
   getWorker(_workerId: string, label: string) {
@@ -75,6 +76,7 @@ registerFormatting(monaco);
 registerTestCodeLenses(monaco);
 registerConflictSupport(monaco);
 registerPythonRefactorings(monaco);
+registerInlineCompletions(monaco);
 
 // Cross-file navigation (go to definition, peek → open): Monaco asks us
 // to open the target; route it through the tab store so it becomes a

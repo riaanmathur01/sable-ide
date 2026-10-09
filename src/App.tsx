@@ -8,7 +8,11 @@ import { StatusBar } from "./components/StatusBar/StatusBar";
 import { CommandPalette } from "./components/CommandPalette/CommandPalette";
 import { RunConfigDialog } from "./components/Run/RunConfigDialog";
 import { RefactorPicker } from "./components/ContextMenu/RefactorPicker";
+import { BreakpointEditor } from "./components/Debug/BreakpointEditor";
+import { AttachDialog } from "./components/Debug/AttachDialog";
+import { RebaseDialog } from "./components/Sidebar/RebaseDialog";
 import { checkForUpdatesQuietly } from "./lib/updates";
+import { useTasksStore } from "./store/tasksStore";
 import { AgentPanel } from "./components/Agent/AgentPanel";
 import { Resizer } from "./components/Layout/Resizer";
 import { useUiStore, lastTerminalVisible } from "./store/uiStore";
@@ -91,6 +95,10 @@ function App() {
   useEffect(() => {
     const unlistenPromise = listen<string[]>("fs:changed", (event) => {
       applyExternalChanges(event.payload);
+      // A build file at the top (package.json, Makefile…) may have changed.
+      if (event.payload.includes(useWorkspaceStore.getState().rootPath ?? "")) {
+        void useTasksStore.getState().load();
+      }
       // Disk changes (incl. external commits) can change git status.
       useGitStore.getState().refresh();
     });
@@ -196,6 +204,9 @@ function App() {
       <CommandPalette />
       <RunConfigDialog />
       <RefactorPicker />
+      <BreakpointEditor />
+      <AttachDialog />
+      <RebaseDialog />
     </div>
   );
 }

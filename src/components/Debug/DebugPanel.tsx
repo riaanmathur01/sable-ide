@@ -7,6 +7,7 @@ import {
   type VariableScope,
 } from "../../store/debugStore";
 import { useBreakpointsStore } from "../../store/breakpointsStore";
+import { useWatchStore } from "../../store/watchStore";
 import { useTabsStore } from "../../store/tabsStore";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import { loadVariables, type DebugVariable } from "../../lib/debug/debugClient";
@@ -59,6 +60,13 @@ export function DebugPanel() {
           >
             <Play size={13} strokeWidth={1.75} /> Run and Debug
           </button>
+          <button
+            className="debug-start-button secondary"
+            onClick={() => useDebugStore.getState().setAttachDialogOpen(true)}
+            title="Debug a program that's already running"
+          >
+            Attach to Process…
+          </button>
           <div className="debug-hint">
             {canDebug
               ? `Debugs ${displayPath(lastFilePath!, rootPath)} (F5)${debugNote(lastFilePath!)}. Click the gutter to add breakpoints (F9).`
@@ -88,6 +96,7 @@ export function DebugPanel() {
 
       {isDebugging && (
         <>
+          <WatchSection isPaused={isPaused} />
           <Section title="Variables">
             {!isPaused ? (
               <div className="debug-empty">Pause to inspect variables</div>
@@ -224,11 +233,61 @@ function VariableNode({
   );
 }
 
+/** Watch expressions: evaluated in the selected frame at every pause. */
+function WatchSection({ isPaused }: { isPaused: boolean }) {
+  const expressions = useWatchStore((state) => state.expressions);
+  const results = useWatchStore((state) => state.results);
+  const [draft, setDraft] = useState("");
+  return (
+    <Section title="Watch">
+      {expressions.map((expression, index) => {
+        const result = results[index];
+        return (
+          <div key={`${index}:${expression}`} className="debug-watch">
+            {result && !result.error ? (
+              <VariableNode variable={result} depth={0} />
+            ) : (
+              <div className="debug-row debug-variable" title={result?.value}>
+                <span className="debug-chevron" />
+                <span className="debug-variable-name">{expression}</span>
+                <span className={result?.error ? "debug-variable-value debug-watch-error" : "debug-variable-value"}>
+                  {result ? result.value : isPaused ? "…" : ""}
+                </span>
+              </div>
+            )}
+            <button
+              className="debug-remove"
+              title="Remove watch"
+              onClick={() => useWatchStore.getState().remove(index)}
+            >
+              <X size={12} strokeWidth={1.5} />
+            </button>
+          </div>
+        );
+      })}
+      <input
+        className="debug-watch-input"
+        placeholder="Add expression to watch"
+        spellCheck={false}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && draft.trim()) {
+            useWatchStore.getState().add(draft);
+            setDraft("");
+          }
+        }}
+      />
+    </Section>
+  );
+}
+
 function BreakpointsSection({ rootPath }: { rootPath: string | null }) {
   const breakpointsByFile = useBreakpointsStore(
     (state) => state.breakpointsByFile,
   );
   const toggle = useBreakpointsStore((state) => state.toggle);
+  const optionsByFile = useBreakpointsStore((state) => state.optionsByFile);
   const entries = Object.entries(breakpointsByFile).flatMap(([file, lines]) =>
     lines.map((line) => ({ file, line })),
   );
@@ -247,12 +306,25 @@ function BreakpointsSection({ rootPath }: { rootPath: string | null }) {
               await useTabsStore.getState().openFile(file);
               revealPosition(file, line);
             }}
-            title={file}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              useBreakpointsStore.getState().edit(file, line, event.clientX, event.clientY);
+            }}
+            title={`${file} — right-click to edit`}
           >
             <Circle size={9} className="debug-breakpoint-dot" />
             <span className="debug-frame-name">
               {displayPath(file, rootPath)}
             </span>
+            {optionsByFile[file]?.[line] && (
+              <span className="debug-breakpoint-detail">
+                {optionsByFile[file][line].logMessage
+                  ? `log: ${optionsByFile[file][line].logMessage}`
+                  : [optionsByFile[file][line].condition, optionsByFile[file][line].hitCondition && `hit ${optionsByFile[file][line].hitCondition}`]
+                      .filter(Boolean)
+                      .join(", ")}
+              </span>
+            )}
             <span className="debug-frame-location">{line}</span>
             <button
               className="debug-remove"

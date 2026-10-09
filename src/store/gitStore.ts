@@ -7,6 +7,9 @@ import {
   gitDeleteBranch,
   gitFetch,
   gitAbort,
+  gitRebase,
+  gitRebaseContinue,
+  gitRebaseInteractive,
   gitCherryPick,
   gitMerge,
   gitRevertCommit,
@@ -26,6 +29,8 @@ import {
   gitUnstageAll,
   type BranchInfo,
   type StashInfo,
+  type CommitInfo,
+  type RebaseStep,
   type GitFileEntry,
   type GitFileStatus,
 } from "../lib/ipc";
@@ -87,6 +92,14 @@ interface GitState {
   stashApply: (index: number, pop: boolean) => Promise<void>;
   stashDrop: (index: number) => Promise<void>;
   cherryPick: (hash: string) => Promise<void>;
+  /** Rebase the current branch onto a branch or commit. */
+  rebase: (onto: string) => Promise<void>;
+  rebaseInteractive: (base: string, steps: RebaseStep[]) => Promise<void>;
+  /** Go on after resolving a rebase's conflicts (or skip its commit). */
+  continueRebase: (skip?: boolean) => Promise<void>;
+  /** The interactive rebase dialog: the commits after `base`, oldest first. */
+  rebaseDialog: { base: string; commits: CommitInfo[] } | null;
+  setRebaseDialog: (dialog: { base: string; commits: CommitInfo[] } | null) => void;
   revertCommit: (hash: string) => Promise<void>;
   commit: (message: string) => Promise<CommitOutcome>;
   setIdentity: (name: string, email: string) => Promise<boolean>;
@@ -266,6 +279,13 @@ export const useGitStore = create<GitState>((set, get) => ({
     runGitOperation(get, (root) => gitStashApply(root, index, pop), pop ? "Stash popped" : "Stash applied"),
   stashDrop: (index) => runGitOperation(get, (root) => gitStashDrop(root, index), "Stash dropped"),
   cherryPick: (hash) => runGitOperation(get, (root) => gitCherryPick(root, hash), "Cherry-picked"),
+  rebase: (onto) => runGitOperation(get, (root) => gitRebase(root, onto), `Rebased onto ${onto}`),
+  rebaseInteractive: (base, steps) =>
+    runGitOperation(get, (root) => gitRebaseInteractive(root, base, steps), "Rebase done"),
+  continueRebase: (skip = false) =>
+    runGitOperation(get, (root) => gitRebaseContinue(root, skip), skip ? "Skipped that commit" : "Rebase continued"),
+  rebaseDialog: null,
+  setRebaseDialog: (dialog) => set({ rebaseDialog: dialog }),
   revertCommit: (hash) => runGitOperation(get, (root) => gitRevertCommit(root, hash), "Commit reverted"),
 
   commit: async (message) => {

@@ -1,0 +1,80 @@
+.tasks-section {
+  flex-shrink: 0;
+  max-height: 40%;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+
+.tasks-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tasks-count {
+  font-weight: 400;
+}
+
+.tasks-reload {
+  display: flex;
+  margin-left: auto;
+  padding: 2px;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.tasks-header:hover .tasks-reload {
+  opacity: 1;
+}
+
+.tasks-list {
+  overflow-y: auto;
+  padding-bottom: 4px;
+}
+
+.tasks-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 10px 0 22px;
+  font-size: var(--font-size-ui);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.tasks-row:hover {
+  background: var(--bg-elevated);
+}
+
+.tasks-play {
+  color: var(--git-added);
+  flex-shrink: 0;
+}
+
+.tasks-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tasks-source {
+  margin-left: auto;
+  padding-left: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}

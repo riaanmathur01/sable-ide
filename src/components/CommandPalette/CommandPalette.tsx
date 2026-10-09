@@ -31,6 +31,9 @@ import { useRunConfigStore } from "../../store/runConfigStore";
 import { useTestStore } from "../../store/testStore";
 import { refactor, refactorThis } from "../../lib/refactor";
 import { checkForUpdates } from "../../lib/updates";
+import { useTasksStore } from "../../store/tasksStore";
+import { useCoverageStore } from "../../store/coverageStore";
+import { toggleInlineCompletions } from "../../lib/ai/inlineCompletions";
 import { THEMES } from "../../lib/themes";
 import {
   restartLanguageServers,
@@ -445,6 +448,12 @@ function buildCommands(): PaletteItem[] {
       },
     },
     { id: "check-updates", label: "Check for Updates…", run: () => void checkForUpdates() },
+    { id: "inline-completions", label: "AI: Toggle Inline Completions", run: toggleInlineCompletions },
+    {
+      id: "debug-attach",
+      label: "Run: Attach to Process…",
+      run: () => useDebugStore.getState().setAttachDialogOpen(true),
+    },
     { id: "refactor-this", label: "Refactor: Refactor This… (⌃T)", run: refactorThis },
     {
       id: "local-history",
@@ -658,6 +667,24 @@ function buildCommands(): PaletteItem[] {
       run: () => void useTestStore.getState().runProject(),
     },
     {
+      id: "tests-file-coverage",
+      label: "Tests: Run File with Coverage",
+      run: () => {
+        const path = runnableFile();
+        if (path) void useTestStore.getState().runFileTests(path, undefined, true);
+      },
+    },
+    {
+      id: "tests-project-coverage",
+      label: "Tests: Run All Tests with Coverage",
+      run: () => void useTestStore.getState().runProject(true),
+    },
+    {
+      id: "tests-hide-coverage",
+      label: "Tests: Hide Coverage",
+      run: () => useCoverageStore.getState().hide(),
+    },
+    {
       id: "tests-rerun-failed",
       label: "Tests: Rerun Failed Tests",
       run: () => void useTestStore.getState().rerunFailed(),
@@ -781,6 +808,16 @@ function buildCommands(): PaletteItem[] {
       },
     },
   ];
+
+  // The project's tasks (npm scripts, make targets, …).
+  for (const task of useTasksStore.getState().tasks) {
+    items.push({
+      id: `task:${task.id}`,
+      label: `Run Task: ${task.label}`,
+      detail: task.source,
+      run: () => useTasksStore.getState().run(task),
+    });
+  }
 
   // Git network actions only make sense with a remote.
   const git = useGitStore.getState();

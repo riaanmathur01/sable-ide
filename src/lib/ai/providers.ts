@@ -123,11 +123,14 @@ function anthropicBody(request: CompletionRequest) {
     system: [
       { type: "text", text: request.system, cache_control: { type: "ephemeral" } },
     ],
-    tools: request.tools.map((tool) => ({
-      name: tool.name,
-      description: tool.description,
-      input_schema: tool.parameters,
-    })),
+    // No tools (e.g. inline completions): leave the field out.
+    ...(request.tools.length > 0 && {
+      tools: request.tools.map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        input_schema: tool.parameters,
+      })),
+    }),
     messages,
   };
 }
@@ -204,14 +207,17 @@ function openAiBody(request: CompletionRequest) {
   return {
     model: request.model,
     messages,
-    tools: request.tools.map((tool) => ({
-      type: "function",
-      function: {
-        name: tool.name,
-        description: tool.description,
-        parameters: tool.parameters,
-      },
-    })),
+    // OpenAI rejects an empty tools list.
+    ...(request.tools.length > 0 && {
+      tools: request.tools.map((tool) => ({
+        type: "function",
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.parameters,
+        },
+      })),
+    }),
     // OpenAI's current models take max_completion_tokens; most
     // OpenAI-compatible servers still expect max_tokens.
     ...(request.baseUrl
@@ -298,15 +304,17 @@ function geminiBody(request: CompletionRequest) {
   return {
     systemInstruction: { parts: [{ text: request.system }] },
     contents,
-    tools: [
-      {
-        functionDeclarations: request.tools.map((tool) => ({
-          name: tool.name,
-          description: tool.description,
-          parameters: tool.parameters,
-        })),
-      },
-    ],
+    ...(request.tools.length > 0 && {
+      tools: [
+        {
+          functionDeclarations: request.tools.map((tool) => ({
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.parameters,
+          })),
+        },
+      ],
+    }),
     generationConfig: { maxOutputTokens: request.maxTokens },
   };
 }

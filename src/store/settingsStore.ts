@@ -63,6 +63,10 @@ export interface Settings {
   "ai.includeEditorContext": boolean;
   "ai.customInstructions": string;
   "ai.quickFixes": boolean;
+  "ai.inlineCompletions": boolean;
+  "ai.inlineAnthropicModel": string;
+  "ai.inlineOpenaiModel": string;
+  "ai.inlineGoogleModel": string;
   "updates.checkOnStartup": boolean;
 }
 
@@ -149,6 +153,10 @@ export const SETTINGS_SCHEMA: SettingSpec[] = [
   { key: "ai.commandTimeout", section: "AI Agent", type: "number", min: 5, max: 1800, label: "Command Timeout (s)", description: "Commands the agent runs are killed after this long.", default: 120 },
   { key: "ai.includeEditorContext", section: "AI Agent", type: "boolean", label: "Include Editor Context", description: "Send the active file, cursor, selection, and open tabs with each message.", default: true },
   { key: "ai.quickFixes", section: "AI Agent", type: "boolean", label: "Agent Quick Fixes", description: "Offer “Fix with Agent” and “Explain with Agent” in the quick-fix menu (lightbulb or ⌘.) for every error and warning.", default: true },
+  { key: "ai.inlineCompletions", section: "AI Completions", type: "boolean", label: "Inline Completions", description: "Suggest code as you type, as grey text — Tab accepts it. Uses the agent's provider and API key (each suggestion is a small API call).", default: false },
+  { key: "ai.inlineAnthropicModel", section: "AI Completions", type: "string", label: "Anthropic Model", description: "A fast model for suggestions when the provider is Anthropic.", default: "claude-haiku-4-5-20251001" },
+  { key: "ai.inlineOpenaiModel", section: "AI Completions", type: "string", label: "OpenAI Model", description: "A fast model for suggestions when the provider is OpenAI.", default: "gpt-5-mini" },
+  { key: "ai.inlineGoogleModel", section: "AI Completions", type: "string", label: "Google Model", description: "A fast model for suggestions when the provider is Google.", default: "gemini-flash-latest" },
   { key: "updates.checkOnStartup", section: "Updates", type: "boolean", label: "Check for Updates on Startup", description: "Look for a newer Sable when it starts, and say so in the status bar. “Check for Updates” in the command palette installs it.", default: true },
   { key: "ai.customInstructions", section: "AI Agent", type: "string", multiline: true, placeholder: "e.g. Prefer functional components. Always add tests.", label: "Custom Instructions", description: "Extra guidance appended to the agent's system prompt.", default: "" },
 ];

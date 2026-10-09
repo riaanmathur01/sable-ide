@@ -96,7 +96,9 @@ export function SourceControlPanel() {
 
   // A merge can be committed with nothing staged (every conflict resolved
   // to the current side), but not while conflicts remain.
+  // During a rebase, Continue (not Commit) moves it on.
   const canCommit =
+    operation !== "rebase" &&
     (staged.length > 0 || operation === "merge") &&
     conflicted.length === 0 &&
     message.trim().length > 0;
@@ -162,25 +164,44 @@ export function SourceControlPanel() {
           <GitMerge size={13} strokeWidth={1.5} />
           <span className="scm-operation-text">
             {conflicted.length > 0
-              ? `${capitalize(operation)} in progress — resolve ${conflicted.length} conflict${conflicted.length === 1 ? "" : "s"}, then commit`
-              : `${capitalize(operation)} in progress — commit to finish it`}
+              ? `${capitalize(operation)} in progress — resolve ${conflicted.length} conflict${conflicted.length === 1 ? "" : "s"}, then ${operation === "rebase" ? "Continue" : "commit"}`
+              : operation === "rebase"
+                ? "Rebase stopped — Continue when ready"
+                : `${capitalize(operation)} in progress — commit to finish it`}
           </span>
-          {operation !== "rebase" && (
-            <button
-              className="scm-mini-button ghost"
-              title={`Abandon the ${operation}: back to how things were before it`}
-              onClick={() => {
-                void confirmNative(`Abort the ${operation}? Changes made while resolving it are discarded.`, {
-                  title: `Abort ${capitalize(operation)}`,
-                  kind: "warning",
-                }).then((yes) => {
-                  if (yes) void abort();
-                });
-              }}
-            >
-              Abort
-            </button>
+          {operation === "rebase" && (
+            <>
+              <button
+                className="scm-mini-button"
+                disabled={conflicted.length > 0}
+                title={conflicted.length ? "Resolve the conflicts first" : "Go on with the rebase"}
+                onClick={() => void useGitStore.getState().continueRebase()}
+              >
+                Continue
+              </button>
+              <button
+                className="scm-mini-button ghost"
+                title="Leave out the commit that stopped, and go on"
+                onClick={() => void useGitStore.getState().continueRebase(true)}
+              >
+                Skip
+              </button>
+            </>
           )}
+          <button
+            className="scm-mini-button ghost"
+            title={`Abandon the ${operation}: back to how things were before it`}
+            onClick={() => {
+              void confirmNative(`Abort the ${operation}? Changes made while resolving it are discarded.`, {
+                title: `Abort ${capitalize(operation)}`,
+                kind: "warning",
+              }).then((yes) => {
+                if (yes) void abort();
+              });
+            }}
+          >
+            Abort
+          </button>
         </div>
       )}
 

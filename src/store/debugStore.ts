@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useTabsStore } from "./tabsStore";
 import { useWorkspaceStore } from "./workspaceStore";
 import { useInterpreterStore } from "./interpreterStore";
-import { useBreakpointsStore } from "./breakpointsStore";
+import { sourceBreakpoints, useBreakpointsStore } from "./breakpointsStore";
 import { useUiStore } from "./uiStore";
 import { parentDirectoryOf } from "../lib/ipc";
 import {
@@ -13,6 +13,7 @@ import {
 } from "../lib/debug/debugClient";
 import { JAVA_DEBUG_MISSING, attachJavaLaunch, resolveJavaLaunch } from "../lib/debug/javaLaunch";
 import { useTerminalStore } from "./terminalStore";
+import { loginShellArgs } from "../lib/shell";
 import { listen } from "@tauri-apps/api/event";
 import { useRunConfigStore } from "./runConfigStore";
 import { parseArgs, parseEnv } from "../lib/runConfig";
@@ -49,6 +50,15 @@ export interface DebugLaunch {
    * on, the command that starts it connecting there (run in a terminal).
    */
   jvm?: { command: (port: number) => Promise<string> };
+}
+
+/** What to attach to: a debugpy/--inspect/JDWP port, or a process. */
+export interface AttachTarget {
+  kind: "python" | "node" | "go" | "native" | "java";
+  port?: number;
+  pid?: number;
+  /** For the console: what's being attached to. */
+  label: string;
 }
 
 export interface VariableScope {
@@ -113,6 +123,11 @@ interface DebugState {
   /** Debug a file. `launch` adjusts how (debugging one test: run
    *  pytest/vitest/jest/a Cargo test binary instead of the file). */
   start: (program?: string, launch?: DebugLaunch) => Promise<void>;
+  /** Attach to a program that's already running. */
+  attach: (target: AttachTarget) => Promise<void>;
+  /** The Attach to Process dialog. */
+  attachDialogOpen: boolean;
+  setAttachDialogOpen: (open: boolean) => void;
   stop: () => Promise<void>;
   /** Install the missing debugger component, then retry. */
   installMissingTool: () => Promise<void>;
@@ -161,8 +176,68 @@ export const useDebugStore = create<DebugState>((set, get) => {
     await sendDebugRequest(command, { threadId: stoppedThreadId ?? 0 });
   }
 
+  /** A start/attach that failed: offer a missing tool, else show why. */
+  function reportStartError(error: unknown) {
+    set({ isDebugging: false });
+    const message = error instanceof Error ? error.message : String(error);
+    const missing: MissingTool | null = message.startsWith(DEBUGPY_MISSING)
+      ? {
+          kind: "debugpy",
+          python: message.slice(DEBUGPY_MISSING.length),
+          message: `debugpy isn't installed for ${message.slice(DEBUGPY_MISSING.length)}.`,
+        }
+      : message === JS_DEBUG_MISSING
+        ? {
+            kind: "js-debug",
+            message: "JavaScript/TypeScript debugging uses VS Code's js-debug (about 10 MB download).",
+          }
+        : message === JAVA_DEBUG_MISSING
+          ? {
+              kind: "java-debug",
+              message: "Java debugging uses Microsoft's java-debug plugin for jdtls (about 1 MB download).",
+            }
+          : null;
+    if (missing) {
+      set({ missingTool: missing });
+      get().appendConsole(
+        "error",
+        `${missing.message} Use “${MISSING_TOOL_LABELS[missing.kind]}” in the Run and Debug view.`,
+      );
+      useUiStore.getState().setSidebarView("debug");
+      return;
+    }
+    get().appendConsole("error", message);
+    useUiStore.getState().setLastError(message);
+  }
+
   return {
     ...IDLE,
+    attachDialogOpen: false,
+    setAttachDialogOpen: (open) => set({ attachDialogOpen: open }),
+
+    attach: async (target) => {
+      if (get().isDebugging) await get().stop();
+      set({ ...IDLE, isDebugging: true, lastProgram: null, missingTool: null, attachDialogOpen: false });
+      get().clearConsole();
+      get().appendConsole("console", `Attaching to ${target.label}`);
+      useUiStore.getState().setBottomPanel("debug");
+      const breakpoints = Object.fromEntries(
+        Object.keys(useBreakpointsStore.getState().breakpointsByFile).map((file) => [file, sourceBreakpoints(file)]),
+      );
+      try {
+        if (target.kind === "java") {
+          const { port, launch } = await attachJavaLaunch(target.label, target.port ?? 0, (line) =>
+            get().appendConsole("console", line),
+          );
+          await invoke("start_java_debug", { port, launch, breakpoints });
+        } else {
+          await invoke("start_attach", { target: { kind: target.kind, port: target.port, pid: target.pid }, breakpoints });
+        }
+        get().appendConsole("console", "Attached — stopping the debugger detaches and leaves the program running");
+      } catch (error) {
+        reportStartError(error);
+      }
+    },
     consoleLines: [],
     lastProgram: null,
     missingTool: null,
@@ -207,7 +282,10 @@ export const useDebugStore = create<DebugState>((set, get) => {
         binary: launch?.binary,
         overrides: launch?.overrides,
       };
-      const breakpoints = useBreakpointsStore.getState().breakpointsByFile;
+      // Each file's breakpoints, with their conditions / logpoints.
+      const breakpoints = Object.fromEntries(
+        Object.keys(useBreakpointsStore.getState().breakpointsByFile).map((file) => [file, sourceBreakpoints(file)]),
+      );
 
       set({ ...IDLE, isDebugging: true, lastProgram: program, missingTool: null });
       get().clearConsole();
@@ -228,36 +306,7 @@ export const useDebugStore = create<DebugState>((set, get) => {
           await invoke("start_debug", { python, program, cwd, breakpoints, options });
         }
       } catch (error) {
-        set({ isDebugging: false });
-        const message = error instanceof Error ? error.message : String(error);
-        const missing: MissingTool | null = message.startsWith(DEBUGPY_MISSING)
-          ? {
-              kind: "debugpy",
-              python: message.slice(DEBUGPY_MISSING.length),
-              message: `debugpy isn't installed for ${message.slice(DEBUGPY_MISSING.length)}.`,
-            }
-          : message === JS_DEBUG_MISSING
-            ? {
-                kind: "js-debug",
-                message: "JavaScript/TypeScript debugging uses VS Code's js-debug (about 10 MB download).",
-              }
-            : message === JAVA_DEBUG_MISSING
-              ? {
-                  kind: "java-debug",
-                  message: "Java debugging uses Microsoft's java-debug plugin for jdtls (about 1 MB download).",
-                }
-              : null;
-        if (missing) {
-          set({ missingTool: missing });
-          get().appendConsole(
-            "error",
-            `${missing.message} Use “${MISSING_TOOL_LABELS[missing.kind]}” in the Run and Debug view.`,
-          );
-          useUiStore.getState().setSidebarView("debug");
-          return;
-        }
-        get().appendConsole("error", message);
-        useUiStore.getState().setLastError(message);
+        reportStartError(error);
       }
     },
 
@@ -428,20 +477,15 @@ useBreakpointsStore.subscribe((state, previous) => {
     ...Object.keys(previous.breakpointsByFile),
   ]);
   for (const file of files) {
-    const lines = state.breakpointsByFile[file] ?? [];
-    if (lines === previous.breakpointsByFile[file]) continue;
-    void sendDebugRequest("setBreakpoints", {
-      source: { path: file },
-      breakpoints: lines.map((line) => ({ line })),
-    });
+    if (
+      state.breakpointsByFile[file] === previous.breakpointsByFile[file] &&
+      state.optionsByFile[file] === previous.optionsByFile[file]
+    ) {
+      continue;
+    }
+    void sendDebugRequest("setBreakpoints", { source: { path: file }, breakpoints: sourceBreakpoints(file) });
   }
 });
-
-/** A login shell running `command` (so mvn/gradle are on PATH). */
-function shellArgs(command: string): string[] {
-  if (/windows/i.test(navigator.userAgent)) return ["cmd.exe", "/d", "/c", command];
-  return [/mac/i.test(navigator.userAgent) ? "/bin/zsh" : "/bin/bash", "-l", "-c", command];
-}
 
 /**
  * Debug a Java test: Sable waits for the test JVM, the build tool starts
@@ -462,7 +506,7 @@ async function startJvmTest(
     report(`Starting the test: ${command}`);
     const started = useTerminalStore
       .getState()
-      .startCommandSession({ args: shellArgs(command), cwd, env: null }, "Debug test", "debug");
+      .startCommandSession({ args: loginShellArgs(command), cwd, env: null }, "Debug test", "debug");
     const terminalId = useTerminalStore.getState().activeId;
     const buildEnded = new Promise<never>((_, reject) => {
       void listen<string>("terminal:exit", (event) => {

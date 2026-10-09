@@ -13,10 +13,49 @@
 
 .history-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 4px;
-  padding: 6px 10px 6px 8px;
+  height: 44px;
+  padding: 0 10px 0 8px;
   cursor: pointer;
+}
+
+.history-graph {
+  flex-shrink: 0;
+  align-self: stretch;
+  height: 44px;
+}
+
+.history-files {
+  position: relative;
+}
+
+.history-graph-lane {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+}
+
+.history-ref {
+  display: inline-block;
+  margin-right: 5px;
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  border-radius: 8px;
+  font-size: 10px;
+  line-height: 15px;
+  color: var(--accent);
+  vertical-align: 1px;
+}
+
+.history-ref.head {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.history-ref.tag {
+  border-color: color-mix(in srgb, var(--git-modified) 55%, transparent);
+  color: var(--git-modified);
 }
 
 .history-row:hover {
@@ -57,7 +96,8 @@
 }
 
 .history-files {
-  padding: 2px 0 6px 24px;
+  padding-top: 2px;
+  padding-bottom: 6px;
 }
 
 .history-file {

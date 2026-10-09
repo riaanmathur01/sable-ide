@@ -106,7 +106,7 @@ struct SessionShared {
     events: Arc<dyn DebugEvents>,
     /// Current breakpoints (kept up to date by `setBreakpoints` requests),
     /// replayed into each new connection.
-    breakpoints: Mutex<HashMap<String, Vec<i64>>>,
+    breakpoints: Mutex<Breakpoints>,
     exception_filters: Vec<&'static str>,
     adapter_id: &'static str,
     /// For child sessions (js-debug): the server to connect to again.
@@ -119,6 +119,9 @@ struct SessionShared {
     /// program: id → (the asking connection, the request).
     pending_terminals: Mutex<HashMap<u64, (mpsc::UnboundedSender<String>, Value)>>,
     next_terminal: AtomicI64,
+    /// Attached to a process that was already running: stopping detaches
+    /// and leaves it running.
+    attached: bool,
 }
 
 /// How to run the program: arguments, environment, working directory,
@@ -536,6 +539,151 @@ fn go_plan(events: &dyn DebugEvents, program: &str, cwd: &str) -> Result<LaunchP
     })
 }
 
+// --- Attaching to a running process ----------------------------------------
+
+/// What to attach to (from the Attach dialog).
+#[derive(serde::Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase", default)]
+pub struct AttachTarget {
+    /// "python" (a `debugpy --listen` port), "node" (an `--inspect` port),
+    /// "go" or "native" (a process id).
+    pub kind: String,
+    pub pid: Option<u32>,
+    pub host: Option<String>,
+    pub port: Option<u16>,
+}
+
+/// The adapter and `attach` request for a target.
+pub async fn attach_plan(target: &AttachTarget) -> Result<LaunchPlan, String> {
+    let host = target.host.clone().filter(|host| !host.is_empty()).unwrap_or_else(|| "127.0.0.1".into());
+    let need_port = || target.port.ok_or_else(|| "Enter the port the program is listening on".to_string());
+    let need_pid = || target.pid.ok_or_else(|| "Choose a process".to_string());
+    let attach = |adapter_id, mut plan: LaunchPlan, launch: Value| {
+        plan.adapter_id = adapter_id;
+        plan.launch = launch;
+        plan
+    };
+    match target.kind.as_str() {
+        "python" => {
+            // `python -m debugpy --listen PORT` runs debugpy's adapter
+            // inside the program: connect to it directly.
+            let port = need_port()?;
+            Ok(LaunchPlan {
+                adapter: None,
+                transport: Transport::Tcp(port),
+                adapter_id: "debugpy",
+                launch: json!({ "name": "Sable: Attach", "type": "python", "request": "attach", "justMyCode": true }),
+                exception_filters: vec!["uncaught"],
+            })
+        }
+        "node" => {
+            let port = need_port()?;
+            let plan = node_plan("", "")?;
+            Ok(attach(
+                "js-debug",
+                plan,
+                json!({
+                    "name": "Sable: Attach",
+                    "type": "pwa-node",
+                    "request": "attach",
+                    "address": host,
+                    "port": port,
+                    "skipFiles": ["<node_internals>/**"],
+                    "sourceMaps": true,
+                }),
+            ))
+        }
+        "go" => {
+            let pid = need_pid()?;
+            let plan = go_plan(&NoEvents, "", "")?;
+            Ok(attach(
+                "go",
+                plan,
+                json!({ "name": "Sable: Attach", "type": "go", "request": "attach", "mode": "local", "processId": pid }),
+            ))
+        }
+        "native" => {
+            let pid = need_pid()?;
+            let adapter = resolve_binary("lldb-dap").ok_or_else(|| {
+                "lldb-dap not found — install the Xcode Command Line Tools (`xcode-select --install`)".to_string()
+            })?;
+            Ok(LaunchPlan {
+                adapter: Some(Adapter { program: adapter, args: vec![], extra_path: vec![] }),
+                transport: Transport::Stdio,
+                adapter_id: "lldb-dap",
+                launch: json!({ "name": "Sable: Attach", "type": "lldb-dap", "request": "attach", "pid": pid }),
+                exception_filters: vec![],
+            })
+        }
+        other => Err(format!("Can't attach to {other}")),
+    }
+}
+
+/// For plans built without a session yet (attach): their console notes
+/// have nowhere to go.
+struct NoEvents;
+impl DebugEvents for NoEvents {
+    fn emit(&self, _: &str, _: Value) {}
+}
+
+/// Attach the debugger to a running program.
+#[tauri::command]
+pub async fn start_attach(
+    app: AppHandle,
+    manager: State<'_, DebugManager>,
+    target: AttachTarget,
+    breakpoints: Breakpoints,
+) -> Result<(), String> {
+    if let Some(old) = manager.0.lock().await.take() {
+        old.shutdown().await;
+    }
+    let plan = attach_plan(&target).await?;
+    let session = start_session(Arc::new(app.clone()), plan, breakpoints).await?;
+    *manager.0.lock().await = Some(session);
+    Ok(())
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProcessInfo {
+    pid: u32,
+    name: String,
+    command: String,
+}
+
+/// The user's running processes, newest first (for the Attach picker).
+#[tauri::command]
+pub async fn list_processes() -> Result<Vec<ProcessInfo>, String> {
+    #[cfg(unix)]
+    {
+        let user = std::env::var("USER").unwrap_or_default();
+        let output = Command::new("ps")
+            .args(["-U", &user, "-o", "pid=,comm=,args="])
+            .output()
+            .await
+            .map_err(|error| format!("Could not list processes: {error}"))?;
+        let own = std::process::id();
+        let mut processes: Vec<ProcessInfo> = String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .filter_map(|line| {
+                let line = line.trim_start();
+                let (pid, rest) = line.split_once(char::is_whitespace)?;
+                let pid: u32 = pid.parse().ok()?;
+                let rest = rest.trim_start();
+                let (comm, args) = rest.split_once(char::is_whitespace).unwrap_or((rest, ""));
+                let name = Path::new(comm).file_name()?.to_string_lossy().into_owned();
+                (pid != own).then(|| ProcessInfo { pid, name, command: args.trim().to_string() })
+            })
+            .collect();
+        processes.sort_by_key(|process| std::cmp::Reverse(process.pid));
+        Ok(processes)
+    }
+    #[cfg(not(unix))]
+    {
+        Err("Listing processes isn't supported on this platform yet".into())
+    }
+}
+
 /// Java: java-debug is already listening (jdtls started it and resolved
 /// the main class and classpath — see the frontend's Java launcher).
 pub fn java_plan(port: u16, launch: Value) -> LaunchPlan {
@@ -791,11 +939,23 @@ where
     })
 }
 
+/// Breakpoints by absolute file path: each a 1-based line number, or a
+/// DAP SourceBreakpoint (`{line, condition?, hitCondition?, logMessage?}`).
+pub type Breakpoints = HashMap<String, Vec<Value>>;
+
+/// A breakpoint as DAP's setBreakpoints wants it.
+fn source_breakpoint(point: &Value) -> Value {
+    match point.as_i64() {
+        Some(line) => json!({ "line": line }),
+        None => point.clone(),
+    }
+}
+
 /// On `initialized`: breakpoints, exception filters, configurationDone.
 fn configure(shared: &SessionShared, sender: &mpsc::UnboundedSender<String>) {
     let breakpoints = shared.breakpoints.lock().unwrap().clone();
-    for (file, lines) in &breakpoints {
-        let points: Vec<Value> = lines.iter().map(|line| json!({ "line": line })).collect();
+    for (file, points) in &breakpoints {
+        let points: Vec<Value> = points.iter().map(source_breakpoint).collect();
         let seq = shared.seq.fetch_add(1, Ordering::SeqCst);
         let _ = sender.send(request(
             seq,
@@ -816,11 +976,11 @@ fn configure(shared: &SessionShared, sender: &mpsc::UnboundedSender<String>) {
 }
 
 /// Start the adapter (if any), connect, and run the launch handshake.
-/// `breakpoints` maps an absolute file path to its 1-based line numbers.
+/// `breakpoints`: see [`Breakpoints`].
 pub async fn start_session(
     events: Arc<dyn DebugEvents>,
     plan: LaunchPlan,
-    breakpoints: HashMap<String, Vec<i64>>,
+    breakpoints: Breakpoints,
 ) -> Result<DebugSession, String> {
     // The adapter runs in a terminal tab and dials in to us.
     if matches!(plan.transport, Transport::TerminalDialIn) {
@@ -861,6 +1021,7 @@ pub async fn start_session(
             seq: AtomicI64::new(1),
             pending_terminals: Mutex::new(HashMap::new()),
             next_terminal: AtomicI64::new(1),
+            attached: plan.launch["request"] == "attach",
         });
         let request_command = plan.launch["request"].as_str().unwrap_or("launch").to_string();
         let (read_half, write_half) = stream.into_split();
@@ -917,6 +1078,7 @@ pub async fn start_session(
         seq: AtomicI64::new(1),
         pending_terminals: Mutex::new(HashMap::new()),
         next_terminal: AtomicI64::new(1),
+        attached: plan.launch["request"] == "attach",
     });
     let request_command = plan.launch["request"].as_str().unwrap_or("launch").to_string();
 
@@ -944,11 +1106,8 @@ impl DebugSession {
     pub fn send(&self, seq: i64, command: &str, arguments: Value) -> Result<(), String> {
         if command == "setBreakpoints" {
             if let Some(file) = arguments["source"]["path"].as_str() {
-                let lines: Vec<i64> = arguments["breakpoints"]
-                    .as_array()
-                    .map(|points| points.iter().filter_map(|point| point["line"].as_i64()).collect())
-                    .unwrap_or_default();
-                self.shared.breakpoints.lock().unwrap().insert(file.to_string(), lines);
+                let points = arguments["breakpoints"].as_array().cloned().unwrap_or_default();
+                self.shared.breakpoints.lock().unwrap().insert(file.to_string(), points);
             }
         }
         let connections = self.shared.connections.lock().unwrap();
@@ -981,12 +1140,14 @@ impl DebugSession {
         let _ = sender.send(reply.to_string());
     }
 
-    /// Ask every connection to disconnect+terminate, then stop the adapter.
+    /// Ask every connection to disconnect (ending the program, unless it
+    /// was attached to), then stop the adapter.
     pub async fn shutdown(mut self) {
         let connections: Vec<_> = self.shared.connections.lock().unwrap().iter().rev().cloned().collect();
+        let terminate = !self.shared.attached;
         for connection in connections {
             let seq = self.shared.seq.fetch_add(1, Ordering::SeqCst);
-            let _ = connection.send(request(seq, "disconnect", json!({ "terminateDebuggee": true })));
+            let _ = connection.send(request(seq, "disconnect", json!({ "terminateDebuggee": terminate })));
         }
         // Give the messages a moment to flush before killing the adapter.
         tokio::time::sleep(Duration::from_millis(150)).await;
@@ -1006,7 +1167,7 @@ pub async fn start_debug(
     program: String,
     cwd: String,
     python: Option<String>,
-    breakpoints: HashMap<String, Vec<i64>>,
+    breakpoints: Breakpoints,
     options: Option<RunOptions>,
 ) -> Result<(), String> {
     // Tear down any previous session first.
@@ -1028,7 +1189,7 @@ pub async fn start_java_debug(
     manager: State<'_, DebugManager>,
     port: u16,
     launch: Value,
-    breakpoints: HashMap<String, Vec<i64>>,
+    breakpoints: Breakpoints,
 ) -> Result<(), String> {
     if let Some(old) = manager.0.lock().await.take() {
         old.shutdown().await;
@@ -1326,7 +1487,7 @@ mod tests {
         async fn start(
             program: &Path,
             python: Option<&str>,
-            breakpoint_line: i64,
+            points: Vec<Value>,
             options: RunOptions,
             input: &str,
         ) -> Option<Harness> {
@@ -1343,7 +1504,7 @@ mod tests {
                     return None;
                 }
             };
-            let breakpoints = HashMap::from([(program_str, vec![breakpoint_line])]);
+            let breakpoints = HashMap::from([(program_str, points)]);
             let session = start_session(events, plan, breakpoints).await.unwrap();
             Some(Harness {
                 session,
@@ -1454,18 +1615,24 @@ mod tests {
             let frame = &trace["body"]["stackFrames"][0];
             let line = frame["line"].as_i64().unwrap();
             let scopes = self.request("scopes", json!({ "frameId": frame["id"] })).await;
-            let reference = scopes["body"]["scopes"][0]["variablesReference"].clone();
-            let variables = self
-                .request("variables", json!({ "variablesReference": reference }))
-                .await;
-            let value = variables["body"]["variables"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .find(|variable| variable["name"] == local)
-                .map(|variable| variable["value"].as_str().unwrap_or("").to_string())
-                .unwrap_or_default();
-            (thread_id, line, value)
+            // The innermost scope that has it (a JavaScript loop's `let i`
+            // is in its own block scope, outside the body's).
+            let scopes = scopes["body"]["scopes"].as_array().cloned().unwrap_or_default();
+            for scope in scopes.iter().filter(|scope| scope["expensive"] != true) {
+                let variables = self
+                    .request("variables", json!({ "variablesReference": scope["variablesReference"] }))
+                    .await;
+                let found = variables["body"]["variables"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .find(|variable| variable["name"] == local)
+                    .map(|variable| variable["value"].as_str().unwrap_or("").to_string());
+                if let Some(value) = found {
+                    return (thread_id, line, value);
+                }
+            }
+            (thread_id, line, String::new())
         }
     }
 
@@ -1495,7 +1662,7 @@ mod tests {
         input: &str,
         printed: &str,
     ) {
-        let Some(mut harness) = Harness::start(&program, python, breakpoint, options, input).await else {
+        let Some(mut harness) = Harness::start(&program, python, vec![json!(breakpoint)], options, input).await else {
             return;
         };
         // Thread ids are adapter-specific (lldb uses real OS thread ids).
@@ -1600,6 +1767,198 @@ mod tests {
         );
         // lldb shows a Rust String's fields, not its text: check the output.
         exercise_with(program, None, 7, "greeting", "", terminal_options(), "sable\n", "done hi sable arg1 env1").await;
+    }
+
+    // --- Attaching to a running process -------------------------------------
+
+    fn free_port() -> u16 {
+        std::net::TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port()
+    }
+
+    /// Start `program` (already running, as the user's would be), attach,
+    /// stop at `line` in `file`, read `local`, then detach: the program
+    /// must still be running afterwards.
+    async fn attach_and_check(mut program: std::process::Child, target: AttachTarget, file: &Path, line: i64, local: &str) {
+        let plan = match attach_plan(&target).await {
+            Ok(plan) => plan,
+            Err(error) => {
+                let _ = program.kill();
+                eprintln!("skipping: {error}");
+                return;
+            }
+        };
+        let (sender, incoming) = mpsc::unbounded_channel();
+        let events = Arc::new(Recorder(Mutex::new(sender), TerminalStandIn::default()));
+        let breakpoints = HashMap::from([(file.to_string_lossy().into_owned(), vec![json!(line)])]);
+        let session = start_session(events, plan, breakpoints).await.unwrap();
+        let mut harness = Harness {
+            session,
+            incoming,
+            next_seq: 700_000,
+            output: String::new(),
+            terminal: TerminalStandIn::default(),
+            backlog: Default::default(),
+        };
+        let (_, stopped_line, value) = harness.stopped_at(local).await;
+        assert_eq!(stopped_line, line);
+        assert!(!value.is_empty(), "no value for {local}");
+        harness.session.shutdown().await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        assert!(program.try_wait().unwrap().is_none(), "detaching ended the program");
+        let _ = program.kill();
+    }
+
+    #[tokio::test]
+    async fn attaches_to_python() {
+        let python = std::env::var("SABLE_TEST_PYTHON").unwrap_or_else(|_| "python3".into());
+        let file = write_program("attach.py", "import time\ncount = 0\nwhile True:\n    count += 1\n    time.sleep(0.05)\n");
+        let port = free_port();
+        let Ok(program) = std::process::Command::new(&python)
+            .args(["-m", "debugpy", "--listen", &format!("127.0.0.1:{port}"), &file.to_string_lossy()])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+        else {
+            return;
+        };
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        let target = AttachTarget { kind: "python".into(), port: Some(port), ..Default::default() };
+        attach_and_check(program, target, &file, 4, "count").await;
+    }
+
+    #[tokio::test]
+    async fn attaches_to_node() {
+        use_app_tools().await;
+        let file = write_program("attach.js", "let count = 0;\nsetInterval(() => {\n  count += 1;\n}, 50);\n");
+        let port = free_port();
+        let Some(node) = resolve_binary("node") else { return };
+        let program = std::process::Command::new(node)
+            .args([format!("--inspect=127.0.0.1:{port}"), file.to_string_lossy().into_owned()])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        let target = AttachTarget { kind: "node".into(), port: Some(port), ..Default::default() };
+        attach_and_check(program, target, &file, 3, "count").await;
+    }
+
+    #[tokio::test]
+    async fn attaches_to_a_native_process() {
+        let file = write_program(
+            "attach.c",
+            "#include <unistd.h>\n\nint main(void) {\n    volatile int count = 0;\n    for (;;) {\n        count++;\n        usleep(50000);\n    }\n}\n",
+        );
+        let binary = file.with_extension("bin");
+        let built = std::process::Command::new("clang")
+            .args(["-g", "-O0", &file.to_string_lossy(), "-o", &binary.to_string_lossy()])
+            .status()
+            .unwrap();
+        assert!(built.success());
+        let program = std::process::Command::new(&binary).spawn().unwrap();
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        let target = AttachTarget { kind: "native".into(), pid: Some(program.id()), ..Default::default() };
+        attach_and_check(program, target, &file, 6, "count").await;
+    }
+
+    #[tokio::test]
+    async fn attaches_to_go() {
+        let Some(go) = resolve_binary("go") else { return };
+        let file = write_program(
+            "attach_main.go",
+            "package main\n\nimport \"time\"\n\nfunc main() {\n\tcount := 0\n\tfor {\n\t\tcount++\n\t\ttime.Sleep(50 * time.Millisecond)\n\t}\n}\n",
+        );
+        let binary = file.with_extension("bin");
+        let built = std::process::Command::new(go)
+            .args(["build", "-gcflags=all=-N -l", "-o", &binary.to_string_lossy(), &file.to_string_lossy()])
+            .current_dir(file.parent().unwrap())
+            .status()
+            .unwrap();
+        assert!(built.success());
+        let program = std::process::Command::new(&binary).spawn().unwrap();
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        let target = AttachTarget { kind: "go".into(), pid: Some(program.id()), ..Default::default() };
+        attach_and_check(program, target, &file, 8, "count").await;
+    }
+
+    // --- Conditional breakpoints, hit counts, logpoints -----------------------
+
+    /// A loop over i = 0..6. `condition_line` gets "stop when i == 4";
+    /// `log_line` a logpoint printing every i; then, in a second run,
+    /// `condition_line` with a hit count of 3 (stops when i == 2).
+    async fn exercise_conditions(program: PathBuf, python: Option<&str>, condition_line: i64, log_line: i64, condition: &str) {
+        let points = vec![
+            json!({ "line": condition_line, "condition": condition }),
+            json!({ "line": log_line, "logMessage": "log i={i}" }),
+        ];
+        let Some(mut harness) = Harness::start(&program, python, points, RunOptions::default(), "").await else {
+            return;
+        };
+        let (thread_id, line, value) = harness.stopped_at("i").await;
+        assert_eq!(line, condition_line, "conditional breakpoint on the wrong line");
+        assert!(value.contains('4'), "stopped with i = {value:?}, wanted 4");
+        harness.request("continue", json!({ "threadId": thread_id })).await;
+        let next = harness.event_any(&["stopped", "terminated"]).await;
+        assert_ne!(next["event"], "stopped", "the condition stopped again, or the logpoint stopped");
+        for _ in 0..30 {
+            while let Ok(message) = harness.incoming.try_recv() {
+                if message["event"] == "output" {
+                    harness.output.push_str(message["body"]["output"].as_str().unwrap_or(""));
+                }
+            }
+            if harness.all_output().contains("log i=5") {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+        let output = harness.all_output();
+        for i in 0..6 {
+            assert!(output.contains(&format!("log i={i}")), "logpoint output missing i={i}: {output:?}");
+        }
+        let Harness { session, terminal, .. } = harness;
+        session.shutdown().await;
+        terminal.kill_all();
+
+        let points = vec![json!({ "line": condition_line, "hitCondition": "3" })];
+        let mut harness = Harness::start(&program, python, points, RunOptions::default(), "").await.unwrap();
+        let (_, line, value) = harness.stopped_at("i").await;
+        assert_eq!(line, condition_line);
+        assert!(value.contains('2'), "hit count 3 stopped with i = {value:?}, wanted 2");
+        let Harness { session, terminal, .. } = harness;
+        session.shutdown().await;
+        terminal.kill_all();
+    }
+
+    #[tokio::test]
+    async fn python_conditions_hits_and_logpoints() {
+        let python = std::env::var("SABLE_TEST_PYTHON").unwrap_or_else(|_| "python3".into());
+        let program = write_program("conditions.py", "total = 0\nfor i in range(6):\n    total += i\n    marker = i\nprint('done', total)\n");
+        exercise_conditions(program, Some(&python), 3, 4, "i == 4").await;
+    }
+
+    #[tokio::test]
+    async fn javascript_conditions_hits_and_logpoints() {
+        use_app_tools().await;
+        let program = write_program("conditions.js", "let total = 0;\nfor (let i = 0; i < 6; i++) {\n  total += i;\n  const marker = i;\n}\nconsole.log('done', total);\n");
+        exercise_conditions(program, None, 3, 4, "i === 4").await;
+    }
+
+    #[tokio::test]
+    async fn go_conditions_hits_and_logpoints() {
+        let program = write_program(
+            "conditions.go",
+            "package main\n\nimport \"fmt\"\n\nfunc main() {\n\ttotal := 0\n\tfor i := 0; i < 6; i++ {\n\t\ttotal += i\n\t\tmarker := i\n\t\t_ = marker\n\t}\n\tfmt.Println(\"done\", total)\n}\n",
+        );
+        exercise_conditions(program, None, 8, 9, "i == 4").await;
+    }
+
+    #[tokio::test]
+    async fn c_conditions_hits_and_logpoints() {
+        let program = write_program(
+            "conditions.c",
+            "#include <stdio.h>\n\nint main(void) {\n    int total = 0;\n    for (int i = 0; i < 6; i++) {\n        total += i;\n        int marker = i;\n        (void)marker;\n    }\n    printf(\"done %d\\n\", total);\n    return 0;\n}\n",
+        );
+        exercise_conditions(program, None, 6, 7, "i == 4").await;
     }
 
     /// Point the tools folder at Sable's real one (where the app installs
@@ -1822,7 +2181,7 @@ mod tests {
             "console": "internalConsole",
         });
         let program_str = program.to_string_lossy().into_owned();
-        let breakpoints = HashMap::from([(program_str, vec![5])]);
+        let breakpoints = HashMap::from([(program_str, vec![json!(5)])]);
         let session = start_session(events, java_plan(port, launch), breakpoints).await.unwrap();
         let mut harness = Harness {
             session,
@@ -1973,7 +2332,7 @@ mod tests {
             "port": port,
             "timeout": 30_000,
         });
-        let breakpoints = HashMap::from([(test_file.to_string_lossy().into_owned(), vec![11])]);
+        let breakpoints = HashMap::from([(test_file.to_string_lossy().into_owned(), vec![json!(11)])]);
         let session = start_session(events, java_plan(debug_port, launch), breakpoints).await.unwrap();
         let mut harness = Harness {
             session,

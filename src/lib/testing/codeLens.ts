@@ -19,6 +19,9 @@ export function registerTestCodeLenses(monaco: Monaco) {
       void useTestStore.getState().runFileTests(file, item ? [item] : undefined);
     });
   });
+  monaco.editor.registerCommand("sable.test.coverage", (_accessor, file: string) => {
+    void useTestStore.getState().runFileTests(file, undefined, true);
+  });
   monaco.editor.registerCommand("sable.test.debug", (_accessor, file: string, itemId: string) => {
     void testsIn(file).then((found) => {
       const item = found?.items.find((candidate) => candidate.id === itemId);
@@ -44,6 +47,12 @@ export function registerTestCodeLenses(monaco: Monaco) {
         lenses.push({
           range: range(items[0].line),
           command: { id: "sable.test.run", title: running ? "Running…" : `▶ Run all ${testCount} tests in file`, arguments: [file] },
+        });
+      }
+      if (testCount > 0 && !running) {
+        lenses.push({
+          range: range(items[0].line),
+          command: { id: "sable.test.coverage", title: "Run with Coverage", tooltip: "Run this file's tests and mark which lines ran", arguments: [file] },
         });
       }
       for (const item of items) {

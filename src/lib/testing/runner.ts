@@ -6,6 +6,7 @@ import { useInterpreterStore } from "../../store/interpreterStore";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import type { Framework, TestItem } from "./discover";
 import { parseCargoTest, parseGoTestJson, parseJestJson, parseJUnitXml, type TestResult } from "./results";
+import { parseCoveragePy, parseGoCoverprofile, parseIstanbul, type FileCoverage } from "./coverage";
 
 /**
  * Running tests: which framework a file uses, the command that runs some
@@ -141,10 +142,26 @@ export interface TestRun {
   log: string;
   /** Set when the run itself failed (not just a test). */
   error?: string;
+  /** With `coverage`: lines run, per file — or why there's none. */
+  coverage?: FileCoverage[];
+  coverageError?: string;
+}
+
+/** Read a coverage report written by the run (and delete it). */
+async function readCoverage(path: string, parse: (text: string) => FileCoverage[]): Promise<FileCoverage[] | null> {
+  const text = await readReport(path);
+  if (!text) return null;
+  try {
+    return parse(text);
+  } catch {
+    return null;
+  }
 }
 
 /** Run tests and parse the results. */
-export async function runTests(context: TestContext, scope: TestScope): Promise<TestRun> {
+export async function runTests(context: TestContext, scope: TestScope, options: { coverage?: boolean } = {}): Promise<TestRun> {
+  // Where the coverage report goes (null: no coverage).
+  const coveragePath = options.coverage ? await reportPath("coverage") : null;
   const file = "file" in scope ? scope.file : null;
   const items = "items" in scope && scope.items !== "all" ? scope.items.filter((item) => item.kind === "test") : null;
   const suites = "items" in scope && scope.items !== "all" ? scope.items.filter((item) => item.kind === "suite") : [];
@@ -172,9 +189,21 @@ export async function runTests(context: TestContext, scope: TestScope): Promise<
           "-o",
           "junit_family=xunit1",
           `--junitxml=${shellQuote(report)}`,
+          // pytest-cov: line and branch coverage of the project's code.
+          ...(coveragePath
+            ? [`--cov=${shellQuote(projectDir)}`, "--cov-branch", `--cov-report=json:${shellQuote(coveragePath)}`]
+            : []),
         ].join(" "),
         projectDir,
       );
+      const noPytestCov = coveragePath && /unrecognized arguments: --cov/.test(output.stderr);
+      if (noPytestCov) {
+        return {
+          results: [],
+          log: output.stdout + output.stderr,
+          error: `Coverage needs pytest-cov — run: ${python} -m pip install pytest-cov`,
+        };
+      }
       const xml = await readReport(report);
       if (!xml) {
         const missing = /No module named pytest/.test(output.stderr);
@@ -184,7 +213,9 @@ export async function runTests(context: TestContext, scope: TestScope): Promise<
           error: missing ? `pytest isn't installed for ${python} — run: ${python} -m pip install pytest` : "pytest didn't produce a report",
         };
       }
+      const coverage = coveragePath ? await readCoverage(coveragePath, (text) => parseCoveragePy(text, projectDir)) : null;
       return {
+        ...(coveragePath && (coverage ? { coverage } : { coverageError: "pytest-cov didn't write a report" })),
         results: parseJUnitXml(xml, { classIsModule: true }).map((result) => ({
           ...result,
           // xunit1 files are relative to where pytest ran.
@@ -203,13 +234,37 @@ export async function runTests(context: TestContext, scope: TestScope): Promise<
       const report = await reportPath("json");
       const selected = [...suites, ...(items ?? [])];
       const pattern = selected.length ? namePattern(context.framework, selected) : null;
+      // Istanbul JSON coverage into its own folder.
+      const coverageArgs = !coveragePath
+        ? []
+        : context.framework === "vitest"
+          ? ["--coverage.enabled=true", "--coverage.reporter=json", `--coverage.reportsDirectory=${coveragePath}`]
+          : ["--coverage", "--coverageReporters=json", `--coverageDirectory=${coveragePath}`];
       const args =
         context.framework === "vitest"
-          ? ["npx", "vitest", "run", ...(file ? [file] : []), ...(pattern ? ["-t", pattern] : []), "--reporter=json", `--outputFile=${report}`]
-          : ["npx", "jest", ...(file ? [file] : []), ...(pattern ? ["-t", pattern] : []), "--json", `--outputFile=${report}`];
+          ? ["npx", "vitest", "run", ...(file ? [file] : []), ...(pattern ? ["-t", pattern] : []), "--reporter=json", `--outputFile=${report}`, ...coverageArgs]
+          : ["npx", "jest", ...(file ? [file] : []), ...(pattern ? ["-t", pattern] : []), "--json", `--outputFile=${report}`, ...coverageArgs];
       const output = await run(args.map(shellQuote).join(" "), projectDir);
+      const coverageReport = coveragePath ? `${coveragePath}${separator(coveragePath)}coverage-final.json` : null;
+      const coverage = coverageReport ? await readCoverage(coverageReport, parseIstanbul) : null;
+      if (coveragePath) void deletePath(coveragePath).catch(() => {});
+      const coverageInfo = !coveragePath
+        ? {}
+        : coverage
+          ? { coverage }
+          : {
+              coverageError: /coverage-v8|coverage-istanbul|MISSING DEPENDENCY/i.test(output.stdout + output.stderr)
+                ? "Vitest coverage needs a provider — run: npm install -D @vitest/coverage-v8"
+                : `${context.framework} didn't write a coverage report`,
+            };
       const json = await readReport(report);
-      if (!json) return { results: [], log: output.stdout + output.stderr, error: `${context.framework} didn't produce a report` };
+      if (!json) {
+        return {
+          results: [],
+          log: output.stdout + output.stderr,
+          error: "coverageError" in coverageInfo ? coverageInfo.coverageError : `${context.framework} didn't produce a report`,
+        };
+      }
       let results = parseJestJson(json);
       // A filtered run reports the other tests as skipped; keep only the
       // ones asked for.
@@ -220,7 +275,7 @@ export async function runTests(context: TestContext, scope: TestScope): Promise<
           ),
         );
       }
-      return { results, log: output.stdout + output.stderr };
+      return { results, log: output.stdout + output.stderr, ...coverageInfo };
     }
 
     case "go": {
@@ -228,13 +283,23 @@ export async function runTests(context: TestContext, scope: TestScope): Promise<
       const regex = names ? `^(${names.join("|")})$` : null;
       const fileTests = file && !names ? await goTestNames(file) : null;
       const runPattern = regex ?? (fileTests ? `^(${fileTests.join("|")})$` : null);
-      const command = ["go", "test", "-json", ...(runPattern ? ["-run", runPattern] : []), file ? "." : "./..."];
+      const command = [
+        "go",
+        "test",
+        "-json",
+        ...(runPattern ? ["-run", runPattern] : []),
+        ...(coveragePath ? [`-coverprofile=${coveragePath}`] : []),
+        file ? "." : "./...",
+      ];
       const cwd = file ? projectDir : (useWorkspaceStore.getState().rootPath ?? projectDir);
       const output = await run(command.map(shellQuote).join(" "), cwd);
       const results = parseGoTestJson(output.stdout);
+      const profile = coveragePath ? await readReport(coveragePath) : null;
+      const coverage = profile ? parseGoCoverprofile(profile, await goPackageDirs(cwd)) : null;
       return {
         results: file ? results.map((result) => ({ ...result, file })) : await locateGoTests(results, cwd),
         log: output.stdout + output.stderr,
+        ...(coveragePath && (coverage ? { coverage } : { coverageError: "go test didn't write a coverage profile" })),
       };
     }
 
@@ -250,6 +315,7 @@ export async function runTests(context: TestContext, scope: TestScope): Promise<
         results = results.filter((result) => items.some((item) => cargoMatches(result.name, item.selector)));
       }
       return {
+        ...(coveragePath && { coverageError: "Rust coverage isn't supported yet (it needs cargo-llvm-cov)" }),
         results: await locateCargoTests(results, projectDir, items ? file : null),
         log: output.stdout + output.stderr,
         error: results.length === 0 && output.exitCode !== 0 ? "cargo test failed — see the log" : undefined,
@@ -278,6 +344,7 @@ export async function runTests(context: TestContext, scope: TestScope): Promise<
       );
       const results = await locateJavaTests(reports.flatMap((xml) => parseJUnitXml(xml)), projectDir, file);
       return {
+        ...(coveragePath && { coverageError: "Java coverage isn't supported yet (it needs JaCoCo set up in the build)" }),
         results,
         log: output.stdout + output.stderr,
         error: results.length === 0 && output.exitCode !== 0 ? `${context.buildTool} test failed — see the log` : undefined,
@@ -290,17 +357,22 @@ export async function runTests(context: TestContext, scope: TestScope): Promise<
 
 const testFunctionIn = (text: string, name: string) => new RegExp(`\\bfn\\s+${escapeRegex(name)}\\b|\\bfunc\\s+${escapeRegex(name)}\\s*\\(`).test(text);
 
-/** Go: a package's test files, searched for the test function. */
-async function locateGoTests(results: TestResult[], cwd: string): Promise<TestResult[]> {
-  const packages = new Set(results.map((result) => result.suite).filter((suite): suite is string => !!suite));
-  if (!packages.size) return results;
+/** Go: import path → directory, for the module at `cwd`. */
+async function goPackageDirs(cwd: string): Promise<Map<string, string>> {
   const listing = await run(`go list -f '{{.ImportPath}}\t{{.Dir}}' ./...`, cwd);
-  const dirs = new Map(
+  return new Map(
     listing.stdout
       .split("\n")
       .filter(Boolean)
       .map((line) => line.split("\t") as [string, string]),
   );
+}
+
+/** Go: a package's test files, searched for the test function. */
+async function locateGoTests(results: TestResult[], cwd: string): Promise<TestResult[]> {
+  const packages = new Set(results.map((result) => result.suite).filter((suite): suite is string => !!suite));
+  if (!packages.size) return results;
+  const dirs = await goPackageDirs(cwd);
   const filesByPackage = new Map<string, { path: string; text: string }[]>();
   for (const pkg of packages) {
     const dir = dirs.get(pkg);

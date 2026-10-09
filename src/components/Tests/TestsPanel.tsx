@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, CircleCheck, CircleSlash, CircleX, LoaderCircle, Play, RotateCcw } from "lucide-react";
+import { ChevronDown, ChevronRight, CircleCheck, CircleSlash, CircleX, LoaderCircle, Percent, Play, RotateCcw } from "lucide-react";
+import { useCoverageStore } from "../../store/coverageStore";
 import { useTestStore, testsIn } from "../../store/testStore";
 import { goTo } from "../../store/navigationStore";
 import { useWorkspaceStore } from "../../store/workspaceStore";
@@ -55,6 +56,7 @@ function ResultRow({ result }: { result: TestResult }) {
 export function TestsPanel() {
   const run = useTestStore((state) => state.run);
   const results = useTestStore((state) => state.lastResults);
+  const coveragePercent = useCoverageStore((state) => state.percent);
   const rootPath = useWorkspaceStore((state) => state.rootPath);
   const [showLog, setShowLog] = useState(false);
   const { rerun, rerunFailed, runProject } = useTestStore.getState();
@@ -123,11 +125,35 @@ export function TestsPanel() {
               <RotateCcw size={12} strokeWidth={1.75} /> Rerun failed
             </button>
           )}
+          <button
+            disabled={run.running}
+            onClick={() => void rerun(true)}
+            title="Run again, and mark which lines ran in the editor"
+          >
+            <Percent size={12} strokeWidth={1.75} /> Coverage
+          </button>
           {run.log && (
             <button onClick={() => setShowLog(!showLog)}>{showLog ? "Hide output" : "Show output"}</button>
           )}
         </div>
       </div>
+      {(coveragePercent !== null || run.coverageError) && !run.running && (
+        <div className="tests-coverage">
+          {coveragePercent !== null ? (
+            <>
+              <span className="tests-coverage-bar">
+                <span style={{ width: `${coveragePercent}%` }} />
+              </span>
+              <span>
+                {coveragePercent}% of lines covered — green / red bars in the editor gutter
+              </span>
+              <button onClick={() => useCoverageStore.getState().hide()}>Hide</button>
+            </>
+          ) : (
+            <span className="tests-coverage-error">{run.coverageError}</span>
+          )}
+        </div>
+      )}
       <div className="problems-list">
         {showLog && run.log && <pre className="tests-output tests-log">{run.log}</pre>}
         {groups.map(([file, fileResults]) => {

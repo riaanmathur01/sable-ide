@@ -81,6 +81,14 @@ push/pull/fetch, and the AI agent when you message it).
   Programs being debugged run in a terminal tab, so they can read
   keyboard input (`input()`, `scanf`, `bufio.Reader`, …).
 
+  Right-click a line in the gutter for a **conditional breakpoint**, a
+  **hit count** ("stop the 3rd time"), or a **logpoint** (prints a
+  message with `{expressions}` and keeps running). **Watch expressions**
+  re-evaluate at every pause. **Attach to Process…** debugs a program
+  that's already running — Python (`python -m debugpy --listen 5678`),
+  Node (`--inspect`), Java (JDWP port), or a Go / C / C++ / Rust process
+  picked from a list; stopping detaches and leaves it running.
+
   C, C++, and Rust files are compiled with debug info first (Cargo
   projects build with `cargo build`). TypeScript runs directly on Node 22.18+
   (type stripping keeps line numbers, so no source maps are needed).
@@ -89,7 +97,10 @@ push/pull/fetch, and the AI agent when you message it).
   pytest, Vitest, Jest, Go, Cargo and JUnit (Maven/Gradle). ⌃⇧R / ⌃⇧D
   run or debug the test at the cursor — debugging works for every one of
   them (Java tests: Maven/Gradle start the test JVM, which connects to
-  Sable, and java-debug attaches through it).
+  Sable, and java-debug attaches through it). **Run with Coverage** marks
+  each line that ran green, partly ran amber, or didn't red, with the
+  percentage in the Tests panel — pytest (pytest-cov), Vitest
+  (@vitest/coverage-v8), Jest and Go.
 - **Git** — status, stage/commit, diffs, history, blame, branches,
   push/pull/fetch, and:
   - **partial commits** — "Stage hunk" / "Unstage hunk" above each change
@@ -102,7 +113,21 @@ push/pull/fetch, and the AI agent when you message it).
     see a stash's files and diffs, apply / pop / drop;
   - **cherry-pick and revert** — the History view shows any branch's
     commits; right-click one to cherry-pick it onto the current branch
-    (keeping its author) or revert it. Conflicts go to the merge tool.
+    (keeping its author) or revert it. Conflicts go to the merge tool;
+  - **rebase** — onto another branch (branch picker) or a commit, and
+    **interactive rebase** (History → right-click → Interactive Rebase
+    from Here…): reorder, reword, squash, fixup or drop. A rebase that
+    stops for conflicts shows Continue / Skip / Abort;
+  - **commit graph** — History draws branches and merges, with branch
+    and tag labels; "All branches" shows every branch at once.
+- **Tasks** — the project's scripts under the file tree, and "Run Task"
+  in the command palette: npm/pnpm/yarn/bun scripts, Makefile targets,
+  just recipes, pyproject scripts, Deno and Composer tasks, and the usual
+  Cargo, Go, Maven and Gradle commands. Each runs in its own terminal tab.
+- **Inline AI completions** — grey suggestions as you type; Tab accepts.
+  Uses the agent's provider with a fast model (Claude Haiku 4.5 by
+  default). Off by default — each suggestion is an API call on your key:
+  Settings → AI Completions, or “AI: Toggle Inline Completions”.
 - **Local history** — every version Sable saves of a file is kept
   (also the original before your first save, and a file's contents when
   it's deleted), git or not: right-click a file → Local History to compare

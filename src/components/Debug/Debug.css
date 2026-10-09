@@ -293,3 +293,51 @@
 .debug-console-input:focus {
   border-color: var(--accent);
 }
+
+/* Watch expressions */
+.debug-watch {
+  position: relative;
+}
+
+.debug-watch > .debug-remove {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+}
+
+.debug-watch-error {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.debug-watch-input {
+  width: calc(100% - 16px);
+  margin: 4px 8px;
+  padding: 3px 6px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  outline: none;
+  user-select: text;
+}
+
+.debug-watch-input:focus {
+  border-color: var(--accent);
+}
+
+.debug-watch:hover > .debug-remove {
+  display: flex;
+}
+
+.debug-breakpoint-detail {
+  margin-left: 6px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

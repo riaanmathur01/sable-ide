@@ -4,6 +4,7 @@ import {
   Download,
   GitBranch,
   GitMerge,
+  GitPullRequestArrow,
   Plus,
   Trash2,
   Upload,
@@ -26,6 +27,7 @@ export function BranchPicker({ onClose }: { onClose: () => void }) {
   const createBranch = useGitStore((state) => state.createBranch);
   const deleteBranch = useGitStore((state) => state.deleteBranch);
   const merge = useGitStore((state) => state.merge);
+  const rebase = useGitStore((state) => state.rebase);
   const fetch = useGitStore((state) => state.fetch);
   const pull = useGitStore((state) => state.pull);
   const push = useGitStore((state) => state.push);
@@ -117,6 +119,20 @@ export function BranchPicker({ onClose }: { onClose: () => void }) {
                 }}
               >
                 <GitMerge size={12} strokeWidth={1.5} />
+              </button>
+            )}
+            {!branch.isCurrent && (
+              <button
+                className="branch-delete branch-merge"
+                title={`Rebase the current branch onto ${branch.name}`}
+                disabled={isSyncing}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void rebase(branch.name);
+                  onClose();
+                }}
+              >
+                <GitPullRequestArrow size={12} strokeWidth={1.5} />
               </button>
             )}
             {!branch.isCurrent && (

@@ -15,6 +15,7 @@ import { useGitStore } from "../../store/gitStore";
 import { createDirectory, createFile } from "../../lib/ipc";
 import { openFolderDialog } from "../../lib/openFolder";
 import { FileTree } from "./FileTree";
+import { TasksSection } from "./TasksSection";
 import { SearchPanel } from "./SearchPanel";
 import { SourceControlPanel } from "./SourceControlPanel";
 import { HistoryPanel } from "./HistoryPanel";
@@ -182,7 +183,10 @@ export function Sidebar() {
 
       {sidebarView === "files" &&
         (rootPath ? (
-          <FileTree />
+          <>
+            <FileTree />
+            <TasksSection />
+          </>
         ) : (
           <div className="sidebar-empty">
             <FolderOpen size={28} strokeWidth={1.25} aria-hidden />

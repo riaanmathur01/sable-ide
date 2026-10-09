@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
 import { useTabsStore } from "../../store/tabsStore";
 import { useUiStore } from "../../store/uiStore";
-import { useBreakpointsStore } from "../../store/breakpointsStore";
+import { useBreakpointsStore, type BreakpointOptions } from "../../store/breakpointsStore";
+import { useCoverageStore } from "../../store/coverageStore";
 import { useDebugStore } from "../../store/debugStore";
 import { useColorTheme, useSettingsStore } from "../../store/settingsStore";
 import {
@@ -21,6 +22,18 @@ import { installRecentTracking } from "../../lib/recentTracking";
 import "./MonacoPane.css";
 
 const NO_BREAKPOINTS: number[] = [];
+const NO_OPTIONS: Record<number, BreakpointOptions> = {};
+
+/** A breakpoint's hover text. */
+function describeBreakpoint(options: BreakpointOptions | undefined): string {
+  if (!options) return "Breakpoint — right-click for a condition, hit count or log message";
+  const parts = [
+    options.logMessage && `Logpoint: \`${options.logMessage}\``,
+    options.condition && `When \`${options.condition}\``,
+    options.hitCondition && `Hit count ${options.hitCondition}`,
+  ].filter(Boolean);
+  return parts.join(" · ") + " — right-click to edit";
+}
 
 /** Report the active model's language + indentation to the status bar. */
 function publishEditorInfo(editor: MonacoTypes.editor.IStandaloneCodeEditor) {
@@ -74,6 +87,9 @@ export default function MonacoPane({ groupId }: { groupId: string }) {
     (state) =>
       (activePath && state.breakpointsByFile[activePath]) || NO_BREAKPOINTS,
   );
+  const breakpointOptions = useBreakpointsStore(
+    (state) => (activePath && state.optionsByFile[activePath]) || NO_OPTIONS,
+  );
   const stoppedLine = useDebugStore((state) =>
     state.stoppedFile === activePath ? state.stoppedLine : null,
   );
@@ -89,8 +105,12 @@ export default function MonacoPane({ groupId }: { groupId: string }) {
       breakpointLines.map((line) => ({
         range: new monaco.Range(line, 1, line, 1),
         options: {
-          glyphMarginClassName: "debug-breakpoint",
-          glyphMarginHoverMessage: { value: "Breakpoint" },
+          glyphMarginClassName: breakpointOptions[line]?.logMessage
+            ? "debug-breakpoint logpoint"
+            : breakpointOptions[line]
+              ? "debug-breakpoint conditional"
+              : "debug-breakpoint",
+          glyphMarginHoverMessage: { value: describeBreakpoint(breakpointOptions[line]) },
           minimap: { color: { id: "editorError.foreground" }, position: monaco.editor.MinimapPosition.Gutter },
           overviewRuler: { color: { id: "editorError.foreground" }, position: monaco.editor.OverviewRulerLane.Left },
           stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
@@ -105,7 +125,31 @@ export default function MonacoPane({ groupId }: { groupId: string }) {
       tracking.dispose();
       collection.clear();
     };
-  }, [breakpointLines, activePath, editorReady]);
+  }, [breakpointLines, breakpointOptions, activePath, editorReady]);
+
+  // Test coverage: a bar beside each line that ran (green), partly ran
+  // (amber) or didn't (red).
+  const coverage = useCoverageStore((state) => (activePath && state.visible ? state.byFile[activePath] : undefined));
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editorReady || !editor || !coverage) return;
+    const bar = (lines: number[], className: string, ruler?: string) =>
+      lines.map((line) => ({
+        range: new monaco.Range(line, 1, line, 1),
+        options: {
+          linesDecorationsClassName: className,
+          ...(ruler && {
+            overviewRuler: { color: ruler, position: monaco.editor.OverviewRulerLane.Left },
+          }),
+        },
+      }));
+    const collection = editor.createDecorationsCollection([
+      ...bar(coverage.covered, "coverage-covered"),
+      ...bar(coverage.partial, "coverage-partial", "#d6a55c99"),
+      ...bar(coverage.uncovered, "coverage-uncovered", "#f8717199"),
+    ]);
+    return () => collection.clear();
+  }, [coverage, activePath, editorReady]);
 
   // The line where the debugger is paused.
   useEffect(() => {
@@ -178,7 +222,8 @@ export default function MonacoPane({ groupId }: { groupId: string }) {
       const inGutter =
         targetType === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN ||
         targetType === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS;
-      if (inGutter && event.target.position) {
+      // Left button only: right-click opens the breakpoint editor.
+      if (inGutter && event.target.position && event.event.leftButton) {
         const path =
           useTabsStore.getState().groups.find((group) => group.id === groupId)
             ?.lastFilePath ?? null;
@@ -189,6 +234,22 @@ export default function MonacoPane({ groupId }: { groupId: string }) {
         }
       }
     });
+
+    // Right-click the gutter: edit that line's breakpoint (condition, hit
+    // count, log message). Caught before Monaco's own context menu.
+    editor.getDomNode()?.addEventListener(
+      "contextmenu",
+      (event) => {
+        if (!(event.target instanceof Element) || !event.target.closest(".margin")) return;
+        const target = editor.getTargetAtClientPoint(event.clientX, event.clientY);
+        const path = useTabsStore.getState().groups.find((group) => group.id === groupId)?.lastFilePath ?? null;
+        if (!target?.position || !path) return;
+        event.preventDefault();
+        event.stopPropagation();
+        useBreakpointsStore.getState().edit(path, target.position.lineNumber, event.clientX, event.clientY);
+      },
+      true,
+    );
 
     // Held cursor keys (Backspace, Delete, arrows) speed up the longer
     // they're held.

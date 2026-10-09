@@ -1,0 +1,91 @@
+.bp-editor-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+.bp-editor {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 320px;
+  padding: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.bp-editor-title {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.bp-editor label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-muted);
+}
+
+.bp-editor input:not([type="checkbox"]) {
+  padding: 5px 8px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  outline: none;
+  user-select: text;
+}
+
+.bp-editor input:focus {
+  border-color: var(--accent);
+}
+
+.bp-editor label.bp-editor-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+}
+
+.bp-editor-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.bp-editor-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.bp-editor-spacer {
+  flex: 1;
+}
+
+.bp-editor-actions button {
+  padding: 4px 10px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.bp-editor-actions button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.bp-editor-actions button.danger {
+  color: var(--danger);
+}

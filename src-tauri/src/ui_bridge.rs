@@ -59,6 +59,9 @@ async fn dispatch(command: &str, args: &Value) -> Result<Value, String> {
         "git_cherry_pick" => reply(git::git_cherry_pick(arg(args, "root")?, arg(args, "hash")?).await),
         "git_revert_commit" => reply(git::git_revert_commit(arg(args, "root")?, arg(args, "hash")?).await),
         "git_abort" => reply(git::git_abort(arg(args, "root")?).await),
+        "git_rebase" => reply(git::git_rebase(arg(args, "root")?, arg(args, "onto")?).await),
+        "git_rebase_interactive" => reply(git::git_rebase_interactive(arg(args, "root")?, arg(args, "base")?, arg(args, "steps")?).await),
+        "git_rebase_continue" => reply(git::git_rebase_continue(arg(args, "root")?, arg(args, "skip")?).await),
         "git_commit_files" => reply(git::git_commit_files(arg(args, "root")?, arg(args, "hash")?)),
         "git_commit_file_diff" => {
             reply(git::git_commit_file_diff(arg(args, "root")?, arg(args, "hash")?, arg(args, "file")?))
@@ -84,6 +87,7 @@ async fn dispatch(command: &str, args: &Value) -> Result<Value, String> {
         "history_list" => json!({ "ok": history::history_list(arg(args, "path")?) }),
         "history_read" => reply(history::history_read(arg(args, "path")?, arg(args, "id")?)),
         "history_deleted_files" => json!({ "ok": history::history_deleted_files(arg(args, "root")?) }),
+        "list_processes" => reply(crate::debug::list_processes().await),
         _ => json!({ "unknown": true }),
     })
 }

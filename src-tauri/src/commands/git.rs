@@ -707,6 +707,28 @@ pub struct CommitInfo {
     timestamp: i64,
     summary: String,
     body: String,
+    /// Parent hashes (the commit graph's edges).
+    parents: Vec<String>,
+    /// Branches and tags pointing here ("main", "origin/main", "v1.0").
+    refs: Vec<String>,
+}
+
+/// Commit → the branch/tag names pointing at it.
+fn refs_by_commit(repo: &Repository) -> HashMap<git2::Oid, Vec<String>> {
+    let mut map: HashMap<git2::Oid, Vec<String>> = HashMap::new();
+    if let Ok(references) = repo.references() {
+        for reference in references.flatten() {
+            let Some(name) = reference.shorthand().ok().map(str::to_string) else { continue };
+            if name == "HEAD" || name.ends_with("/HEAD") || name == "stash" {
+                continue;
+            }
+            if let Ok(commit) = reference.peel_to_commit() {
+                let label = if reference.is_tag() { format!("tag: {name}") } else { name };
+                map.entry(commit.id()).or_default().push(label);
+            }
+        }
+    }
+    map
 }
 
 /// Paginated commit log from HEAD backward. A revwalk yields commit oids
@@ -726,6 +748,13 @@ pub fn git_log(
         .revwalk()
         .map_err(|error| format!("Could not walk history: {error}"))?;
     match branch {
+        // Every branch, remote branch and tag: the whole graph.
+        Some(all) if all == "*" => {
+            for glob in ["refs/heads/*", "refs/remotes/*", "refs/tags/*"] {
+                let _ = revwalk.push_glob(glob);
+            }
+            let _ = revwalk.push_head();
+        }
         Some(branch) => {
             let tip = repo
                 .revparse_single(&branch)
@@ -739,7 +768,9 @@ pub fn git_log(
             }
         }
     }
-    let _ = revwalk.set_sorting(git2::Sort::TIME);
+    // Children before parents (the graph draws top-down), newest first.
+    let _ = revwalk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::TIME);
+    let refs = refs_by_commit(&repo);
 
     let mut commits = Vec::new();
     for oid in revwalk.skip(skip).take(limit) {
@@ -766,6 +797,8 @@ pub fn git_log(
             timestamp: commit.time().seconds(),
             summary,
             body,
+            parents: commit.parent_ids().map(|parent| parent.to_string()).collect(),
+            refs: refs.get(&oid).cloned().unwrap_or_default(),
         });
     }
     Ok(commits)
@@ -1136,9 +1169,15 @@ fn repo_workdir(root: &str) -> Result<String, String> {
 /// Run `git <args>` in the repo non-interactively, returning combined
 /// output on success or a friendly error (auth failures normalized).
 async fn run_git(cwd: &str, args: &[&str]) -> Result<String, String> {
+    run_git_with(cwd, args, &[]).await
+}
+
+/// `run_git` with extra environment variables.
+async fn run_git_with(cwd: &str, args: &[&str], env: &[(&str, &str)]) -> Result<String, String> {
     let output = tokio::process::Command::new("git")
         .args(args)
         .current_dir(cwd)
+        .envs(env.iter().copied())
         .env("GIT_TERMINAL_PROMPT", "0") // never block on a credential prompt
         .output()
         .await
@@ -1426,6 +1465,109 @@ mod tests {
         let _ = std::fs::remove_dir_all(dir);
     }
 
+    /// `n` commits on top of base, each adding its own file.
+    fn commit_files(dir: &Path, names: &[&str]) {
+        for name in names {
+            std::fs::write(dir.join(format!("{name}.txt")), format!("{name}\n")).unwrap();
+            git(dir, &["add", "."]);
+            git(dir, &["commit", "-qm", name]);
+        }
+    }
+
+    fn subjects(dir: &Path, range: &str) -> Vec<String> {
+        let output = Command::new("git").args(["log", "--format=%s", "--reverse", range]).current_dir(dir).output().unwrap();
+        String::from_utf8_lossy(&output.stdout).lines().map(str::to_string).collect()
+    }
+
+    #[tokio::test]
+    async fn rebases() {
+        let (dir, root, file) = simple_repo("rebase");
+        git(&dir, &["checkout", "-qb", "feature"]);
+        commit_files(&dir, &["f1", "f2"]);
+        git(&dir, &["checkout", "-q", "main"]);
+        commit_files(&dir, &["m1"]);
+        git(&dir, &["checkout", "-q", "feature"]);
+        git_rebase(root.clone(), "main".into()).await.unwrap();
+        assert_eq!(subjects(&dir, "HEAD"), ["base", "m1", "f1", "f2"]);
+
+        // The graph: parents and labels; "*" shows every branch.
+        let log = git_log(root.clone(), 10, 0, Some("*".into())).unwrap();
+        assert_eq!(log[0].summary, "f2");
+        assert!(log[0].refs.contains(&"feature".to_string()), "{:?}", log[0].refs);
+        assert_eq!(log[0].parents, vec![log[1].hash.clone()]);
+        assert!(log.iter().any(|commit| commit.refs.contains(&"main".to_string())));
+
+        // A conflicting rebase: resolve, continue.
+        git(&dir, &["checkout", "-q", "main"]);
+        std::fs::write(&file, "one\nmain\nthree\n").unwrap();
+        git(&dir, &["commit", "-qam", "main edit"]);
+        git(&dir, &["checkout", "-q", "feature"]);
+        std::fs::write(&file, "one\nfeature\nthree\n").unwrap();
+        git(&dir, &["commit", "-qam", "feature edit"]);
+        let error = git_rebase(root.clone(), "main".into()).await.unwrap_err();
+        assert!(error.starts_with("Conflicts"), "{error}");
+        assert_eq!(git_status(root.clone()).unwrap().operation.as_deref(), Some("rebase"));
+        std::fs::write(&file, "one\nboth\nthree\n").unwrap();
+        git_stage(root.clone(), file.clone()).unwrap();
+        git_rebase_continue(root.clone(), false).await.unwrap();
+        assert!(git_status(root.clone()).unwrap().operation.is_none());
+        assert_eq!(subjects(&dir, "HEAD").last().unwrap(), "feature edit");
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "one\nboth\nthree\n");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[tokio::test]
+    async fn rebases_interactively() {
+        let (dir, root, _) = simple_repo("interactive");
+        commit_files(&dir, &["a", "b", "c", "d", "e"]);
+        let hash = |name: &str| {
+            let output = Command::new("git").args(["log", "--format=%H", "--grep", &format!("^{name}$")]).current_dir(&dir).output().unwrap();
+            String::from_utf8_lossy(&output.stdout).trim().to_string()
+        };
+        let base = rev_parse(&dir, "HEAD~5");
+        let step = |action: &str, name: &str, message: Option<&str>| RebaseStep {
+            action: action.into(),
+            hash: hash(name),
+            message: message.map(String::from),
+        };
+        // Reorder (c before b), reword a, fold d into b, drop e.
+        let steps = vec![
+            step("reword", "a", Some("A, reworded\n\nWith a body.")),
+            step("pick", "c", None),
+            step("pick", "b", None),
+            step("fixup", "d", None),
+            step("drop", "e", None),
+        ];
+        git_rebase_interactive(root.clone(), base, steps).await.unwrap();
+        assert_eq!(subjects(&dir, "HEAD"), ["base", "A, reworded", "c", "b"]);
+        // d's change was folded into b; e's is gone.
+        assert!(dir.join("d.txt").exists() && !dir.join("e.txt").exists());
+        let output = Command::new("git").args(["show", "--stat", "--format=", "HEAD"]).current_dir(&dir).output().unwrap();
+        let stat = String::from_utf8_lossy(&output.stdout);
+        assert!(stat.contains("b.txt") && stat.contains("d.txt"), "{stat}");
+        let output = Command::new("git").args(["log", "-1", "--format=%B", "HEAD~2"]).current_dir(&dir).output().unwrap();
+        assert!(String::from_utf8_lossy(&output.stdout).contains("With a body."));
+
+        // Squash keeps both messages; squashing the first is refused.
+        let base = rev_parse(&dir, "HEAD~2");
+        let steps = vec![
+            RebaseStep { action: "pick".into(), hash: rev_parse(&dir, "HEAD~1"), message: None },
+            RebaseStep { action: "squash".into(), hash: rev_parse(&dir, "HEAD"), message: None },
+        ];
+        git_rebase_interactive(root.clone(), base.clone(), steps).await.unwrap();
+        let output = Command::new("git").args(["log", "-1", "--format=%B"]).current_dir(&dir).output().unwrap();
+        let message = String::from_utf8_lossy(&output.stdout);
+        assert!(message.contains('c') && message.contains('b'), "{message}");
+        let refused = git_rebase_interactive(
+            root.clone(),
+            base,
+            vec![RebaseStep { action: "squash".into(), hash: rev_parse(&dir, "HEAD"), message: None }],
+        )
+        .await;
+        assert!(refused.is_err());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
     fn rev_parse(dir: &Path, name: &str) -> String {
         let output = Command::new("git").args(["rev-parse", name]).current_dir(dir).output().unwrap();
         String::from_utf8_lossy(&output.stdout).trim().to_string()
@@ -1531,4 +1673,90 @@ pub async fn git_abort(root: String) -> Result<String, String> {
         Some(operation @ ("cherry-pick" | "revert" | "rebase")) => run_git(&workdir, &[operation, "--abort"]).await,
         _ => Err("Nothing to abort".to_string()),
     }
+}
+
+// --- Rebase ------------------------------------------------------------------
+
+/// Never open an editor: Git's prepared messages are used as they are.
+const NO_EDITOR: &[(&str, &str)] = &[("GIT_EDITOR", "true"), ("GIT_SEQUENCE_EDITOR", "true")];
+
+/// Rebase the current branch onto `onto` (a branch or commit).
+#[tauri::command]
+pub async fn git_rebase(root: String, onto: String) -> Result<String, String> {
+    let workdir = repo_workdir(&root)?;
+    run_git_with(&workdir, &["rebase", &onto], NO_EDITOR).await
+}
+
+/// One line of an interactive rebase, oldest commit first.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RebaseStep {
+    /// "pick", "reword", "squash", "fixup" or "drop".
+    action: String,
+    hash: String,
+    /// For "reword": the new message.
+    message: Option<String>,
+}
+
+/// The todo list Git runs: "reword" becomes a pick followed by an amend
+/// with the new message (from a file), so no editor ever opens.
+fn rebase_todo(steps: &[RebaseStep], message_file: impl Fn(usize) -> String) -> Result<String, String> {
+    let mut lines = Vec::new();
+    for (index, step) in steps.iter().enumerate() {
+        if !step.hash.chars().all(|char| char.is_ascii_hexdigit()) {
+            return Err(format!("Not a commit: {}", step.hash));
+        }
+        match step.action.as_str() {
+            "pick" | "squash" | "fixup" | "drop" => lines.push(format!("{} {}", step.action, step.hash)),
+            "reword" => {
+                lines.push(format!("pick {}", step.hash));
+                let file = message_file(index);
+                lines.push(format!("exec git commit --amend --only --quiet -F '{}'", file.replace('\'', "'\\''")));
+            }
+            other => return Err(format!("Unknown rebase action {other}")),
+        }
+    }
+    if matches!(steps.first().map(|step| step.action.as_str()), Some("squash" | "fixup")) {
+        return Err("The first commit can't be squashed — there's nothing before it to squash into".into());
+    }
+    Ok(lines.join("\n") + "\n")
+}
+
+/// Rewrite the commits after `base` as `steps` says (`base` itself
+/// stays). Stops for conflicts like any rebase.
+#[tauri::command]
+pub async fn git_rebase_interactive(root: String, base: String, steps: Vec<RebaseStep>) -> Result<String, String> {
+    let workdir = repo_workdir(&root)?;
+    let dir = std::env::temp_dir().join(format!("sable-rebase-{}-{}", std::process::id(), base.get(..8).unwrap_or(&base)));
+    std::fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
+    for (index, step) in steps.iter().enumerate() {
+        if let Some(message) = &step.message {
+            std::fs::write(dir.join(format!("message-{index}.txt")), message).map_err(|error| error.to_string())?;
+        }
+    }
+    let todo = rebase_todo(&steps, |index| dir.join(format!("message-{index}.txt")).to_string_lossy().into_owned())?;
+    let todo_file = dir.join("todo");
+    std::fs::write(&todo_file, todo).map_err(|error| error.to_string())?;
+    // Git hands its own todo file to the "sequence editor": replace it
+    // with ours.
+    let sequence_editor = format!("cp '{}'", todo_file.to_string_lossy().replace('\'', "'\\''"));
+    let result = run_git_with(
+        &workdir,
+        &["rebase", "-i", &base],
+        &[("GIT_SEQUENCE_EDITOR", sequence_editor.as_str()), ("GIT_EDITOR", "true")],
+    )
+    .await;
+    // Messages are read as the rebase goes; a stop for conflicts still
+    // needs them, so they're only removed once it's finished.
+    if !Path::new(&workdir).join(".git/rebase-merge").exists() {
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+    result
+}
+
+/// After resolving a stop: go on (`skip`: drop the commit that stopped).
+#[tauri::command]
+pub async fn git_rebase_continue(root: String, skip: bool) -> Result<String, String> {
+    let workdir = repo_workdir(&root)?;
+    run_git_with(&workdir, &["rebase", if skip { "--skip" } else { "--continue" }], NO_EDITOR).await
 }

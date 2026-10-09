@@ -1,0 +1,160 @@
+.attach-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.attach-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 560px;
+  max-width: calc(100vw - 32px);
+  padding: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.attach-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.attach-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.attach-kinds button,
+.attach-actions button {
+  padding: 4px 10px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.attach-kinds button.selected {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.attach-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.attach-dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-muted);
+}
+
+.attach-dialog input {
+  padding: 5px 8px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  outline: none;
+  user-select: text;
+}
+
+.attach-dialog input:focus {
+  border-color: var(--accent);
+}
+
+.attach-processes {
+  display: flex;
+  flex-direction: column;
+  height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-base);
+}
+
+.attach-process {
+  display: flex;
+  gap: 10px;
+  padding: 4px 8px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.attach-process:hover {
+  background: var(--bg-elevated);
+}
+
+.attach-process.selected {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.attach-pid {
+  width: 52px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.attach-name {
+  width: 130px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attach-command {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.attach-empty,
+.attach-error {
+  padding: 8px;
+  color: var(--text-muted);
+}
+
+.attach-error {
+  color: var(--danger);
+  padding: 0;
+}
+
+.attach-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.attach-actions button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
