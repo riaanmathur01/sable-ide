@@ -1,5 +1,5 @@
 /**
- * Staging and unstaging single hunks. Pure (no I/O), so it's unit-tested.
+ * Staging and unstaging single hunks. Pure (no I/O), so it can be unit-tested.
  *
  * A hunk is one of Monaco's diff line changes (what the diff view draws),
  * so what you click is exactly what's staged:

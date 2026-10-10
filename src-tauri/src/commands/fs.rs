@@ -58,6 +58,39 @@ pub fn is_directory(path: String) -> Result<bool, String> {
     Ok(Path::new(&path).is_dir())
 }
 
+/// Whether anything (file or folder) exists at `path` — without reading it.
+#[tauri::command]
+pub fn path_exists(path: String) -> bool {
+    Path::new(&path).exists()
+}
+
+/// `path` with every symlink resolved. Parts that don't exist yet (a file
+/// about to be created) are appended to their nearest existing ancestor's
+/// real path, so the result says where a write would really land.
+#[tauri::command]
+pub fn real_path(path: String) -> Result<String, String> {
+    let mut existing = Path::new(&path).to_path_buf();
+    let mut missing = Vec::new();
+    loop {
+        match std::fs::canonicalize(&existing) {
+            Ok(real) => {
+                let resolved = missing.iter().rev().fold(real, |acc, part| acc.join(part));
+                return Ok(resolved.to_string_lossy().into_owned());
+            }
+            Err(_) => {
+                let name = existing
+                    .file_name()
+                    .ok_or_else(|| format!("Could not resolve {path}"))?
+                    .to_os_string();
+                missing.push(name);
+                if !existing.pop() {
+                    return Err(format!("Could not resolve {path}"));
+                }
+            }
+        }
+    }
+}
+
 #[tauri::command]
 pub fn create_file(path: String) -> Result<(), String> {
     // `create_new` fails if the file exists, so we never clobber data.
@@ -194,5 +227,25 @@ mod tests {
         std::fs::write(dir.join("other.py"), "").unwrap();
         assert!(rename_path(dir.join("other.py").to_string_lossy().into_owned(), "main.py".into()).is_err());
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn real_path_follows_symlinks_and_keeps_missing_parts() {
+        let base = std::env::temp_dir().join(format!("sable-real-path-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let inside = base.join("project");
+        let outside = base.join("elsewhere");
+        std::fs::create_dir_all(&inside).unwrap();
+        std::fs::create_dir_all(&outside).unwrap();
+        std::os::unix::fs::symlink(&outside, inside.join("link")).unwrap();
+        let real_outside = std::fs::canonicalize(&outside).unwrap();
+
+        // Through the link, to a file that doesn't exist yet.
+        let resolved = real_path(inside.join("link/new/file.txt").to_string_lossy().into_owned()).unwrap();
+        assert_eq!(Path::new(&resolved), real_outside.join("new/file.txt"));
+        assert!(path_exists(inside.to_string_lossy().into_owned()));
+        assert!(!path_exists(inside.join("nope").to_string_lossy().into_owned()));
+        std::fs::remove_dir_all(&base).unwrap();
     }
 }

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { ask as confirmNative } from "@tauri-apps/plugin-dialog";
 import { readFile, writeFile } from "../lib/ipc";
-import { closeDocument, openDocument } from "../lib/lsp/lspClient";
+import { closeDocument, openDocument, saveDocument } from "../lib/lsp/lspClient";
 import { useGitStore } from "./gitStore";
 import { useWorkspaceStore } from "./workspaceStore";
 import {
@@ -689,6 +689,8 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       await writeFile(path, value);
       markSaved(path);
       get().syncDirtyState(path);
+      // Servers that check on save (rust-analyzer: cargo check).
+      void saveDocument(path);
       // A save changes git status (modified/untracked); refresh it.
       useGitStore.getState().refresh();
       // Hand-edited settings.json takes effect on save.

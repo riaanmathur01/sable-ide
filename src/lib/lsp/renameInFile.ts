@@ -1,7 +1,7 @@
 /**
  * In-file rename for languages without a language server: the
  * identifier's occurrences in code, never inside strings or comments
- * (judged by the TextMate grammar's scopes). Pure, so it's unit-tested.
+ * (judged by the TextMate grammar's scopes). Pure, so it can be unit-tested.
  */
 
 import type { LineScopes } from "../shikiMonaco";

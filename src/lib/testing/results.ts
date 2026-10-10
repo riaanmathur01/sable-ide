@@ -1,5 +1,5 @@
 /**
- * Parsing test runners' reports into one shape. Pure, so it's unit-tested
+ * Parsing test runners' reports into one shape. Pure, so it can be unit-tested
  * against the tools' real output.
  */
 

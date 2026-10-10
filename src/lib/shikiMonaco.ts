@@ -119,7 +119,7 @@ const BASE_TOKEN_COLORS = {
   "catppuccin-mocha": () => import("@shikijs/themes/catppuccin-mocha"),
 };
 
-/** Build the TextMate theme Shiki tokenizes with. Pure; exported for tests. */
+/** Build the TextMate theme Shiki tokenizes with. Pure. */
 export function buildTextmateTheme(
   theme: ThemeDefinition,
   base: ThemeRegistrationRaw | null,

@@ -1,5 +1,5 @@
 /**
- * Git's conflict markers in a file. Pure (no I/O), so it's unit-tested.
+ * Git's conflict markers in a file. Pure (no I/O), so it can be unit-tested.
  *
  *   <<<<<<< ours-label
  *   ours

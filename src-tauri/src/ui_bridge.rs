@@ -34,6 +34,8 @@ async fn dispatch(command: &str, args: &Value) -> Result<Value, String> {
         "read_file_base64" => reply(fs::read_file_base64(arg(args, "path")?)),
         "write_file" => reply(fs::write_file(arg(args, "path")?, arg(args, "contents")?)),
         "is_directory" => reply(fs::is_directory(arg(args, "path")?)),
+        "path_exists" => json!({ "ok": fs::path_exists(arg(args, "path")?) }),
+        "real_path" => reply(fs::real_path(arg(args, "path")?)),
         "create_file" => reply(fs::create_file(arg(args, "path")?)),
         "create_directory" => reply(fs::create_directory(arg(args, "path")?)),
         "delete_path" => reply(fs::delete_path(arg(args, "path")?)),

@@ -13,6 +13,7 @@ import { AttachDialog } from "./components/Debug/AttachDialog";
 import { RebaseDialog } from "./components/Sidebar/RebaseDialog";
 import { checkForUpdatesQuietly } from "./lib/updates";
 import { useTasksStore } from "./store/tasksStore";
+import { clearTestContexts } from "./lib/testing/runner";
 import { AgentPanel } from "./components/Agent/AgentPanel";
 import { Resizer } from "./components/Layout/Resizer";
 import { useUiStore, lastTerminalVisible } from "./store/uiStore";
@@ -99,6 +100,8 @@ function App() {
       if (event.payload.includes(useWorkspaceStore.getState().rootPath ?? "")) {
         void useTasksStore.getState().load();
       }
+      // …and which test runner applies (a new package.json, Cargo.toml, …).
+      clearTestContexts();
       // Disk changes (incl. external commits) can change git status.
       useGitStore.getState().refresh();
     });

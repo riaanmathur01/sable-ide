@@ -2,7 +2,7 @@
  * The project's runnable tasks — package.json scripts, Makefile targets,
  * just recipes, and the usual Cargo/Go/Maven/Gradle/Deno/Composer
  * commands — from its build files. Pure (the caller reads the files), so
- * it's unit-tested.
+ * it can be unit-tested.
  */
 
 export interface Task {

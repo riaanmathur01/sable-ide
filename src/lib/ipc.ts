@@ -2,9 +2,10 @@ import { invoke } from "@tauri-apps/api/core";
 import type { SearchOptions } from "./replace";
 
 /**
- * Typed wrappers around every Rust command. This is the only file that
- * calls `invoke()` directly — components and stores go through these so
- * the Rust↔frontend boundary stays in one place.
+ * Typed wrappers around the Rust commands that the UI shares. The
+ * protocol bridges (lib/lsp, lib/debug, debugStore) and a few one-off
+ * tools (formatting, refactor, the test runner) call `invoke()` for
+ * their own commands directly.
  */
 
 export interface FsEntry {
@@ -19,6 +20,16 @@ export function readDirectory(path: string): Promise<FsEntry[]> {
 
 export function isDirectory(path: string): Promise<boolean> {
   return invoke<boolean>("is_directory", { path });
+}
+
+/** Whether a file or folder exists (without reading it). */
+export function pathExists(path: string): Promise<boolean> {
+  return invoke<boolean>("path_exists", { path });
+}
+
+/** `path` with symlinks resolved (missing trailing parts kept as given). */
+export function realPath(path: string): Promise<string> {
+  return invoke<string>("real_path", { path });
 }
 
 export function createFile(path: string): Promise<void> {

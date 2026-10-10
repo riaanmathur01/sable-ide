@@ -12,7 +12,7 @@
  * Monaco would otherwise paint unmatched semantic tokens with the default
  * color.
  *
- * Pure (no Monaco), so it's unit-tested with real server output.
+ * Pure (no Monaco), so it can be unit-tested with real server output.
  */
 
 /** Sable's generic categories. Every theme styles each (themes.ts). */

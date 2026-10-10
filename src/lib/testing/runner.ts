@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { join, tempDir } from "@tauri-apps/api/path";
-import { deletePath, readDirectory, readFile, writeFile } from "../ipc";
+import { deletePath, pathExists, readDirectory, readFile, writeFile } from "../ipc";
 import { shellQuote } from "../runConfig";
 import { useInterpreterStore } from "../../store/interpreterStore";
 import { useWorkspaceStore } from "../../store/workspaceStore";
@@ -26,13 +26,8 @@ export interface TestContext {
 const separator = (path: string) => (path.includes("\\") ? "\\" : "/");
 const parentOf = (path: string) => path.slice(0, path.lastIndexOf(separator(path))) || separator(path);
 
-async function exists(path: string): Promise<boolean> {
-  try {
-    await readFile(path);
-    return true;
-  } catch {
-    return false;
-  }
+function exists(path: string): Promise<boolean> {
+  return pathExists(path).catch(() => false);
 }
 
 /** The nearest directory above `file` (up to the project folder) holding

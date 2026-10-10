@@ -150,9 +150,16 @@ const SERVER_LABELS: Record<string, string> = {
   hxx: "clangd",
 };
 
-/** Latest raw diagnostics per file — code-action requests send the
- *  server's own diagnostics back as context. */
+/** Latest raw diagnostics per file (pushed and pulled, merged) — code-action
+ *  requests send the server's own diagnostics back as context. */
 const diagnosticsByPath = new Map<string, LspDiagnostic[]>();
+/**
+ * The two ways diagnostics arrive, kept apart: a server may use both, for
+ * different things (rust-analyzer pulls its own analysis but pushes
+ * `cargo check`'s errors), and neither may replace the other.
+ */
+const pushedByPath = new Map<string, LspDiagnostic[]>();
+const pulledByPath = new Map<string, LspDiagnostic[]>();
 
 export function lspDiagnosticsFor(path: string): LspDiagnostic[] {
   return diagnosticsByPath.get(path) ?? [];
@@ -184,19 +191,6 @@ export function pathToUri(path: string): string {
     .replace(/#/g, "%23")
     .replace(/\?/g, "%3F");
   return encoded.startsWith("/") ? `file://${encoded}` : `file:///${encoded}`;
-}
-
-/** Display names the Rust side uses for each server id. */
-function serverLabelMatches(serverId: string, displayName: string): boolean {
-  const names: Record<string, string[]> = {
-    pyright: ["Pyright", "basedpyright"],
-    java: ["Java (jdtls)"],
-    "rust-analyzer": ["rust-analyzer"],
-    gopls: ["gopls"],
-    clangd: ["clangd"],
-    typescript: ["TypeScript"],
-  };
-  return names[serverId]?.includes(displayName) ?? false;
 }
 
 /** Inverse of pathToUri, for routing diagnostics back to a model. */
@@ -314,6 +308,20 @@ export async function changeDocument(
   pullDiagnostics(path, 500);
 }
 
+/**
+ * Tell the server a document was saved. Some servers only do their
+ * heaviest checks on save — rust-analyzer runs `cargo check` then, which
+ * is where type and borrow errors come from.
+ */
+export async function saveDocument(path: string): Promise<void> {
+  if (!documentVersions.has(path)) return;
+  await invoke("lsp_notify", {
+    extension: extensionOf(path),
+    method: "textDocument/didSave",
+    params: { textDocument: { uri: pathToUri(path) } },
+  }).catch(() => {});
+}
+
 /** Tell the server a document was closed (and clear its tracking). */
 export async function closeDocument(path: string): Promise<void> {
   if (!documentVersions.has(path)) return;
@@ -335,6 +343,8 @@ export async function resetLanguageServers(): Promise<void> {
   failedExtensions.clear();
   documentVersions.clear();
   diagnosticsByPath.clear();
+  pushedByPath.clear();
+  pulledByPath.clear();
   for (const serverId of [...serverCapabilities.keys()]) {
     serverCapabilities.delete(serverId);
     for (const listener of serverListeners) listener(serverId, false);
@@ -483,12 +493,8 @@ export function initLspListeners(): void {
       } else if (state === "connected" && id) {
         ui.setLspStatus(id, server ?? "Language server");
       } else if (state === "disconnected") {
-        // Which server? The Rust side reports its display name.
-        for (const [serverId] of serverCapabilities) {
-          if (server && serverLabelMatches(serverId, server)) {
-            serverCapabilities.delete(serverId);
-            for (const listener of serverListeners) listener(serverId, false);
-          }
+        if (id && serverCapabilities.delete(id)) {
+          for (const listener of serverListeners) listener(id, false);
         }
         // Only clear the label if it's still this server's — a killed
         // old server must not blank out its replacement.
@@ -537,13 +543,24 @@ export function initLspListeners(): void {
 
     if (message.method === "textDocument/publishDiagnostics" && message.params) {
       const params = message.params as { uri: string; diagnostics: LspDiagnostic[] };
-      showDiagnostics(uriToPath(params.uri), params.diagnostics);
+      const path = uriToPath(params.uri);
+      pushedByPath.set(path, params.diagnostics);
+      showDiagnostics(path);
+    }
+  });
+
+  // A pull-diagnostic server's results changed (rust-analyzer, once the
+  // project has loaded): pull again for its open files.
+  listen<{ id: string }>("lsp:diagnostic-refresh", (event) => {
+    for (const path of documentVersions.keys()) {
+      if (serverIdFor(path) === event.payload.id) pullDiagnostics(path, 0);
     }
   });
 }
 
-/** A file's diagnostics, pushed by its server or pulled from it. */
-function showDiagnostics(path: string, diagnostics: LspDiagnostic[]) {
+/** Show a file's diagnostics: what its server pushed plus what was pulled. */
+function showDiagnostics(path: string) {
+  const diagnostics = [...(pushedByPath.get(path) ?? []), ...(pulledByPath.get(path) ?? [])];
   diagnosticsByPath.set(path, diagnostics);
   useProblemsStore.getState().setLspDiagnostics(path, diagnostics);
   applyDiagnostics(path, diagnostics, SERVER_LABELS[extensionOf(path)] ?? "lsp");
@@ -572,7 +589,10 @@ function pullDiagnostics(path: string, delay: number) {
           // Stale (edited since) or closed: a newer pull is on its way.
           if (documentVersions.get(path) !== version || !result) return;
           const report = result as { kind?: string; items?: LspDiagnostic[] };
-          if (report.kind === "full" && report.items) showDiagnostics(path, report.items);
+          if (report.kind === "full" && report.items) {
+            pulledByPath.set(path, report.items);
+            showDiagnostics(path);
+          }
         },
       );
     }, delay),

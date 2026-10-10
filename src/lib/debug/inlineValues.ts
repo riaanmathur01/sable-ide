@@ -1,7 +1,7 @@
 /**
  * Inline debug values (as JetBrains shows them): while paused, each local
  * variable's value at the end of the last line — at or above the paused
- * one — that mentions it. Pure, so it's unit-tested.
+ * one — that mentions it. Pure, so it can be unit-tested.
  */
 
 export interface InlineVariable {

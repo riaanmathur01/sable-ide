@@ -4,6 +4,7 @@ import {
   isDirectory,
   listWorkspaceFiles,
   readDirectory,
+  realPath,
   runShell,
   searchText,
 } from "../ipc";
@@ -308,6 +309,21 @@ export function resolveWorkspacePath(root: string, input: string): string {
   return separator === "\\" ? resolved.replace(/\//g, "\\") : resolved;
 }
 
+/**
+ * resolveWorkspacePath, plus where the path *really* leads: a symlink
+ * inside the workspace may point outside it, and reads and writes follow
+ * the link. Returns the in-workspace path (as the editor names it).
+ */
+async function confinedPath(root: string, input: string): Promise<string> {
+  const path = resolveWorkspacePath(root, input);
+  const normalize = (value: string) => value.replace(/\\/g, "/").replace(/\/+$/, "");
+  const [realRoot, realTarget] = (await Promise.all([realPath(root), realPath(path)])).map(normalize);
+  if (realTarget !== realRoot && !realTarget.startsWith(`${realRoot}/`)) {
+    throw new ToolError(`Path "${input}" leads outside the workspace (through a symlink)`);
+  }
+  return path;
+}
+
 function relativeTo(root: string, path: string): string {
   return path.startsWith(root) ? path.slice(root.length).replace(/^[/\\]/, "") || "." : path;
 }
@@ -405,7 +421,7 @@ export async function executeTool(
     }
     switch (call.name) {
       case "list_directory": {
-        const path = resolveWorkspacePath(root, String(args.path ?? "."));
+        const path = await confinedPath(root, String(args.path ?? "."));
         const entries = await readDirectory(path);
         const shown = entries.slice(0, 500);
         const lines = shown.map((entry) =>
@@ -449,7 +465,7 @@ export async function executeTool(
       }
 
       case "read_file": {
-        const path = resolveWorkspacePath(root, requireString(args, "path"));
+        const path = await confinedPath(root, requireString(args, "path"));
         const text = await readCurrentText(path);
         if (text === null) throw new ToolError(`File not found: ${args.path}`);
         const lines = text.split("\n");
@@ -471,7 +487,7 @@ export async function executeTool(
       }
 
       case "edit_file": {
-        const path = resolveWorkspacePath(root, requireString(args, "path"));
+        const path = await confinedPath(root, requireString(args, "path"));
         const oldString = requireString(args, "old_string");
         const newString = requireString(args, "new_string");
         if (oldString === newString) throw new ToolError("old_string and new_string are identical");
@@ -503,7 +519,7 @@ export async function executeTool(
       }
 
       case "write_file": {
-        const path = resolveWorkspacePath(root, requireString(args, "path"));
+        const path = await confinedPath(root, requireString(args, "path"));
         const content = requireString(args, "content");
         if (await isDirectory(path)) throw new ToolError(`${args.path} is a directory`);
         const before = await readCurrentText(path);
@@ -517,7 +533,7 @@ export async function executeTool(
       }
 
       case "delete_path": {
-        const path = resolveWorkspacePath(root, requireString(args, "path"));
+        const path = await confinedPath(root, requireString(args, "path"));
         if (path.replace(/[/\\]+$/, "") === root.replace(/[/\\]+$/, "")) {
           throw new ToolError("Refusing to delete the workspace root");
         }

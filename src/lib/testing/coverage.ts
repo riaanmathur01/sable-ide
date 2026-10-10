@@ -1,6 +1,6 @@
 /**
  * Coverage reports, per file, as covered / partly covered / uncovered
- * lines. Pure, so it's unit-tested against the tools' real output.
+ * lines. Pure, so it can be unit-tested against the tools' real output.
  */
 
 export interface FileCoverage {

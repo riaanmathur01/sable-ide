@@ -1,7 +1,7 @@
 /**
  * Run configurations: per-file arguments, environment variables and
  * working directory, used by Run (⌘R) and Debug (F5). Pure helpers, so
- * they're unit-tested.
+ * they can be unit-tested.
  */
 
 export interface RunConfig {

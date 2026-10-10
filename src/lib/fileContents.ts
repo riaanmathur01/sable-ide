@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "./ipc";
 import { getModelValue, hasModel, markSaved, replaceModelContent } from "./editorRegistry";
-import { changeDocument } from "./lsp/lspClient";
+import { changeDocument, saveDocument } from "./lsp/lspClient";
 import { useTabsStore } from "../store/tabsStore";
 import { useGitStore } from "../store/gitStore";
 
@@ -35,6 +35,7 @@ export async function writeFileContents(path: string, content: string): Promise<
     markSaved(path);
     useTabsStore.getState().syncDirtyState(path);
     void changeDocument(path, content);
+    void saveDocument(path);
   }
   useGitStore.getState().refresh();
 }

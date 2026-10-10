@@ -51,6 +51,8 @@ pub fn run() {
             commands::fs::read_file_base64,
             commands::fs::write_file,
             commands::fs::is_directory,
+            commands::fs::path_exists,
+            commands::fs::real_path,
             commands::fs::create_file,
             commands::fs::create_directory,
             commands::fs::delete_path,

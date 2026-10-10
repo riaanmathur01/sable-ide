@@ -20,7 +20,7 @@
  * HTML, JS in Markdown).
  *
  * Semantic tokens from language servers refine this further (see
- * semantic.ts): TextMate can't tell a parameter from a local, or a
+ * lsp/semanticTokens.ts): TextMate can't tell a parameter from a local, or a
  * declaration from a call in every grammar.
  */
 

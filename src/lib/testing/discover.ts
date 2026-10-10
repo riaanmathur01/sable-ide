@@ -1,6 +1,6 @@
 /**
  * Finding tests in a file, per framework, from its text. Pure (no I/O),
- * so it's unit-tested. Deliberately simple patterns — the conventions each
+ * so it can be unit-tested. Deliberately simple patterns — the conventions each
  * framework itself uses to find tests.
  */
 

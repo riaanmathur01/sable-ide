@@ -1,6 +1,6 @@
 /**
  * Commit graph layout: which column ("lane") each commit sits in and the
- * line segments joining rows — for the History view. Pure, so it's
+ * line segments joining rows — for the History view. Pure, so it can be
  * unit-tested. Commits come newest first, children before parents.
  */
 

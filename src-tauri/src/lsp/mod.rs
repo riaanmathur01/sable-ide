@@ -398,7 +398,55 @@ pub(crate) fn initialize_params(root_path: &str, server_id: &str) -> Value {
             params["initializationOptions"] = json!({ "bundles": [jar.to_string_lossy()] });
         }
     }
+    // rust-analyzer only looks for Cargo.toml in the root and the folders
+    // right under it; a crate deeper down (repo/app/src-tauri) would get no
+    // analysis at all. Hand it the projects it can't find.
+    if server_id == "rust-analyzer" {
+        let manifests = nested_cargo_manifests(Path::new(root_path));
+        if !manifests.is_empty() {
+            params["initializationOptions"] = json!({ "linkedProjects": manifests });
+        }
+    }
     params
+}
+
+/// Cargo projects under `root` that rust-analyzer's own discovery misses:
+/// none when the root is a Cargo project; otherwise the top-most
+/// Cargo.toml of each subtree, a few levels deep (a workspace's members
+/// come with it).
+fn nested_cargo_manifests(root: &Path) -> Vec<String> {
+    const MAX_DEPTH: usize = 4;
+    const MAX_PROJECTS: usize = 20;
+    if root.join("Cargo.toml").exists() {
+        return Vec::new();
+    }
+    let mut found = Vec::new();
+    let mut pending = vec![(root.to_path_buf(), 0usize)];
+    while let Some((dir, depth)) = pending.pop() {
+        let manifest = dir.join("Cargo.toml");
+        if depth > 0 && manifest.exists() {
+            found.push(manifest.to_string_lossy().into_owned());
+            if found.len() >= MAX_PROJECTS {
+                break;
+            }
+            continue;
+        }
+        if depth == MAX_DEPTH {
+            continue;
+        }
+        for entry in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if name.starts_with('.') || name == "target" || name == "node_modules" {
+                continue;
+            }
+            if entry.file_type().is_ok_and(|kind| kind.is_dir()) {
+                pending.push((entry.path(), depth + 1));
+            }
+        }
+    }
+    found.sort();
+    found
 }
 
 fn base_initialize_params(root_path: &str) -> Value {
@@ -431,7 +479,10 @@ fn base_initialize_params(root_path: &str) -> Value {
                 "symbol": {
                     "symbolKind": { "valueSet": (1..=26).collect::<Vec<u32>>() }
                 },
-                "inlayHint": { "refreshSupport": false }
+                "inlayHint": { "refreshSupport": false },
+                // Pull-diagnostic servers ask the client to pull again when
+                // their results change (forwarded to the frontend).
+                "diagnostics": { "refreshSupport": true }
             },
             "textDocument": {
                 "synchronization": {
@@ -707,13 +758,21 @@ async fn spawn_and_handshake(
         })?;
 
     // Surface the server's stderr to the dev log — the single most useful
-    // diagnostic when a server (jdtls especially) fails to start or reply.
+    // diagnostic when a server (jdtls especially) fails to start or reply —
+    // and keep the last few lines to explain a failed start.
+    let stderr_tail = std::sync::Arc::new(std::sync::Mutex::new(std::collections::VecDeque::<String>::new()));
     if let Some(stderr) = child.stderr.take() {
         let name = spec.name.clone();
+        let tail = stderr_tail.clone();
         tauri::async_runtime::spawn(async move {
             let mut lines = BufReader::new(stderr).lines();
             while let Ok(Some(line)) = lines.next_line().await {
                 eprintln!("[lsp {name}] {line}");
+                let mut tail = tail.lock().unwrap();
+                if tail.len() == 8 {
+                    tail.pop_front();
+                }
+                tail.push_back(line);
             }
         });
     }
@@ -767,7 +826,11 @@ async fn spawn_and_handshake(
                 let _ = app.emit("lsp:message", message);
             }
             Ok(None) => {
-                return Err(format!("{server_name} exited during handshake"))
+                // Let the exit (and its last stderr lines) land first.
+                let _ = tokio::time::timeout(std::time::Duration::from_millis(500), child.wait()).await;
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                let tail: Vec<String> = stderr_tail.lock().unwrap().iter().cloned().collect();
+                return Err(startup_failure(spec, &tail));
             }
             Err(error) => {
                 return Err(format!("Handshake read error: {error}"))
@@ -843,6 +906,15 @@ async fn spawn_and_handshake(
                             if method == "workspace/applyEdit" {
                                 let _ = reader_app.emit("lsp:message", message.clone());
                             }
+                            // "Pull diagnostics again" (e.g. rust-analyzer
+                            // once the project has loaded): the frontend
+                            // does the pulling.
+                            if method == "workspace/diagnostic/refresh" {
+                                let _ = reader_app.emit(
+                                    "lsp:diagnostic-refresh",
+                                    json!({ "id": reader_server_id }),
+                                );
+                            }
                             // Server is asking us something — reply by id.
                             let result =
                                 server_request_result(method, &message);
@@ -887,6 +959,21 @@ async fn spawn_and_handshake(
         }),
     );
     Ok((child, writer_tx))
+}
+
+/// Why a server exited during the handshake, from its last stderr lines.
+/// rustup installs `rust-analyzer` as a proxy whether or not the component
+/// is installed; without it the proxy exits at once ("Unknown binary") —
+/// that's "not installed", so give the install hint.
+fn startup_failure(spec: &ServerSpec, stderr_tail: &[String]) -> String {
+    let text = stderr_tail.join("\n");
+    if text.contains("Unknown binary") || text.contains("is not installed") {
+        return spec.install_hint.clone();
+    }
+    match stderr_tail.iter().rev().find(|line| !line.trim().is_empty()) {
+        Some(line) => format!("{} exited during startup: {}", spec.name, line.trim()),
+        None => format!("{} exited during startup", spec.name),
+    }
 }
 
 /// Send a JSON-RPC *notification* (no id, no response) to the server that
@@ -1070,6 +1157,38 @@ mod tests {
         let root = std::env::var("SABLE_LSP_ROOT").unwrap_or_else(|_| ".".into());
         let id = std::env::var("SABLE_LSP_ID").unwrap_or_else(|_| "pyright".into());
         println!("SABLE_PARAMS {}", initialize_params(&root, &id));
+    }
+
+    #[test]
+    fn rust_analyzer_is_told_about_nested_cargo_projects() {
+        let root = std::env::temp_dir().join(format!("sable-ra-linked-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        for dir in ["apps/desktop/src-tauri", "apps/desktop/src-tauri/crates/inner", "tools/cli", "node_modules/pkg", "deep/a/b/c/d"] {
+            std::fs::create_dir_all(root.join(dir)).unwrap();
+            std::fs::write(root.join(dir).join("Cargo.toml"), "").unwrap();
+        }
+        let root_str = root.to_string_lossy().into_owned();
+        let linked = initialize_params(&root_str, "rust-analyzer")["initializationOptions"]["linkedProjects"].clone();
+        // The top-most manifest per subtree, nothing in node_modules or
+        // beyond the depth limit.
+        let expected = json!([
+            root.join("apps/desktop/src-tauri/Cargo.toml").to_string_lossy(),
+            root.join("tools/cli/Cargo.toml").to_string_lossy(),
+        ]);
+        assert_eq!(linked, expected);
+        // A Cargo project at the root: rust-analyzer's own discovery.
+        std::fs::write(root.join("Cargo.toml"), "").unwrap();
+        assert!(initialize_params(&root_str, "rust-analyzer")["initializationOptions"].is_null());
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn a_missing_rustup_component_reads_as_not_installed() {
+        let spec = server_for_extension("rs", "/tmp").unwrap();
+        let rustup = vec!["error: Unknown binary 'rust-analyzer' in official toolchain 'stable-aarch64-apple-darwin'.".to_string()];
+        assert_eq!(startup_failure(&spec, &rustup), spec.install_hint);
+        let crash = vec!["".to_string(), "thread 'main' panicked".to_string(), "".to_string()];
+        assert_eq!(startup_failure(&spec, &crash), "rust-analyzer exited during startup: thread 'main' panicked");
     }
 
     #[tokio::test]

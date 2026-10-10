@@ -6,7 +6,7 @@ import type { ModelReply, ToolCall } from "./types";
  * payload each, already JSON-parsed) into the same ModelReply the
  * non-streaming adapters produce — including the raw assistant message
  * replayed on the next turn (Anthropic thinking blocks with signatures,
- * Gemini thought signatures). Pure; unit-tested with recorded events.
+ * Gemini thought signatures). Pure, so it can be unit-tested with recorded events.
  */
 export interface StreamAccumulator {
   /** Feed one event; returns any new visible text (for live display). */

@@ -1,5 +1,5 @@
 /**
- * Find-and-replace text transforms (pure, unit-tested). The search itself
+ * Find-and-replace text transforms (pure, so it can be unit-tested). The search itself
  * runs in Rust (ripgrep's engine); replacing happens here, on the file
  * text as the editor sees it, using an equivalent JavaScript regex.
  */

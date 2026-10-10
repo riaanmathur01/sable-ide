@@ -4,6 +4,7 @@ import { readFile } from "../lib/ipc";
 import { discoverTests, type TestItem } from "../lib/testing/discover";
 import type { TestResult } from "../lib/testing/results";
 import {
+  clearTestContexts,
   debugLaunchFor,
   resultMatches,
   runTests,
@@ -229,3 +230,9 @@ export const useTestStore = create<TestState>((_set, get) => ({
     else await get().runFileTests(file, [item]);
   },
 }));
+
+// Which runner a file uses depends on its project (package.json, go.mod,
+// …): a different folder starts over.
+useWorkspaceStore.subscribe((state, previous) => {
+  if (state.rootPath !== previous.rootPath) clearTestContexts();
+});
