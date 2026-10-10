@@ -14,12 +14,12 @@ import { RebaseDialog } from "./components/Sidebar/RebaseDialog";
 import { checkForUpdatesQuietly } from "./lib/updates";
 import { useTasksStore } from "./store/tasksStore";
 import { usePluginStore } from "./store/pluginStore";
-import { CreatePluginDialog } from "./components/Plugins/CreatePluginDialog";
+import { ActivityBar } from "./components/ActivityBar/ActivityBar";
 import { clearTestContexts } from "./lib/testing/runner";
 import { AgentPanel } from "./components/Agent/AgentPanel";
 import { Resizer } from "./components/Layout/Resizer";
 import { useUiStore, lastTerminalVisible } from "./store/uiStore";
-import { useColorTheme, useSettingsStore } from "./store/settingsStore";
+import { useColorTheme, useSetting, useSettingsStore } from "./store/settingsStore";
 import { applyUiTheme } from "./lib/themes";
 import { useTabsStore } from "./store/tabsStore";
 import {
@@ -52,6 +52,7 @@ function App() {
     (state) => state.applyExternalChanges,
   );
   const [isDropTarget, setIsDropTarget] = useState(false);
+  const viewSwitcher = useSetting("workbench.viewSwitcher");
 
   useGlobalKeybindings();
 
@@ -171,6 +172,7 @@ function App() {
   return (
     <div className="app-shell">
       <div className="app-main">
+        {viewSwitcher === "activityBar" && <ActivityBar />}
         {sidebarVisible && (
           <>
             <Sidebar />
@@ -218,7 +220,6 @@ function App() {
       <BreakpointEditor />
       <AttachDialog />
       <RebaseDialog />
-      <CreatePluginDialog />
     </div>
   );
 }

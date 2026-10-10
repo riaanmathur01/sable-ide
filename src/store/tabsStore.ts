@@ -13,7 +13,7 @@ import {
   markSaved,
   setActiveEditorGroup,
 } from "../lib/editorRegistry";
-import { useUiStore } from "./uiStore";
+import { useUiStore, type PluginsTab, type SettingsPage } from "./uiStore";
 import { getSetting, useSettingsStore } from "./settingsStore";
 import { emitPluginEvent } from "../lib/plugins/events";
 
@@ -129,8 +129,8 @@ interface TabsState {
   openHistory: (filePath: string | null) => void;
   /** Activate a tab in a group (default: focused) and focus that group. */
   setActive: (path: string, groupId?: string) => void;
-  /** Open (or focus) the Settings tab. */
-  openSettings: () => void;
+  /** Open (or focus) the Settings tab — on a page (Plugins) if given. */
+  openSettings: (page?: SettingsPage, pluginsTab?: PluginsTab) => void;
   /** Re-check a model's dirty state (called on editor change). */
   syncDirtyState: (path: string) => void;
   /**
@@ -462,7 +462,8 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     );
   },
 
-  openSettings: () => {
+  openSettings: (page, pluginsTab) => {
+    useUiStore.getState().showSettingsPage(page ?? "settings", pluginsTab);
     // One Settings tab: focus it wherever it is.
     const existing = get().groups.find((group) =>
       group.tabs.some((tab) => tab.path === SETTINGS_TAB_KEY),

@@ -1,0 +1,11 @@
+{
+  "id": "word-count",
+  "name": "Word Count",
+  "version": "1.0.0",
+  "description": "Words, characters and reading time for the open file, in the status bar.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.3",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/word-count"
+}

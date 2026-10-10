@@ -1,0 +1,11 @@
+{
+  "id": "insert-utilities",
+  "name": "Insert Date, UUID & More",
+  "version": "1.0.0",
+  "description": "Insert the date, time, a timestamp, a UUID or placeholder text at the cursor.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.3",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/insert-utilities"
+}

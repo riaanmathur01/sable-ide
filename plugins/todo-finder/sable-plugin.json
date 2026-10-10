@@ -1,0 +1,11 @@
+{
+  "id": "todo-finder",
+  "name": "TODO Finder",
+  "version": "1.0.0",
+  "description": "Marks TODO, FIXME, HACK and XXX comments in the editor and the Problems panel.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.3",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/todo-finder"
+}

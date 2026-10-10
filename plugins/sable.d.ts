@@ -1,14 +1,5 @@
-import type { PluginPermission } from "./types";
-
 /**
- * The files of a new plugin (Settings → Plugins → Create): a manifest,
- * a working main.js, the API's type definitions (so editors autocomplete
- * `sable.`), and a README.
- */
-
-/** The plugin API, as TypeScript declarations (also its reference docs). */
-export const API_TYPES = `/**
- * Sable's plugin API — the \`sable\` object passed to your activate().
+ * Sable's plugin API — the `sable` object passed to your activate().
  * Every call returns a Promise. Methods marked with a permission need it
  * in sable-plugin.json's "permissions"; without it they throw.
  */
@@ -51,7 +42,7 @@ export interface CompletionItem {
   label: string;
   /** Default: the label. */
   insertText?: string;
-  /** insertText uses snippet syntax: $1, \${2:placeholder}, $0. */
+  /** insertText uses snippet syntax: $1, ${2:placeholder}, $0. */
   snippet?: boolean;
   /** Replace this many characters before the cursor (default: the word being typed). */
   replace?: number;
@@ -93,7 +84,7 @@ export interface Sable {
   };
 
   statusBar: {
-    /** Your plugin's item in the status bar; clicking runs \`command\` (one of yours). */
+    /** Your plugin's item in the status bar; clicking runs `command` (one of yours). */
     set(text: string, options?: { tooltip?: string; command?: string }): Promise<void>;
     clear(): Promise<void>;
   };
@@ -147,107 +138,5 @@ export interface Sable {
       exitCode: number | null;
       timedOut: boolean;
     }>;
-  };
-}
-`;
-
-export function pluginId(name: string): string {
-  return (
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 64) || "my-plugin"
-  );
-}
-
-export function scaffoldFiles(options: {
-  id: string;
-  name: string;
-  author: string;
-  permissions: PluginPermission[];
-  sableVersion: string;
-}): Record<string, string> {
-  const { id, name, author, permissions, sableVersion } = options;
-  const manifest = {
-    id,
-    name,
-    version: "0.1.0",
-    description: "",
-    author,
-    main: "main.js",
-    permissions,
-    ...(sableVersion ? { minSableVersion: sableVersion } : {}),
-  };
-  const usesEditor = permissions.includes("editor");
-  const main = `// @ts-check
-/** @typedef {import("./sable").Sable} Sable */
-
-/**
- * Called when the plugin starts. Everything you register is removed
- * automatically when it stops (disabled, reloaded or uninstalled).
- * @param {Sable} sable
- */
-export async function activate(sable) {
-  sable.commands.register("hello", "Say Hello", async () => {
-    await sable.window.showMessage(\`Hello from ${name}!\`);
-  });
-${
-  usesEditor
-    ? `
-  // Counts words in the focused file (needs the "editor" permission).
-  sable.commands.register("count-words", "Count Words", async () => {
-    const editor = await sable.editor.active();
-    if (!editor) return sable.window.showError("Open a file first");
-    const words = editor.text.split(/\\s+/).filter(Boolean).length;
-    await sable.statusBar.set(\`\${words} words\`, { tooltip: "Click to recount", command: "count-words" });
-  });
-
-  // A formatter for plain-text files: Format Document (⇧⌥F) trims
-  // trailing spaces.
-  sable.languages.registerFormatter("plaintext", ({ text }) =>
-    text.replace(/[ \\t]+$/gm, ""),
-  );
-`
-    : ""
-}
-  console.log("${name} is running"); // shows under Settings → Plugins → Installed
-}
-
-/** Optional: called before the plugin stops. */
-export function deactivate() {}
-`;
-  const readme = `# ${name}
-
-A plugin for [Sable](https://github.com/riaanmathur01/sable-ide).
-
-## Developing
-
-This folder is *linked*: Sable runs the plugin from here and reloads it
-every time you save a file in it (in Sable). \`console.log\` output shows
-under **Settings → Plugins → Installed** (click the plugin to see its log).
-
-- \`sable-plugin.json\` — the manifest: id, name, version, and the
-  \`permissions\` the plugin needs (\`editor\`, \`workspace:read\`,
-  \`workspace:write\`, \`shell\`, \`network\`). Users see them before
-  installing.
-- \`main.js\` — one ES module that exports \`activate(sable)\` (and
-  optionally \`deactivate()\`). It runs in a sandboxed worker, so it can't
-  import other files: bundle dependencies into it (e.g. \`esbuild src/index.ts
-  --bundle --format=esm --outfile=main.js\`).
-- \`sable.d.ts\` — the API, for autocomplete and reference.
-
-## Sharing
-
-Push this folder to a GitHub repository. Others install it with
-**Settings → Plugins → Marketplace → Install from elsewhere** and the
-repository's URL (or a link to a
-\`.zip\` / \`.tar.gz\` of the folder).
-`;
-  return {
-    "sable-plugin.json": `${JSON.stringify(manifest, null, 2)}\n`,
-    "main.js": main,
-    "sable.d.ts": API_TYPES,
-    "README.md": readme,
   };
 }

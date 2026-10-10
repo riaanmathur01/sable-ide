@@ -219,20 +219,34 @@ pub fn plugin_list() -> Result<Vec<PluginInfo>, String> {
         .collect())
 }
 
-/// A GitHub repository page becomes its source tarball; other URLs are
-/// used as they are.
-fn download_url(url: &str) -> String {
+/// What to download for a URL, and where in it the plugin is.
+#[derive(Debug, PartialEq)]
+struct Download {
+    url: String,
+    /// The plugin's folder inside the archive's top level, if not the top.
+    subpath: Option<String>,
+}
+
+/// A GitHub repository page becomes its source tarball —
+/// `github.com/owner/repo` (default branch), `…/tree/<ref>`, or
+/// `…/tree/<ref>/<folder>` for a plugin in a subfolder (one repository
+/// can hold many plugins). Other URLs are used as they are.
+fn download_for(url: &str) -> Download {
     let trimmed = url.trim().trim_end_matches('/').trim_end_matches(".git");
     if let Some(rest) = trimmed.strip_prefix("https://github.com/") {
         let parts: Vec<&str> = rest.split('/').collect();
         if parts.len() == 2 {
-            return format!("https://codeload.github.com/{}/{}/tar.gz/HEAD", parts[0], parts[1]);
+            return Download { url: format!("https://codeload.github.com/{}/{}/tar.gz/HEAD", parts[0], parts[1]), subpath: None };
         }
         if parts.len() >= 4 && parts[2] == "tree" {
-            return format!("https://codeload.github.com/{}/{}/tar.gz/{}", parts[0], parts[1], parts[3..].join("/"));
+            let subpath = (parts.len() > 4).then(|| parts[4..].join("/"));
+            return Download {
+                url: format!("https://codeload.github.com/{}/{}/tar.gz/{}", parts[0], parts[1], parts[3]),
+                subpath,
+            };
         }
     }
-    trimmed.to_string()
+    Download { url: trimmed.to_string(), subpath: None }
 }
 
 fn is_zip(bytes: &[u8]) -> bool {
@@ -240,9 +254,16 @@ fn is_zip(bytes: &[u8]) -> bool {
 }
 
 /// Unpack a downloaded archive (.tar.gz or .zip) into `into` and return
-/// the folder holding the manifest: `into` itself, or the archive's one
-/// top-level folder (GitHub tarballs wrap everything in `repo-ref/`).
-pub fn unpack(bytes: &[u8], into: &Path) -> Result<PathBuf, String> {
+/// the plugin's folder: `subpath` inside the archive's top level, which is
+/// `into` itself or its one top-level folder (GitHub tarballs wrap
+/// everything in `repo-ref/`).
+pub fn unpack(bytes: &[u8], into: &Path, subpath: Option<&str>) -> Result<PathBuf, String> {
+    if let Some(subpath) = subpath {
+        let safe = Path::new(subpath).components().all(|part| matches!(part, std::path::Component::Normal(_)));
+        if !safe {
+            return Err(format!("Invalid folder in the URL: {subpath}"));
+        }
+    }
     std::fs::create_dir_all(into).map_err(|error| error.to_string())?;
     let zip = is_zip(bytes);
     let archive = into.join(if zip { "download.zip" } else { "download.tar.gz" });
@@ -262,19 +283,50 @@ pub fn unpack(bytes: &[u8], into: &Path) -> Result<PathBuf, String> {
     if !unpacked {
         return Err("Couldn't unpack the download — it must be a .zip or .tar.gz holding the plugin".into());
     }
-    if into.join(MANIFEST_FILE).is_file() {
-        return Ok(into.to_path_buf());
-    }
     let folders: Vec<PathBuf> = std::fs::read_dir(into)
         .map_err(|error| error.to_string())?
         .flatten()
         .map(|entry| entry.path())
         .filter(|path| path.is_dir())
         .collect();
-    match folders.as_slice() {
-        [only] if only.join(MANIFEST_FILE).is_file() => Ok(only.clone()),
-        _ => Err(format!("The download has no {MANIFEST_FILE} at its top level")),
+    let candidates: Vec<PathBuf> = match folders.as_slice() {
+        [only] => vec![into.to_path_buf(), only.clone()],
+        _ => vec![into.to_path_buf()],
+    };
+    let found = candidates
+        .iter()
+        .map(|top| match subpath {
+            Some(subpath) => top.join(subpath),
+            None => top.clone(),
+        })
+        .find(|folder| folder.join(MANIFEST_FILE).is_file());
+    found.ok_or_else(|| match subpath {
+        Some(subpath) => format!("The download has no {MANIFEST_FILE} in {subpath}"),
+        None => format!("The download has no {MANIFEST_FILE} at its top level"),
+    })
+}
+
+/// The marketplace's catalogue (a JSON file listing plugins and where to
+/// install them from), fetched here so any URL works without CORS.
+#[tauri::command]
+pub async fn plugin_marketplace(url: String) -> Result<serde_json::Value, String> {
+    const MAX_CATALOGUE_BYTES: usize = 5 * 1024 * 1024;
+    let url = url.trim();
+    if !url.starts_with("https://") && !url.starts_with("http://") {
+        return Err("The marketplace URL must start with https://".into());
     }
+    let response = reqwest::Client::new()
+        .get(url)
+        .header("Cache-Control", "no-cache")
+        .send()
+        .await
+        .and_then(|response| response.error_for_status())
+        .map_err(|error| format!("Couldn't load the marketplace: {error}"))?;
+    let bytes = response.bytes().await.map_err(|error| format!("Couldn't load the marketplace: {error}"))?;
+    if bytes.len() > MAX_CATALOGUE_BYTES {
+        return Err("The marketplace catalogue is too large".into());
+    }
+    serde_json::from_slice(&bytes).map_err(|error| format!("The marketplace catalogue isn't valid JSON: {error}"))
 }
 
 fn staging_dir() -> Result<PathBuf, String> {
@@ -288,7 +340,7 @@ pub async fn plugin_inspect(source: PluginSource) -> Result<Inspected, String> {
     let folder = match source {
         PluginSource::Folder { path } => PathBuf::from(path),
         PluginSource::Url { url } => {
-            let url = download_url(&url);
+            let Download { url, subpath } = download_for(&url);
             if !url.starts_with("https://") && !url.starts_with("http://") {
                 return Err("Enter a GitHub repository or a link to a .zip / .tar.gz".into());
             }
@@ -308,7 +360,7 @@ pub async fn plugin_inspect(source: PluginSource) -> Result<Inspected, String> {
                 .map(|time| time.as_nanos())
                 .unwrap_or(0);
             let into = staging_dir()?.join(format!("{stamp}"));
-            tokio::task::spawn_blocking(move || unpack(&bytes, &into))
+            tokio::task::spawn_blocking(move || unpack(&bytes, &into, subpath.as_deref()))
                 .await
                 .map_err(|error| error.to_string())??
         }
@@ -464,10 +516,39 @@ mod tests {
 
     #[test]
     fn github_urls_become_tarballs() {
-        assert_eq!(download_url("https://github.com/me/plugin"), "https://codeload.github.com/me/plugin/tar.gz/HEAD");
-        assert_eq!(download_url("https://github.com/me/plugin.git/"), "https://codeload.github.com/me/plugin/tar.gz/HEAD");
-        assert_eq!(download_url("https://github.com/me/plugin/tree/v1.2"), "https://codeload.github.com/me/plugin/tar.gz/v1.2");
-        assert_eq!(download_url("https://example.com/p.zip"), "https://example.com/p.zip");
+        let download = |url: &str, subpath: Option<&str>| Download { url: url.into(), subpath: subpath.map(String::from) };
+        assert_eq!(download_for("https://github.com/me/plugin"), download("https://codeload.github.com/me/plugin/tar.gz/HEAD", None));
+        assert_eq!(download_for("https://github.com/me/plugin.git/"), download("https://codeload.github.com/me/plugin/tar.gz/HEAD", None));
+        assert_eq!(download_for("https://github.com/me/plugin/tree/v1.2"), download("https://codeload.github.com/me/plugin/tar.gz/v1.2", None));
+        assert_eq!(
+            download_for("https://github.com/me/repo/tree/main/plugins/word-count"),
+            download("https://codeload.github.com/me/repo/tar.gz/main", Some("plugins/word-count"))
+        );
+        assert_eq!(download_for("https://example.com/p.zip"), download("https://example.com/p.zip", None));
+    }
+
+    /// Every plugin in the repository's marketplace (plugins/) is valid,
+    /// and its catalogue entry matches its manifest.
+    #[test]
+    fn marketplace_catalogue_matches_its_plugins() {
+        let folder = Path::new(env!("CARGO_MANIFEST_DIR")).join("../plugins");
+        let catalogue: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(folder.join("registry.json")).unwrap()).unwrap();
+        let entries = catalogue["plugins"].as_array().unwrap();
+        assert!(!entries.is_empty());
+        for entry in entries {
+            let id = entry["id"].as_str().unwrap();
+            let manifest = read_manifest(&folder.join(id)).unwrap_or_else(|error| panic!("{id}: {error}"));
+            assert_eq!(entry["name"], manifest.name, "{id}: name");
+            assert_eq!(entry["version"], manifest.version, "{id}: version");
+            assert_eq!(entry["description"], manifest.description, "{id}: description");
+            let permissions: Vec<String> = serde_json::from_value(entry["permissions"].clone()).unwrap();
+            assert_eq!(permissions, manifest.permissions, "{id}: permissions");
+            assert!(
+                entry["url"].as_str().unwrap().ends_with(&format!("/tree/main/plugins/{id}")),
+                "{id}: url points at its folder"
+            );
+        }
     }
 
     /// Install (copy, then update), link, disable, uninstall, and unpack a
@@ -520,7 +601,23 @@ mod tests {
             .status()
             .unwrap();
         assert!(status.success());
-        let unpacked = unpack(&std::fs::read(&tarball).unwrap(), &staging_dir().unwrap().join("1")).unwrap();
+        let unpacked = unpack(&std::fs::read(&tarball).unwrap(), &staging_dir().unwrap().join("1"), None).unwrap();
+        // A plugin in a subfolder of the archive (…/tree/<ref>/<folder>).
+        let nested = base.join("mono/repo-main/plugins/nested");
+        write_plugin(&nested, &GOOD.replace("hello", "nested"), Some("export function activate() {}"));
+        let monorepo = base.join("mono.tar.gz");
+        assert!(std::process::Command::new("tar")
+            .args(["-czf"])
+            .arg(&monorepo)
+            .args(["-C"])
+            .arg(base.join("mono"))
+            .arg("repo-main")
+            .status()
+            .unwrap()
+            .success());
+        let found = unpack(&std::fs::read(&monorepo).unwrap(), &base.join("unpack-mono"), Some("plugins/nested")).unwrap();
+        assert_eq!(read_manifest(&found).unwrap().id, "nested");
+        assert!(unpack(&std::fs::read(&monorepo).unwrap(), &base.join("unpack-evil"), Some("../x")).is_err());
         let from_url = plugin_install(unpacked.to_string_lossy().into_owned(), false, Some("https://github.com/me/repo".into())).unwrap();
         assert_eq!(from_url.source.as_deref(), Some("https://github.com/me/repo"));
         assert!(!staging_dir().unwrap().exists(), "staging is cleaned up");

@@ -63,6 +63,8 @@ interface CompletionResult {
   kind?: string;
   /** insertText uses snippet syntax ($1, ${2:name}, $0). */
   snippet?: boolean;
+  /** Replace this many characters before the cursor (default: the word). */
+  replace?: number;
 }
 
 const ACTIVATE_TIMEOUT_MS = 15_000;
@@ -439,7 +441,10 @@ export class PluginRuntime {
                     detail: item.detail ?? this.name,
                     documentation: item.documentation,
                     kind: completionKind(monaco, item.kind),
-                    range,
+                    range:
+                      typeof item.replace === "number" && item.replace >= 0
+                        ? { ...range, startColumn: Math.max(1, position.column - Math.floor(item.replace)), endColumn: position.column }
+                        : range,
                   })),
                 };
               } catch {

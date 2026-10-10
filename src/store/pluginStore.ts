@@ -16,6 +16,7 @@ import {
 } from "../lib/plugins/types";
 import { useUiStore } from "./uiStore";
 import { useTabsStore } from "./tabsStore";
+import { getSetting } from "./settingsStore";
 
 /**
  * Installed plugins and their running state. Rust keeps the plugins and
@@ -24,6 +25,51 @@ import { useTabsStore } from "./tabsStore";
  */
 
 const MAX_LOG_LINES = 300;
+
+/** One plugin in the marketplace's catalogue. */
+export interface MarketplaceEntry {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  permissions: PluginPermission[];
+  tags: string[];
+  /** Where it installs from (a GitHub repo or folder link, or an archive). */
+  url: string;
+  homepage?: string;
+}
+
+/** The catalogue's plugins; malformed entries are left out. */
+function parseCatalogue(raw: unknown): MarketplaceEntry[] {
+  const list = (raw as { plugins?: unknown })?.plugins;
+  if (!Array.isArray(list)) throw new Error("The marketplace catalogue has no \"plugins\" list");
+  const text = (value: unknown) => (typeof value === "string" ? value : "");
+  return list
+    .filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === "object")
+    .filter((entry) => text(entry.id) && text(entry.name) && text(entry.url))
+    .map((entry) => ({
+      id: text(entry.id),
+      name: text(entry.name),
+      version: text(entry.version),
+      description: text(entry.description),
+      author: text(entry.author),
+      permissions: Array.isArray(entry.permissions) ? (entry.permissions.filter((p) => typeof p === "string") as PluginPermission[]) : [],
+      tags: Array.isArray(entry.tags) ? entry.tags.filter((tag): tag is string => typeof tag === "string") : [],
+      url: text(entry.url),
+      homepage: text(entry.homepage) || undefined,
+    }));
+}
+
+/** Whether version `a` is newer than `b` ("1.10.0" > "1.9.2"). */
+export function isNewerVersion(a: string, b: string): boolean {
+  const parse = (version: string) => version.replace(/^v/, "").split(/[.+-]/).slice(0, 3).map((part) => Number(part) || 0);
+  const [x, y] = [parse(a), parse(b)];
+  for (let index = 0; index < 3; index++) {
+    if ((x[index] ?? 0) !== (y[index] ?? 0)) return (x[index] ?? 0) > (y[index] ?? 0);
+  }
+  return false;
+}
 
 interface PluginState_ {
   plugins: PluginInfo[];
@@ -34,9 +80,12 @@ interface PluginState_ {
   commands: { pluginId: string; pluginName: string; command: PluginCommand }[];
   statusItems: Record<string, PluginStatusItem>;
   busy: boolean;
-  /** The Create Plugin dialog. */
-  createDialogOpen: boolean;
-  setCreateDialogOpen: (open: boolean) => void;
+  /** The marketplace's catalogue (null until loaded). */
+  marketplace: MarketplaceEntry[] | null;
+  marketplaceError: string | null;
+  marketplaceLoading: boolean;
+  /** (Re)load the catalogue from the Marketplace URL setting. */
+  loadMarketplace: () => Promise<void>;
 
   /** Read the installed plugins and start the enabled ones (at launch). */
   load: () => Promise<void>;
@@ -106,7 +155,7 @@ export const usePluginStore = create<PluginState_>((set, get) => {
     try {
       await runtime.start();
     } catch {
-      // The runtime recorded the error (shown in the Plugins view).
+      // The runtime recorded the error (shown under Installed).
       runtimes.delete(id);
     }
   }
@@ -180,8 +229,22 @@ export const usePluginStore = create<PluginState_>((set, get) => {
     commands: [],
     statusItems: {},
     busy: false,
-    createDialogOpen: false,
-    setCreateDialogOpen: (open) => set({ createDialogOpen: open }),
+    marketplace: null,
+    marketplaceError: null,
+    marketplaceLoading: false,
+
+    loadMarketplace: async () => {
+      if (get().marketplaceLoading) return;
+      set({ marketplaceLoading: true, marketplaceError: null });
+      try {
+        const raw = await invoke<unknown>("plugin_marketplace", { url: getSetting("plugins.marketplaceUrl") });
+        set({ marketplace: parseCatalogue(raw) });
+      } catch (error) {
+        set({ marketplaceError: String(error instanceof Error ? error.message : error) });
+      } finally {
+        set({ marketplaceLoading: false });
+      }
+    },
 
     load: async () => {
       try {
@@ -280,7 +343,6 @@ export const usePluginStore = create<PluginState_>((set, get) => {
         const info = await invoke<PluginInfo>("plugin_install", { path: folder, link: true, source: null });
         await refreshList();
         await startPlugin(info);
-        set({ createDialogOpen: false });
         await useTabsStore.getState().openFile(`${folder}${separator}main.js`);
         useUiStore
           .getState()

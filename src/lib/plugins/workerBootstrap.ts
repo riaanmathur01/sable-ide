@@ -41,7 +41,7 @@ function bootstrap() {
     },
   });
 
-  // console.* goes to the plugin's log in the Plugins view.
+  // console.* goes to the plugin's log (Settings → Plugins → Installed).
   const format = (args: unknown[]) =>
     args
       .map((arg) => {

@@ -406,3 +406,9 @@
 .settings-subrow {
   padding-top: 0;
 }
+
+.settings-nav-divider {
+  height: 1px;
+  margin: 8px 10px;
+  background: var(--border);
+}

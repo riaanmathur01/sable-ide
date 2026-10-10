@@ -180,8 +180,9 @@ may ask once too (More info → Run anyway).
   chats are saved per project, and you can keep several. Works with
   Anthropic, OpenAI (or any OpenAI-compatible API), and Google Gemini.
 - **Plugins** — add commands, formatters, completions, linters
-  (squiggles), and status-bar items in JavaScript. The Plugins view
-  (puzzle icon) installs them from a GitHub repository, a `.zip` /
+  (squiggles), and status-bar items in JavaScript. **Settings → Plugins**
+  (or the puzzle icon) has a **Marketplace** to browse and install from,
+  and also installs from a GitHub repository, a `.zip` /
   `.tar.gz` link, or a folder; turns them on and off; updates, reloads and
   uninstalls them; and shows each one's permissions and log. **Create…**
   writes a working plugin to start from, which reloads every time you
@@ -189,6 +190,10 @@ may ask once too (More info → Run anyway).
   permissions it declares (`editor`, `workspace:read`, `workspace:write`,
   `shell`, `network`), and you see them before installing. Guide and API
   reference: [docs/plugins.md](docs/plugins.md).
+- **Layout** — switch views (Explorer, Search, Source Control, History,
+  Run and Debug, Plugins) from a VS Code-style activity bar at the left
+  edge, from icons in the sidebar header, or from a ☰ menu: Settings →
+  Editor Appearance → View Switcher.
 - **Settings** — a searchable settings page (⌘,) backed by a plain
   `settings.json`.
 

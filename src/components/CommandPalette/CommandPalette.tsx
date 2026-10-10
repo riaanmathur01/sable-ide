@@ -840,6 +840,12 @@ function buildCommands(): PaletteItem[] {
       detail: "⌘B",
       run: () => ui.toggleSidebar(),
     },
+    ...(["activityBar", "sidebarHeader", "menu"] as const).map((style) => ({
+      id: `view-switcher-${style}`,
+      label: `View: ${style === "activityBar" ? "Activity Bar (VS Code Style)" : style === "sidebarHeader" ? "Icons in the Sidebar Header" : "Hamburger Menu"} for Switching Views`,
+      detail: settings.values["workbench.viewSwitcher"] === style ? "current" : undefined,
+      run: () => settings.set("workbench.viewSwitcher", style),
+    })),
     {
       id: "explorer",
       label: "Show Explorer",
@@ -895,9 +901,9 @@ function buildCommands(): PaletteItem[] {
     });
   }
   items.push(
-    { id: "plugins-show", label: "Plugins: Show Installed Plugins", run: () => ui.setSidebarView("plugins") },
-    { id: "plugins-install", label: "Plugins: Install Plugin…", run: () => ui.setSidebarView("plugins") },
-    { id: "plugins-create", label: "Plugins: Create New Plugin…", run: () => plugins.setCreateDialogOpen(true) },
+    { id: "plugins-marketplace", label: "Plugins: Browse the Marketplace", run: () => tabs.openSettings("plugins", "marketplace") },
+    { id: "plugins-show", label: "Plugins: Show Installed Plugins", run: () => tabs.openSettings("plugins", "installed") },
+    { id: "plugins-create", label: "Plugins: Create New Plugin…", run: () => tabs.openSettings("plugins", "create") },
     { id: "plugins-reload", label: "Plugins: Reload All Plugins", run: () => void plugins.reloadAll() },
   );
 

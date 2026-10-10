@@ -1,0 +1,102 @@
+{
+  "name": "Sable Marketplace",
+  "version": 1,
+  "plugins": [
+    {
+      "id": "word-count",
+      "name": "Word Count",
+      "version": "1.0.0",
+      "description": "Words, characters and reading time for the open file, in the status bar.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "writing",
+        "status bar"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/word-count",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/word-count"
+    },
+    {
+      "id": "todo-finder",
+      "name": "TODO Finder",
+      "version": "1.0.0",
+      "description": "Marks TODO, FIXME, HACK and XXX comments in the editor and the Problems panel.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "linting",
+        "productivity"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/todo-finder",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/todo-finder"
+    },
+    {
+      "id": "sort-lines",
+      "name": "Sort Lines",
+      "version": "1.0.0",
+      "description": "Sort, reverse, shuffle and de-duplicate lines in the selection or the whole file.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "text",
+        "editing"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/sort-lines",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/sort-lines"
+    },
+    {
+      "id": "case-converter",
+      "name": "Case Converter",
+      "version": "1.0.0",
+      "description": "Convert the selection to camelCase, PascalCase, snake_case, kebab-case, CONSTANT_CASE, Title Case and more.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "text",
+        "editing"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/case-converter",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/case-converter"
+    },
+    {
+      "id": "insert-utilities",
+      "name": "Insert Date, UUID & More",
+      "version": "1.0.0",
+      "description": "Insert the date, time, a timestamp, a UUID or placeholder text at the cursor.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "editing",
+        "productivity"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/insert-utilities",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/insert-utilities"
+    },
+    {
+      "id": "emoji-completions",
+      "name": "Emoji Completions",
+      "version": "1.0.0",
+      "description": "Type :smile in Markdown or plain text to pick from common emoji.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "markdown",
+        "completions"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/emoji-completions",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/emoji-completions"
+    }
+  ]
+}

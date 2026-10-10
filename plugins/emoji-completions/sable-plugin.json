@@ -1,0 +1,11 @@
+{
+  "id": "emoji-completions",
+  "name": "Emoji Completions",
+  "version": "1.0.0",
+  "description": "Type :smile in Markdown or plain text to pick from common emoji.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.3",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/emoji-completions"
+}

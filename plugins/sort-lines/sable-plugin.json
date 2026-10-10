@@ -1,0 +1,11 @@
+{
+  "id": "sort-lines",
+  "name": "Sort Lines",
+  "version": "1.0.0",
+  "description": "Sort, reverse, shuffle and de-duplicate lines in the selection or the whole file.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.3",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/sort-lines"
+}

@@ -155,6 +155,7 @@ pub fn run() {
             plugins::plugin_set_enabled,
             plugins::plugin_read_main,
             plugins::plugin_discard,
+            plugins::plugin_marketplace,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

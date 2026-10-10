@@ -9,7 +9,10 @@ interface CursorPosition {
   column: number;
 }
 
-export type SidebarView = "files" | "search" | "git" | "history" | "debug" | "plugins";
+export type SidebarView = "files" | "search" | "git" | "history" | "debug";
+/** The Settings tab's pages, and the Plugins page's tabs. */
+export type SettingsPage = "settings" | "plugins";
+export type PluginsTab = "marketplace" | "installed" | "create";
 export type BottomPanel = "terminal" | "debug" | "problems" | "usages" | "hierarchy" | "tests";
 
 /** Draggable panel sizes, in pixels. */
@@ -67,6 +70,10 @@ interface UiState {
   /** Bumped to ask the agent input to take focus. */
   agentFocusRequest: number;
   panelSizes: PanelSizes;
+  settingsPage: SettingsPage;
+  pluginsTab: PluginsTab;
+  /** Switch the Settings tab's page (and the Plugins page's tab). */
+  showSettingsPage: (page: SettingsPage, pluginsTab?: PluginsTab) => void;
   toggleSidebar: () => void;
   setSidebarView: (view: SidebarView) => void;
   toggleTerminal: () => void;
@@ -177,6 +184,10 @@ export const useUiStore = create<UiState>((set) => ({
     }));
   },
   panelSizes: loadPanelSizes(),
+  settingsPage: "settings",
+  pluginsTab: "marketplace",
+  showSettingsPage: (page, pluginsTab) =>
+    set((state) => ({ settingsPage: page, pluginsTab: pluginsTab ?? state.pluginsTab })),
   setPanelSize: (key, size) =>
     set((state) => {
       const [min, max] = PANEL_SIZE_LIMITS[key];

@@ -1,15 +1,5 @@
 import { useState } from "react";
-import {
-  Bug,
-  FilePlus,
-  Files,
-  FolderOpen,
-  FolderPlus,
-  GitBranch,
-  History,
-  Puzzle,
-  Search,
-} from "lucide-react";
+import { FilePlus, FolderOpen, FolderPlus } from "lucide-react";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import { useUiStore } from "../../store/uiStore";
 import { useGitStore } from "../../store/gitStore";
@@ -21,14 +11,17 @@ import { SearchPanel } from "./SearchPanel";
 import { SourceControlPanel } from "./SourceControlPanel";
 import { HistoryPanel } from "./HistoryPanel";
 import { DebugPanel } from "../Debug/DebugPanel";
-import { PluginsPanel } from "../Plugins/PluginsPanel";
+import { PAGES, VIEWS, openPage, showView } from "../ActivityBar/views";
+import { ViewMenu } from "../ActivityBar/ViewMenu";
+import { useSetting } from "../../store/settingsStore";
 import "./Sidebar.css";
 
 type PendingCreate = "file" | "folder" | null;
 
 /**
- * File explorer sidebar: open-folder entry point, New File / New Folder
- * actions, and the virtualized tree.
+ * The sidebar: the current view (Explorer, Search, Source Control, …) under
+ * a header with its title and actions — and, depending on the View
+ * Switcher setting, the view icons or the ☰ view menu.
  */
 export function Sidebar() {
   const rootPath = useWorkspaceStore((state) => state.rootPath);
@@ -36,7 +29,7 @@ export function Sidebar() {
   const refreshDirectory = useWorkspaceStore((state) => state.refreshDirectory);
   const setLastError = useUiStore((state) => state.setLastError);
   const sidebarView = useUiStore((state) => state.sidebarView);
-  const setSidebarView = useUiStore((state) => state.setSidebarView);
+  const switcher = useSetting("workbench.viewSwitcher");
   const width = useUiStore((state) => state.panelSizes.sidebarWidth);
   const changeCount = useGitStore(
     (state) => Object.keys(state.statusByPath).length,
@@ -74,80 +67,32 @@ export function Sidebar() {
   return (
     <aside className="sidebar" style={{ width }}>
       <div className="sidebar-header">
+        {switcher === "menu" && <ViewMenu />}
         <span className="sidebar-title">
-          {sidebarView === "search"
-            ? "Search"
-            : sidebarView === "git"
-              ? "Source Control"
-              : sidebarView === "history"
-                ? "History"
-                : sidebarView === "debug"
-                  ? "Run and Debug"
-                  : sidebarView === "plugins"
-                    ? "Plugins"
-                    : (rootName ?? "Explorer")}
+          {sidebarView === "files" ? (rootName ?? "Explorer") : (VIEWS.find((view) => view.id === sidebarView)?.label ?? "")}
         </span>
         <span className="sidebar-actions">
-          <button
-            className={
-              sidebarView === "files" ? "icon-button active" : "icon-button"
-            }
-            title="Explorer"
-            onClick={() => setSidebarView("files")}
-          >
-            <Files size={15} strokeWidth={1.5} />
-          </button>
-          <button
-            className={
-              sidebarView === "search" ? "icon-button active" : "icon-button"
-            }
-            title="Search (⇧⌘F)"
-            onClick={() => setSidebarView("search")}
-          >
-            <Search size={15} strokeWidth={1.5} />
-          </button>
-          <button
-            className={
-              sidebarView === "git" ? "icon-button active" : "icon-button"
-            }
-            title="Source Control (⇧⌘G)"
-            onClick={() => setSidebarView("git")}
-          >
-            <GitBranch size={15} strokeWidth={1.5} />
-            {changeCount > 0 && (
-              <span className="sidebar-change-count">{changeCount}</span>
-            )}
-          </button>
-          <button
-            className={
-              sidebarView === "history" ? "icon-button active" : "icon-button"
-            }
-            title="History"
-            onClick={() => setSidebarView("history")}
-          >
-            <History size={15} strokeWidth={1.5} />
-          </button>
-          <button
-            className={
-              sidebarView === "debug" ? "icon-button active" : "icon-button"
-            }
-            title="Run and Debug (⇧⌘D)"
-            onClick={() => setSidebarView("debug")}
-          >
-            <Bug size={15} strokeWidth={1.5} />
-          </button>
-          <button
-            className={
-              sidebarView === "plugins" ? "icon-button active" : "icon-button"
-            }
-            title="Plugins"
-            onClick={() => setSidebarView("plugins")}
-          >
-            <Puzzle size={15} strokeWidth={1.5} />
-          </button>
+          {switcher === "sidebarHeader" && (
+            <>
+              {VIEWS.map(({ id, label, icon: Icon, shortcut }) => (
+                <button
+                  key={id}
+                  className={sidebarView === id ? "icon-button active" : "icon-button"}
+                  title={shortcut ? `${label} (${shortcut})` : label}
+                  onClick={() => showView(id)}
+                >
+                  <Icon size={15} strokeWidth={1.5} />
+                  {id === "git" && changeCount > 0 && <span className="sidebar-change-count">{changeCount}</span>}
+                </button>
+              ))}
+              <button className="icon-button" title={PAGES.plugins.label} onClick={() => openPage("plugins")}>
+                <PAGES.plugins.icon size={15} strokeWidth={1.5} />
+              </button>
+            </>
+          )}
           {rootPath && sidebarView === "files" && (
             <>
-              <span className="sidebar-actions-divider" />
+              {switcher === "sidebarHeader" && <span className="sidebar-actions-divider" />}
               <button
                 className="icon-button"
                 title="New File"
@@ -178,7 +123,6 @@ export function Sidebar() {
       {sidebarView === "git" && <SourceControlPanel />}
       {sidebarView === "history" && <HistoryPanel />}
       {sidebarView === "debug" && <DebugPanel />}
-      {sidebarView === "plugins" && <PluginsPanel />}
 
       {sidebarView === "files" && pendingCreate && (
         <input

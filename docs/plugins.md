@@ -8,11 +8,11 @@ my-plugin/
 └── main.js             one ES module exporting activate(sable)
 ```
 
-The quickest start is **Plugins → Create…** (or *Plugins: Create New
+The quickest start is **Settings → Plugins → Create** (or *Plugins: Create New
 Plugin…* in the command palette). Sable writes a working plugin with the
 API's type definitions (`sable.d.ts`), loads it in development mode, and
 opens `main.js`. It reloads every time you save a file in its folder, and
-`console.log` output shows in its log in the Plugins view.
+`console.log` output shows in its log under **Settings → Plugins → Installed**.
 
 ## The manifest
 
@@ -36,7 +36,7 @@ opens `main.js`. It reloads every time you save a file in its folder, and
 | `main` | The module to run (default `main.js`), inside the folder. |
 | `permissions` | What the plugin may do (below). Shown to users before they install it. |
 | `minSableVersion` | Optional: the oldest Sable it works with. |
-| `description`, `author`, `homepage` | Optional, shown in the Plugins view. |
+| `description`, `author`, `homepage` | Optional, shown in Settings → Plugins. |
 
 ### Permissions
 
@@ -148,7 +148,11 @@ Language ids are Monaco's (`python`, `typescript`, `rust`, `plaintext`, …);
   plugs into Format Document (⇧⌥F) and format on save.
 - `registerCompletions(language, request => items, { triggerCharacters? })`.
   The request is `{ path, language, text, line, column, linePrefix, word }`.
-  Items are `{ label, insertText?, snippet?, detail?, documentation?, kind? }`.
+  Items are `{ label, insertText?, snippet?, detail?, documentation?, kind?, replace? }`.
+  `replace` is how many characters before the cursor the item replaces;
+  by default it replaces the word being typed. The editor asks once (at a
+  trigger character or the start of a word) and narrows the list itself
+  as the user types on, so return every candidate, not just the best few.
 - `setDiagnostics(path, diagnostics)` sets squiggles and Problems entries,
   replacing your earlier ones for that file. A diagnostic is
   `{ line, column?, endLine?, endColumn?, message, severity?, source? }`,
@@ -168,8 +172,20 @@ Language ids are Monaco's (`python`, `typescript`, `rust`, `plaintext`, …);
 ## Sharing a plugin
 
 Push the plugin folder to a GitHub repository, with `sable-plugin.json` at
-the top. Others install it with **Plugins → Install** and the repository
+the top. Others install it from **Settings → Plugins → Marketplace →
+Install from elsewhere** with the repository
 URL, which installs the default branch. A `/tree/<branch-or-tag>` URL
-installs that version, and a link to a `.zip` or `.tar.gz` of the folder
-also works. Plugins installed from a URL get an **Update** button that
-downloads them again.
+installs that version, and `/tree/<branch>/<folder>` installs a plugin in
+a subfolder, so one repository can hold several. A link to a `.zip` or
+`.tar.gz` of the folder also works. Plugins installed from a URL get an
+**Update** button that downloads them again.
+
+### The Marketplace
+
+**Settings → Plugins → Marketplace** lists the plugins in a catalogue,
+[`plugins/registry.json`](../plugins/registry.json) in this repository.
+To list yours, open a pull request adding an entry. The format is in
+[`plugins/README.md`](../plugins/README.md). Users get an **Update**
+button when the catalogue lists a newer version than theirs. A team can
+run a private marketplace by pointing **Marketplace URL** (on the same
+page) at its own catalogue file.

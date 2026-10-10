@@ -21,6 +21,7 @@ import { BUNDLED_MONO_FAMILY } from "../../lib/fonts";
 import { KEYBINDINGS } from "../../lib/useGlobalKeybindings";
 import { pythonServerHasSemanticTokens } from "../../lib/ipc";
 import { setUpPythonSemanticHighlighting } from "../../lib/lsp/lspClient";
+import { PluginsPage } from "../Plugins/PluginsPage";
 import "./SettingsView.css";
 
 const SECTIONS = [
@@ -50,14 +51,19 @@ function matches(spec: SettingSpec, query: string): boolean {
     .every((word) => haystack.includes(word));
 }
 
+/** Sections with a page of their own (listed in the nav, not the page). */
+const OWN_PAGE = new Set(["Plugins"]);
+
 /**
- * The Settings page (a tab, ⌘,). Rendered entirely from SETTINGS_SCHEMA,
- * plus two hand-built blocks: API keys and the keyboard-shortcut list.
+ * The Settings tab (⌘,): the settings page — rendered entirely from
+ * SETTINGS_SCHEMA, plus two hand-built blocks: API keys and the
+ * keyboard-shortcut list — and the Plugins page.
  */
 export default function SettingsView() {
   const [query, setQuery] = useState("");
   const [activeSection, setActiveSection] = useState(SECTIONS[0]);
   const filePath = useSettingsStore((state) => state.filePath);
+  const page = useUiStore((state) => state.settingsPage);
 
   const visibleSpecs = useMemo(
     () => SETTINGS_SCHEMA.filter((spec) => matches(spec, query)),
@@ -67,10 +73,16 @@ export default function SettingsView() {
 
   function scrollToSection(section: string) {
     setActiveSection(section);
-    document
-      .getElementById(`settings-section-${section}`)
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const wasOtherPage = page !== "settings";
+    useUiStore.getState().showSettingsPage("settings");
+    // Coming from another page, the section renders first.
+    requestAnimationFrame(() =>
+      document
+        .getElementById(`settings-section-${section}`)
+        ?.scrollIntoView({ behavior: wasOtherPage ? "auto" : "smooth", block: "start" }),
+    );
   }
+  const onPluginsPage = page === "plugins" && !searching;
 
   return (
     <div className="settings-view">
@@ -81,7 +93,10 @@ export default function SettingsView() {
             autoFocus
             placeholder="Search settings"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              if (event.target.value) useUiStore.getState().showSettingsPage("settings");
+            }}
           />
         </div>
         <button
@@ -97,20 +112,30 @@ export default function SettingsView() {
       <div className="settings-body">
         {!searching && (
           <nav className="settings-nav">
-            {SECTIONS.map((section) => (
+            {SECTIONS.filter((section) => !OWN_PAGE.has(section)).map((section) => (
               <button
                 key={section}
-                className={section === activeSection ? "active" : undefined}
+                className={!onPluginsPage && section === activeSection ? "active" : undefined}
                 onClick={() => scrollToSection(section)}
               >
                 {section}
               </button>
             ))}
+            <span className="settings-nav-divider" />
+            <button
+              className={onPluginsPage ? "active" : undefined}
+              onClick={() => useUiStore.getState().showSettingsPage("plugins")}
+            >
+              Plugins
+            </button>
           </nav>
         )}
 
         <div className="settings-content">
-          {SECTIONS.map((section) => {
+          {onPluginsPage && <PluginsPage />}
+          {!onPluginsPage && SECTIONS.map((section) => {
+            // Shown on their own page, except in search results.
+            if (OWN_PAGE.has(section) && !searching) return null;
             if (section === "Keyboard Shortcuts") {
               if (searching && !"keyboard shortcuts keybindings".includes(query.toLowerCase())) {
                 const hits = KEYBINDINGS.filter((binding) =>
@@ -160,7 +185,7 @@ export default function SettingsView() {
   );
 }
 
-function SettingRow({ spec }: { spec: SettingSpec }) {
+export function SettingRow({ spec }: { spec: SettingSpec }) {
   const value = useSettingsStore((state) => state.values[spec.key]);
   const set = useSettingsStore((state) => state.set);
   const reset = useSettingsStore((state) => state.reset);

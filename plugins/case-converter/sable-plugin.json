@@ -1,0 +1,11 @@
+{
+  "id": "case-converter",
+  "name": "Case Converter",
+  "version": "1.0.0",
+  "description": "Convert the selection to camelCase, PascalCase, snake_case, kebab-case, CONSTANT_CASE, Title Case and more.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.3",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/case-converter"
+}

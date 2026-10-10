@@ -16,6 +16,8 @@ export const MONO_FONT_STACK = '"JetBrains Mono", "SF Mono", Menlo, monospace';
 
 export interface Settings {
   "workbench.colorTheme": ThemeId;
+  "workbench.viewSwitcher": "activityBar" | "sidebarHeader" | "menu";
+  "plugins.marketplaceUrl": string;
   "editor.fontSize": number;
   "editor.fontFamily": string;
   "editor.fontWeight": "300" | "400" | "500" | "600" | "700";
@@ -114,6 +116,7 @@ export const SETTINGS_SCHEMA: SettingSpec[] = [
   { key: "editor.rulers", section: "Editor", type: "string", placeholder: "e.g. 80, 120", label: "Rulers", description: "Comma-separated columns at which to draw vertical rulers.", default: "" },
   // --- Editor: appearance ---------------------------------------------------
   { key: "workbench.colorTheme", section: "Editor Appearance", type: "enum", options: [{ value: "sable-dark", label: "Sable Dark" }, { value: "jetbrains-darcula", label: "JetBrains Darcula" }, { value: "jetbrains-dark", label: "JetBrains Dark (New UI)" }, { value: "jetbrains-islands-dark", label: "JetBrains Islands Dark" }, { value: "catppuccin-mocha", label: "Catppuccin Mocha" }], label: "Color Theme", description: "Colors for the whole app: editor syntax, panels, and terminal. The JetBrains themes use the exact colors of JetBrains' schemes, per language as in each JetBrains IDE; Catppuccin Mocha matches the JetBrains Catppuccin plugin.", default: "sable-dark" },
+  { key: "workbench.viewSwitcher", section: "Editor Appearance", type: "enum", options: [{ value: "activityBar", label: "Activity bar (VS Code style)" }, { value: "sidebarHeader", label: "Icons in the sidebar header" }, { value: "menu", label: "Hamburger menu" }], label: "View Switcher", description: "How you switch between Explorer, Search, Source Control, History, Run and Debug and Plugins: a vertical bar of icons at the left edge (like VS Code), a row of icons at the top of the sidebar, or one ☰ menu button.", default: "activityBar" },
   { key: "editor.lineNumbers", section: "Editor Appearance", type: "enum", options: [{ value: "on", label: "On" }, { value: "relative", label: "Relative" }, { value: "off", label: "Off" }], label: "Line Numbers", description: "How line numbers are shown.", default: "on" },
   { key: "editor.inlayHints", section: "Editor Appearance", type: "boolean", label: "Inlay Hints", description: "Show argument names (and other hints from the language server) inline in the code, greyed out, like JetBrains IDEs. Hold ⌃⌥ to hide them temporarily.", default: true },
   { key: "editor.minimap", section: "Editor Appearance", type: "boolean", label: "Minimap", description: "Show a zoomed-out overview of the file on the right edge, with errors, warnings, search matches and breakpoints marked. Click or drag it to scroll.", default: true },
@@ -157,6 +160,7 @@ export const SETTINGS_SCHEMA: SettingSpec[] = [
   { key: "ai.inlineAnthropicModel", section: "AI Completions", type: "string", label: "Anthropic Model", description: "A fast model for suggestions when the provider is Anthropic.", default: "claude-haiku-4-5-20251001" },
   { key: "ai.inlineOpenaiModel", section: "AI Completions", type: "string", label: "OpenAI Model", description: "A fast model for suggestions when the provider is OpenAI.", default: "gpt-5-mini" },
   { key: "ai.inlineGoogleModel", section: "AI Completions", type: "string", label: "Google Model", description: "A fast model for suggestions when the provider is Google.", default: "gemini-flash-latest" },
+  { key: "plugins.marketplaceUrl", section: "Plugins", type: "string", placeholder: "https://…/registry.json", label: "Marketplace URL", description: "The catalogue the Plugins marketplace lists. Point it at your own JSON file (same format) to run a private marketplace, e.g. for a team.", default: "https://raw.githubusercontent.com/riaanmathur01/sable-ide/main/plugins/registry.json" },
   { key: "updates.checkOnStartup", section: "Updates", type: "boolean", label: "Check for Updates on Startup", description: "Look for a newer Sable when it starts, and say so in the status bar. “Check for Updates” in the command palette installs it.", default: true },
   { key: "ai.customInstructions", section: "AI Agent", type: "string", multiline: true, placeholder: "e.g. Prefer functional components. Always add tests.", label: "Custom Instructions", description: "Extra guidance appended to the agent's system prompt.", default: "" },
 ];
