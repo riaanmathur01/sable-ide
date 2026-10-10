@@ -10,6 +10,7 @@
 //!   → {"ok": <result>} | {"err": "<message>"} | {"unknown": true}
 
 use crate::commands::{fs, git, history, refactor, search, shell};
+use crate::plugins;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -91,6 +92,13 @@ async fn dispatch(command: &str, args: &Value) -> Result<Value, String> {
         "history_read" => reply(history::history_read(arg(args, "path")?, arg(args, "id")?)),
         "history_deleted_files" => json!({ "ok": history::history_deleted_files(arg(args, "root")?) }),
         "list_processes" => reply(crate::debug::list_processes().await),
+        "plugin_list" => reply(plugins::plugin_list()),
+        "plugin_inspect" => reply(plugins::plugin_inspect(arg(args, "source")?).await),
+        "plugin_install" => reply(plugins::plugin_install(arg(args, "path")?, arg(args, "link")?, arg(args, "source")?)),
+        "plugin_uninstall" => reply(plugins::plugin_uninstall(arg(args, "id")?)),
+        "plugin_set_enabled" => reply(plugins::plugin_set_enabled(arg(args, "id")?, arg(args, "enabled")?)),
+        "plugin_read_main" => reply(plugins::plugin_read_main(arg(args, "id")?)),
+        "plugin_discard" => reply(plugins::plugin_discard(arg(args, "path")?)),
         _ => json!({ "unknown": true }),
     })
 }
@@ -145,6 +153,9 @@ async fn ui_bridge() {
     }
     if let Ok(dir) = std::env::var("SABLE_UI_HISTORY_DIR") {
         history::set_history_dir(std::path::PathBuf::from(dir));
+    }
+    if let Ok(dir) = std::env::var("SABLE_UI_PLUGINS_DIR") {
+        plugins::set_plugins_dir(std::path::PathBuf::from(dir));
     }
     let listener = tokio::net::TcpListener::bind(("127.0.0.1", port)).await.unwrap();
     eprintln!("ui bridge on {port}");

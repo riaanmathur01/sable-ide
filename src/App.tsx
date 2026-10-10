@@ -13,6 +13,8 @@ import { AttachDialog } from "./components/Debug/AttachDialog";
 import { RebaseDialog } from "./components/Sidebar/RebaseDialog";
 import { checkForUpdatesQuietly } from "./lib/updates";
 import { useTasksStore } from "./store/tasksStore";
+import { usePluginStore } from "./store/pluginStore";
+import { CreatePluginDialog } from "./components/Plugins/CreatePluginDialog";
 import { clearTestContexts } from "./lib/testing/runner";
 import { AgentPanel } from "./components/Agent/AgentPanel";
 import { Resizer } from "./components/Layout/Resizer";
@@ -62,7 +64,13 @@ function App() {
     initLspListeners();
     initDebugListeners();
     // Settings first: whether to check for updates is one of them.
-    void useSettingsStore.getState().load().then(() => checkForUpdatesQuietly());
+    void useSettingsStore
+      .getState()
+      .load()
+      .then(() => {
+        checkForUpdatesQuietly();
+        void usePluginStore.getState().load();
+      });
   }, []);
 
   // Session restore: reopen the folder from last launch, then its tabs
@@ -210,6 +218,7 @@ function App() {
       <BreakpointEditor />
       <AttachDialog />
       <RebaseDialog />
+      <CreatePluginDialog />
     </div>
   );
 }

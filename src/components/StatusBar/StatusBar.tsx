@@ -20,6 +20,8 @@ import { useProblemCounts } from "../../store/problemsStore";
 import { serverIdFor } from "../../lib/lsp/lspClient";
 import { InterpreterPicker } from "./InterpreterPicker";
 import { BranchPicker } from "./BranchPicker";
+import { usePluginStore } from "../../store/pluginStore";
+import "../Plugins/Plugins.css";
 import "./StatusBar.css";
 
 /** Languages that show an interpreter selector in the status bar. */
@@ -44,6 +46,35 @@ const LANGUAGE_NAMES: Record<string, string> = {
   cpp: "C++",
   csharp: "C#",
 };
+
+/** Plugins' status-bar items (clicking runs the plugin's command). */
+function PluginStatusItems() {
+  const items = usePluginStore((state) => state.statusItems);
+  const commands = usePluginStore((state) => state.commands);
+  return (
+    <>
+      {Object.entries(items).map(([pluginId, item]) => {
+        const command = item.command
+          ? commands.find((entry) => entry.pluginId === pluginId && entry.command.id === item.command)
+          : undefined;
+        return command ? (
+          <button
+            key={pluginId}
+            className="status-bar-button status-bar-plugin"
+            title={item.tooltip ?? command.command.title}
+            onClick={() => usePluginStore.getState().runCommand(pluginId, command.command.handler)}
+          >
+            {item.text}
+          </button>
+        ) : (
+          <span key={pluginId} className="status-bar-item status-bar-plugin" title={item.tooltip}>
+            {item.text}
+          </span>
+        );
+      })}
+    </>
+  );
+}
 
 /**
  * Status bar pinned to the bottom of the window: panel toggles, workspace
@@ -226,6 +257,7 @@ export function StatusBar() {
           </button>
         )}
         {lspStatus && <span className="status-bar-item">{lspStatus}</span>}
+        <PluginStatusItems />
         {hasActiveTab && autoSave && (
           <span className="status-bar-item">Auto Save</span>
         )}

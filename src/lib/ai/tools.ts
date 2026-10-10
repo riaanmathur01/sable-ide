@@ -314,7 +314,7 @@ export function resolveWorkspacePath(root: string, input: string): string {
  * inside the workspace may point outside it, and reads and writes follow
  * the link. Returns the in-workspace path (as the editor names it).
  */
-async function confinedPath(root: string, input: string): Promise<string> {
+export async function confinedPath(root: string, input: string): Promise<string> {
   const path = resolveWorkspacePath(root, input);
   const normalize = (value: string) => value.replace(/\\/g, "/").replace(/\/+$/, "");
   const [realRoot, realTarget] = (await Promise.all([realPath(root), realPath(path)])).map(normalize);
@@ -328,7 +328,7 @@ function relativeTo(root: string, path: string): string {
   return path.startsWith(root) ? path.slice(root.length).replace(/^[/\\]/, "") || "." : path;
 }
 
-async function ensureParentDirectories(root: string, path: string) {
+export async function ensureParentDirectories(root: string, path: string) {
   const separatorIndex = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
   const parent = path.slice(0, separatorIndex);
   if (parent.length <= root.length) return;

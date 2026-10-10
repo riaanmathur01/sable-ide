@@ -6,6 +6,29 @@ React + TypeScript. No Electron, no telemetry. Everything runs locally;
 the only network calls are the ones you make on purpose (git
 push/pull/fetch, and the AI agent when you message it).
 
+## Download
+
+**[Get the latest release →](https://github.com/riaanmathur01/sable-ide/releases/latest)**
+
+| Your computer | Download |
+| ------------- | -------- |
+| Mac with Apple silicon (M1 or later) | `Sable_<version>_macOS_Apple-Silicon.dmg` |
+| Mac with an Intel processor | `Sable_<version>_macOS_Intel.dmg` |
+| Windows 10/11 (64-bit) | `Sable_<version>_Windows_x64-setup.exe` (or the `.msi`) |
+| Linux (64-bit), Debian / Ubuntu | `Sable_<version>_Linux_x64.deb` |
+| Linux (64-bit), Fedora / RHEL / openSUSE | `Sable_<version>_Linux_x64.rpm` |
+| Linux (64-bit), any distribution | `Sable_<version>_Linux_x64.AppImage` |
+
+Not sure which Mac you have? Apple menu → About This Mac: "Chip: Apple M…"
+means Apple silicon. The `.app.tar.gz`, `.sig` and `latest.json` files
+are for automatic updates; you don't need them. Once installed, Sable
+offers new versions itself (“Check for Updates…”).
+
+The builds aren't code-signed yet. The first time you open Sable, macOS
+says it can't verify the developer. Right-click the app → Open, or go to
+System Settings → Privacy & Security → Open Anyway. Windows SmartScreen
+may ask once too (More info → Run anyway).
+
 ## Features
 
 - **Editor** — Monaco with tabs, a minimap (with errors, search matches
@@ -156,6 +179,16 @@ push/pull/fetch, and the AI agent when you message it).
   code, run commands, and use git and the GitHub CLI. Replies stream in;
   chats are saved per project, and you can keep several. Works with
   Anthropic, OpenAI (or any OpenAI-compatible API), and Google Gemini.
+- **Plugins** — add commands, formatters, completions, linters
+  (squiggles), and status-bar items in JavaScript. The Plugins view
+  (puzzle icon) installs them from a GitHub repository, a `.zip` /
+  `.tar.gz` link, or a folder; turns them on and off; updates, reloads and
+  uninstalls them; and shows each one's permissions and log. **Create…**
+  writes a working plugin to start from, which reloads every time you
+  save it. Each plugin runs sandboxed in its own worker with only the
+  permissions it declares (`editor`, `workspace:read`, `workspace:write`,
+  `shell`, `network`), and you see them before installing. Guide and API
+  reference: [docs/plugins.md](docs/plugins.md).
 - **Settings** — a searchable settings page (⌘,) backed by a plain
   `settings.json`.
 
@@ -218,6 +251,17 @@ immediately. API keys never go in that file: they live in the system
 keychain (`src-tauri/src/commands/ai.rs`) and never reach the webview.
 `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and `GEMINI_API_KEY` are used as
 fallbacks.
+
+**Plugins: Rust installs, a worker runs, the host decides.**
+`src-tauri/src/plugins.rs` downloads, unpacks, validates and installs
+plugins, and keeps `plugins/registry.json` in the app data folder (on,
+off, linked, source URL). The frontend runs each enabled plugin in its own
+Web Worker (`src/lib/plugins/`). The worker gets a `sable` API whose every
+method is a message to `PluginRuntime` (`host.ts`), which checks the
+plugin's permissions and acts through the editor's own plumbing: edits
+are undoable, writes respect unsaved buffers, and diagnostics go through
+Monaco markers into the Problems panel. Workers can't reach Tauri's IPC,
+so the host's API is the plugin's whole reach.
 
 **AI agent: loop in TypeScript, keys and HTTP in Rust.** The agent loop
 (`src/store/agentStore.ts`) alternates model calls and tool calls until
@@ -342,16 +386,19 @@ language servers).
 Linux.
 
 **Releases.** Pushing a version tag builds all of them on GitHub Actions
-(`.github/workflows/release.yml`) — macOS (Apple silicon and Intel),
-Windows and Linux — into a draft release:
+(`.github/workflows/release.yml`): macOS (Apple silicon and Intel),
+Windows and Linux. Each file is named for the computer it's for
+(`Sable_0.3.2_macOS_Apple-Silicon.dmg`, `…_Windows_x64-setup.exe`,
+`…_Linux_x64.deb`, …). The release is published once every platform has
+built:
 
 ```sh
 # bump "version" in package.json, src-tauri/Cargo.toml, src-tauri/tauri.conf.json
-git tag v0.2.0 && git push origin v0.2.0
+git tag v0.3.2 && git push origin v0.3.2
 ```
 
-Publish the draft and installed copies of Sable offer the update
-(“Check for Updates…”, and a status-bar note on startup). Updates are
+Installed copies of Sable then offer the update (“Check for Updates…”,
+and a status-bar note on startup). Updates are
 signed: the workflow needs the `TAURI_SIGNING_PRIVATE_KEY` secret (the
 private key matching the public key in `tauri.conf.json`); without it
 the installers build but can't update themselves.

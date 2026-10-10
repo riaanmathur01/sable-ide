@@ -7,6 +7,7 @@ import {
   FolderPlus,
   GitBranch,
   History,
+  Puzzle,
   Search,
 } from "lucide-react";
 import { useWorkspaceStore } from "../../store/workspaceStore";
@@ -20,6 +21,7 @@ import { SearchPanel } from "./SearchPanel";
 import { SourceControlPanel } from "./SourceControlPanel";
 import { HistoryPanel } from "./HistoryPanel";
 import { DebugPanel } from "../Debug/DebugPanel";
+import { PluginsPanel } from "../Plugins/PluginsPanel";
 import "./Sidebar.css";
 
 type PendingCreate = "file" | "folder" | null;
@@ -81,7 +83,9 @@ export function Sidebar() {
                 ? "History"
                 : sidebarView === "debug"
                   ? "Run and Debug"
-                  : (rootName ?? "Explorer")}
+                  : sidebarView === "plugins"
+                    ? "Plugins"
+                    : (rootName ?? "Explorer")}
         </span>
         <span className="sidebar-actions">
           <button
@@ -132,6 +136,15 @@ export function Sidebar() {
           >
             <Bug size={15} strokeWidth={1.5} />
           </button>
+          <button
+            className={
+              sidebarView === "plugins" ? "icon-button active" : "icon-button"
+            }
+            title="Plugins"
+            onClick={() => setSidebarView("plugins")}
+          >
+            <Puzzle size={15} strokeWidth={1.5} />
+          </button>
           {rootPath && sidebarView === "files" && (
             <>
               <span className="sidebar-actions-divider" />
@@ -165,6 +178,7 @@ export function Sidebar() {
       {sidebarView === "git" && <SourceControlPanel />}
       {sidebarView === "history" && <HistoryPanel />}
       {sidebarView === "debug" && <DebugPanel />}
+      {sidebarView === "plugins" && <PluginsPanel />}
 
       {sidebarView === "files" && pendingCreate && (
         <input

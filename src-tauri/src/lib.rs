@@ -8,6 +8,7 @@
 mod commands;
 mod debug;
 mod lsp;
+mod plugins;
 mod watcher;
 #[cfg(test)]
 mod ui_bridge;
@@ -31,6 +32,7 @@ pub fn run() {
             if let Ok(data) = app.path().app_data_dir() {
                 lsp::set_tools_dir(data.join("tools"));
                 commands::history::set_history_dir(data.join("history"));
+                plugins::set_plugins_dir(data.join("plugins"));
             }
             Ok(())
         })
@@ -146,6 +148,13 @@ pub fn run() {
             debug::jvm_debug_accept,
             debug::jvm_debug_cancel,
             watcher::watch_workspace,
+            plugins::plugin_list,
+            plugins::plugin_inspect,
+            plugins::plugin_install,
+            plugins::plugin_uninstall,
+            plugins::plugin_set_enabled,
+            plugins::plugin_read_main,
+            plugins::plugin_discard,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

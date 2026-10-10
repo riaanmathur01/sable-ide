@@ -32,6 +32,7 @@ import { useTestStore } from "../../store/testStore";
 import { refactor, refactorThis } from "../../lib/refactor";
 import { checkForUpdates } from "../../lib/updates";
 import { useTasksStore } from "../../store/tasksStore";
+import { usePluginStore } from "../../store/pluginStore";
 import { useCoverageStore } from "../../store/coverageStore";
 import { toggleInlineCompletions } from "../../lib/ai/inlineCompletions";
 import { THEMES } from "../../lib/themes";
@@ -882,6 +883,23 @@ function buildCommands(): PaletteItem[] {
       },
     },
   ];
+
+  // Plugins: their commands, and managing them.
+  const plugins = usePluginStore.getState();
+  for (const { pluginId, pluginName, command } of plugins.commands) {
+    items.push({
+      id: `plugin:${pluginId}:${command.id}`,
+      label: `${pluginName}: ${command.title}`,
+      detail: "plugin",
+      run: () => plugins.runCommand(pluginId, command.handler),
+    });
+  }
+  items.push(
+    { id: "plugins-show", label: "Plugins: Show Installed Plugins", run: () => ui.setSidebarView("plugins") },
+    { id: "plugins-install", label: "Plugins: Install Plugin…", run: () => ui.setSidebarView("plugins") },
+    { id: "plugins-create", label: "Plugins: Create New Plugin…", run: () => plugins.setCreateDialogOpen(true) },
+    { id: "plugins-reload", label: "Plugins: Reload All Plugins", run: () => void plugins.reloadAll() },
+  );
 
   // The project's tasks (npm scripts, make targets, …).
   for (const task of useTasksStore.getState().tasks) {

@@ -15,6 +15,7 @@ import {
 } from "../lib/editorRegistry";
 import { useUiStore } from "./uiStore";
 import { getSetting, useSettingsStore } from "./settingsStore";
+import { emitPluginEvent } from "../lib/plugins/events";
 
 /** Synthetic key of the (singleton) Settings tab. */
 export const SETTINGS_TAB_KEY = "sable:settings";
@@ -351,6 +352,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     persistSession(get());
     // Start a language server (if any) and tell it this doc is open.
     if (contents !== null) void openDocument(path, contents);
+    emitPluginEvent("didOpen", { path });
   },
 
   openDiff: (source) => {
@@ -691,6 +693,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       get().syncDirtyState(path);
       // Servers that check on save (rust-analyzer: cargo check).
       void saveDocument(path);
+      emitPluginEvent("didSave", { path });
       // A save changes git status (modified/untracked); refresh it.
       useGitStore.getState().refresh();
       // Hand-edited settings.json takes effect on save.

@@ -9,7 +9,7 @@ interface CursorPosition {
   column: number;
 }
 
-export type SidebarView = "files" | "search" | "git" | "history" | "debug";
+export type SidebarView = "files" | "search" | "git" | "history" | "debug" | "plugins";
 export type BottomPanel = "terminal" | "debug" | "problems" | "usages" | "hierarchy" | "tests";
 
 /** Draggable panel sizes, in pixels. */

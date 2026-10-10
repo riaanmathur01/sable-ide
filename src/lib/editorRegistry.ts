@@ -30,8 +30,17 @@ let activeGroupId: string | null = null;
 const savedVersionIds = new Map<string, number>();
 
 /** Called by monacoSetup as soon as Monaco loads. */
+let resolveMonaco: (monaco: Monaco) => void = () => {};
+const monacoReady = new Promise<Monaco>((resolve) => (resolveMonaco = resolve));
+
+/** Resolves once Monaco has loaded (it loads with the first editor). */
+export function whenMonaco(): Promise<Monaco> {
+  return monacoReady;
+}
+
 export function setMonacoInstance(monaco: Monaco) {
   monacoInstance = monaco;
+  resolveMonaco(monaco);
 }
 
 export function registerEditor(editor: Editor, monaco: Monaco, groupId: string) {
