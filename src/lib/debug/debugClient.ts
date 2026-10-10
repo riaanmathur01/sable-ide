@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { useDebugStore, type StackFrame } from "../../store/debugStore";
+import { savedExceptionSelection, useDebugStore, type ExceptionFilter, type StackFrame } from "../../store/debugStore";
 import { useTerminalStore } from "../../store/terminalStore";
 
 /**
@@ -152,6 +152,18 @@ export function initDebugListeners(): void {
 
   listen<DapMessage>("debug:message", (event) => {
     const message = event.payload;
+    // The adapter's exception kinds (shown as checkboxes)…
+    if (message.type === "response" && message.command === "initialize" && message.success) {
+      const filters = (message.body as { exceptionBreakpointFilters?: ExceptionFilter[] } | undefined)
+        ?.exceptionBreakpointFilters;
+      if (filters?.length) useDebugStore.getState().setExceptionFilters(filters);
+    }
+    // …and once Sable's default is set, the user's saved choice replaces it.
+    if (message.type === "response" && message.command === "setExceptionBreakpoints" && message.request_seq != null && !pending.has(message.request_seq)) {
+      const { exceptionFilters } = useDebugStore.getState();
+      const saved = exceptionFilters.length ? savedExceptionSelection(exceptionFilters) : null;
+      if (saved) void sendDebugRequest("setExceptionBreakpoints", { filters: saved });
+    }
     if (message.type === "response" && message.request_seq != null) {
       const resolver = pending.get(message.request_seq);
       if (resolver) {

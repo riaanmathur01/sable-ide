@@ -22,20 +22,28 @@ export const SETTINGS_TAB_KEY = "sable:settings";
 /** What a diff tab compares: working-tree changes, or a past commit. */
 export type DiffSource =
   | { kind: "working"; filePath: string; staged: boolean }
-  | { kind: "commit"; filePath: string; hash: string; shortHash: string };
+  | { kind: "commit"; filePath: string; hash: string; shortHash: string }
+  /** Two files: `filePath` (left) against `other` (right). */
+  | { kind: "files"; filePath: string; other: string }
+  /** A file's unsaved changes: the saved file (left), the editor (right). */
+  | { kind: "saved"; filePath: string }
+  /** A file (left) against text from the clipboard (right). */
+  | { kind: "clipboard"; filePath: string; text: string };
 
 export interface EditorTab {
   /** Stable key. File tabs use the file path; diff tabs use a synthetic key. */
   path: string;
   name: string;
   isDirty: boolean;
-  kind: "file" | "diff" | "settings" | "merge" | "history";
+  kind: "file" | "diff" | "settings" | "merge" | "history" | "preview";
   /** Present on diff tabs: what to compare. */
   diff?: DiffSource;
   /** Present on merge tabs: the conflicted file. */
   mergeFile?: string;
   /** On history tabs: the file, or null for "Recover Deleted File". */
   historyFile?: string | null;
+  /** On preview tabs: the Markdown file shown rendered. */
+  previewFile?: string;
 }
 
 /**
@@ -57,16 +65,36 @@ export const MAX_GROUPS = 3;
 
 /** Synthetic tab key for a diff so it never collides with a file tab. */
 function diffKey(source: DiffSource): string {
-  return source.kind === "working"
-    ? `diff:w:${source.staged ? "s" : "u"}:${source.filePath}`
-    : `diff:c:${source.hash}:${source.filePath}`;
+  switch (source.kind) {
+    case "working":
+      return `diff:w:${source.staged ? "s" : "u"}:${source.filePath}`;
+    case "commit":
+      return `diff:c:${source.hash}:${source.filePath}`;
+    case "files":
+      return `diff:f:${source.filePath}\u0000${source.other}`;
+    case "saved":
+      return `diff:s:${source.filePath}`;
+    case "clipboard":
+      return `diff:b:${source.filePath}`;
+  }
 }
 
+const baseName = (path: string) => path.split(/[/\\]/).filter(Boolean).pop() ?? path;
+
 function diffName(source: DiffSource): string {
-  const base = source.filePath.split(/[/\\]/).filter(Boolean).pop() ?? source.filePath;
-  return source.kind === "working"
-    ? `${base} (${source.staged ? "Staged" : "Changes"})`
-    : `${base} @ ${source.shortHash}`;
+  const base = baseName(source.filePath);
+  switch (source.kind) {
+    case "working":
+      return `${base} (${source.staged ? "Staged" : "Changes"})`;
+    case "commit":
+      return `${base} @ ${source.shortHash}`;
+    case "files":
+      return `${base} ↔ ${baseName(source.other)}`;
+    case "saved":
+      return `${base} (Unsaved Changes)`;
+    case "clipboard":
+      return `${base} ↔ Clipboard`;
+  }
 }
 
 /**
@@ -93,6 +121,9 @@ interface TabsState {
   openDiff: (source: DiffSource) => void;
   /** Open (or focus) the merge tool for a conflicted file. */
   openMerge: (filePath: string) => void;
+  /** Open a Markdown file's rendered preview — beside it (the next
+   *  editor group) or in its place. */
+  openPreview: (filePath: string, side: boolean) => void;
   /** Open (or focus) a file's local history (null: deleted files). */
   openHistory: (filePath: string | null) => void;
   /** Activate a tab in a group (default: focused) and focus that group. */
@@ -367,6 +398,39 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     );
   },
 
+  openPreview: (filePath, side) => {
+    const key = `preview:${filePath}`;
+    const { groups, activeGroupId } = get();
+    const index = groups.findIndex((group) => group.id === activeGroupId);
+    let target = side ? groups[index + 1] : groups[index];
+    let next = groups;
+    if (!target) {
+      if (groups.length >= MAX_GROUPS) {
+        target = groups[index];
+      } else {
+        target = emptyGroup();
+        next = [...groups.slice(0, index + 1), target, ...groups.slice(index + 1)];
+      }
+    }
+    const name = `Preview ${filePath.split(/[/\\]/).filter(Boolean).pop() ?? filePath}`;
+    const targetId = target.id;
+    set(
+      withGroups(
+        updateGroup(next, targetId, (group) =>
+          group.tabs.some((tab) => tab.path === key)
+            ? { ...group, activePath: key }
+            : {
+                ...group,
+                tabs: [...group.tabs, { path: key, name, isDirty: false, kind: "preview", previewFile: filePath }],
+                activePath: key,
+              },
+        ),
+        // Keep typing in the file; the preview follows along.
+        side ? activeGroupId : targetId,
+      ),
+    );
+  },
+
   openHistory: (filePath) => {
     const key = `history:${filePath ?? "deleted"}`;
     const groupId = get().activeGroupId;
@@ -631,6 +695,10 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       if (path === useSettingsStore.getState().filePath) {
         void useSettingsStore.getState().load();
       }
+      // …and so do snippet files.
+      void import("../lib/snippets").then(({ isSnippetsFile, reloadSnippets }) => {
+        if (isSnippetsFile(path)) void reloadSnippets();
+      });
     } catch (error) {
       useUiStore.getState().setLastError(String(error));
     }

@@ -12,6 +12,7 @@ const MonacoPane = lazy(() => import("./MonacoPane"));
 const DiffView = lazy(() => import("./DiffView"));
 const MergeView = lazy(() => import("./MergeView"));
 const LocalHistoryView = lazy(() => import("./LocalHistoryView"));
+const MarkdownPreview = lazy(() => import("./MarkdownPreview"));
 const SettingsView = lazy(() => import("../Settings/SettingsView"));
 
 const MIN_GROUP_WIDTH = 220;
@@ -125,7 +126,8 @@ function EditorGroupView({
   const settingsActive = activeTab?.kind === "settings";
   const mergeActive = activeTab?.kind === "merge";
   const historyActive = activeTab?.kind === "history";
-  const fileActive = !diffActive && !settingsActive && !mergeActive && !historyActive;
+  const previewActive = activeTab?.kind === "preview";
+  const fileActive = !diffActive && !settingsActive && !mergeActive && !historyActive && !previewActive;
   const hasFileTab = group.tabs.some((tab) => tab.kind === "file");
 
   return (
@@ -150,6 +152,13 @@ function EditorGroupView({
           <div className="editor-layer">
             <Suspense fallback={null}>
               <MergeView key={activeTab.path} filePath={activeTab.mergeFile} />
+            </Suspense>
+          </div>
+        )}
+        {previewActive && activeTab.previewFile && (
+          <div className="editor-layer">
+            <Suspense fallback={null}>
+              <MarkdownPreview key={activeTab.path} filePath={activeTab.previewFile} />
             </Suspense>
           </div>
         )}

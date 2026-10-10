@@ -41,7 +41,9 @@ push/pull/fetch, and the AI agent when you message it).
   (⌘.), completions, hover, go-to-definition, and signature help over LSP:
   Python (basedpyright or Pyright), TypeScript/JavaScript
   (typescript-language-server, project-aware), Java (jdtls), Rust
-  (rust-analyzer), Go (gopls), and C/C++ (clangd). Python gets extra
+  (rust-analyzer), Go (gopls), C/C++ (clangd), PHP (Intelephense —
+  one-click install), Ruby (Ruby LSP or Solargraph), C# (csharp-ls) and
+  Kotlin (JetBrains' Kotlin LSP, in Gradle/Maven projects). Python gets extra
   quick fixes Pyright lacks: add a missing import, remove unused imports,
   `pip install` a missing package. Any error can also be sent to the AI
   agent ("Fix with Agent").
@@ -80,6 +82,11 @@ push/pull/fetch, and the AI agent when you message it).
 
   Programs being debugged run in a terminal tab, so they can read
   keyboard input (`input()`, `scanf`, `bufio.Reader`, …).
+
+  While paused, each variable's value shows **inline** at the end of the
+  last line that uses it, and **Stop on Exceptions** chooses which
+  exceptions pause (the kinds each debugger offers — e.g. Python's raised /
+  uncaught / user-uncaught), remembered per debugger.
 
   Right-click a line in the gutter for a **conditional breakpoint**, a
   **hit count** ("stop the 3rd time"), or a **logpoint** (prints a
@@ -128,6 +135,17 @@ push/pull/fetch, and the AI agent when you message it).
   Uses the agent's provider with a fast model (Claude Haiku 4.5 by
   default). Off by default — each suggestion is an API call on your key:
   Settings → AI Completions, or “AI: Toggle Inline Completions”.
+- **Markdown preview** — ⇧⌘V (or the book icon) shows a `.md` file
+  rendered beside it, updating as you type: GitHub-flavored Markdown
+  (tables, task lists), code in the editor's colors, the file's images,
+  links that open in Sable or the browser.
+- **Snippets** — built-in templates (psvm, sout, fori, ifmain, iferr, …)
+  and your own in VS Code's format: “Snippets: Configure User Snippets”
+  opens `snippets/<language>.json` next to settings.json (`global.json`
+  for every language).
+- **Compare** — any two files (Explorer → Select for Compare / Compare
+  with …, or “File: Compare Active File With…”), a file's unsaved changes
+  (“Compare with Saved”), or a file against the clipboard.
 - **Local history** — every version Sable saves of a file is kept
   (also the original before your first save, and a file's contents when
   it's deleted), git or not: right-click a file → Local History to compare
@@ -312,8 +330,9 @@ SABLE_UI_BRIDGE_PORT=1531 cargo test --lib ui_bridge -- --ignored
 ```
 
 so the frontend can run in Chrome (`npx vite --port 1530`), driven by a
-script (e.g. puppeteer) that forwards `invoke()` to it and stands in for
-what needs the app window (terminals, language servers).
+script using `scripts/ui-test/driver.mjs` (puppeteer), which forwards
+`invoke()` to it and stands in for what needs the app window (terminals,
+language servers).
 
 ## Installers and updates
 

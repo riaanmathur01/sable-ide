@@ -4,6 +4,7 @@ import { useTabsStore } from "../../store/tabsStore";
 import { useUiStore } from "../../store/uiStore";
 import { useBreakpointsStore, type BreakpointOptions } from "../../store/breakpointsStore";
 import { useCoverageStore } from "../../store/coverageStore";
+import { inlineValues } from "../../lib/debug/inlineValues";
 import { useDebugStore } from "../../store/debugStore";
 import { useColorTheme, useSettingsStore } from "../../store/settingsStore";
 import {
@@ -150,6 +151,26 @@ export default function MonacoPane({ groupId }: { groupId: string }) {
     ]);
     return () => collection.clear();
   }, [coverage, activePath, editorReady]);
+
+  // While paused here: each local's value at the end of the last line
+  // above (or at) the paused one that uses it.
+  const pausedScopes = useDebugStore((state) =>
+    state.isPaused && state.stoppedFile === activePath ? state.scopes : null,
+  );
+  useEffect(() => {
+    const editor = editorRef.current;
+    const model = editor?.getModel();
+    if (!editorReady || !editor || !model || !pausedScopes || stoppedLine == null) return;
+    const variables = pausedScopes.flatMap((scope) => scope.variables);
+    const annotations = inlineValues(model.getLinesContent(), stoppedLine, variables);
+    const collection = editor.createDecorationsCollection(
+      [...annotations].map(([line, text]) => ({
+        range: new monaco.Range(line, model.getLineMaxColumn(line), line, model.getLineMaxColumn(line)),
+        options: { after: { content: `   ${text}`, inlineClassName: "debug-inline-value" } },
+      })),
+    );
+    return () => collection.clear();
+  }, [pausedScopes, stoppedLine, activePath, editorReady]);
 
   // The line where the debugger is paused.
   useEffect(() => {

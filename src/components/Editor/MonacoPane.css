@@ -65,3 +65,10 @@
 .coverage-uncovered {
   background: color-mix(in srgb, var(--danger) 80%, transparent);
 }
+
+/* Variable values while paused (inline debug values). */
+.debug-inline-value {
+  color: var(--text-muted) !important;
+  font-style: italic;
+  opacity: 0.85;
+}

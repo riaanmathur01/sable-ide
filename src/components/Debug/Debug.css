@@ -341,3 +341,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.debug-exception {
+  gap: 6px;
+  padding-left: 12px;
+  cursor: pointer;
+}
+
+.debug-exception input {
+  margin: 0;
+  accent-color: var(--accent);
+}

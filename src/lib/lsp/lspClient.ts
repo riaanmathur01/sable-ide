@@ -6,7 +6,7 @@ import { useDiagnosticsStore } from "../../store/diagnosticsStore";
 import { parentDirectoryOf } from "../ipc";
 import { applyDiagnostics, getModelValue, type LspDiagnostic } from "../editorRegistry";
 import { allOpenFiles } from "../../store/tabsStore";
-import { installBasedpyright, installTypeScriptServer, readFile } from "../ipc";
+import { installBasedpyright, installPhpServer, installTypeScriptServer, readFile } from "../ipc";
 import { useProblemsStore } from "../../store/problemsStore";
 import { applyWorkspaceEdit, type LspWorkspaceEdit } from "./workspaceEdit";
 
@@ -47,6 +47,16 @@ const LANGUAGE_IDS: Record<string, string> = {
   mjs: "javascript",
   cjs: "javascript",
   jsx: "javascriptreact",
+  php: "php",
+  phtml: "php",
+  rb: "ruby",
+  rake: "ruby",
+  gemspec: "ruby",
+  ru: "ruby",
+  cs: "csharp",
+  csx: "csharp",
+  kt: "kotlin",
+  kts: "kotlin",
 };
 
 /** Extension → server id (mirrors server_id_for_extension in Rust). */
@@ -60,6 +70,13 @@ const SERVER_IDS: Record<string, string> = {
   ...Object.fromEntries(
     ["ts", "mts", "cts", "tsx", "js", "mjs", "cjs", "jsx"].map((ext) => [ext, "typescript"]),
   ),
+  php: "intelephense",
+  phtml: "intelephense",
+  ...Object.fromEntries(["rb", "rake", "gemspec", "ru"].map((ext) => [ext, "ruby"])),
+  cs: "csharp",
+  csx: "csharp",
+  kt: "kotlin",
+  kts: "kotlin",
 };
 
 export function serverIdFor(path: string): string | null {
@@ -112,6 +129,16 @@ const SERVER_LABELS: Record<string, string> = {
   pyi: "pyright",
   java: "jdtls",
   rs: "rust-analyzer",
+  php: "intelephense",
+  phtml: "intelephense",
+  rb: "ruby-lsp",
+  rake: "ruby-lsp",
+  gemspec: "ruby-lsp",
+  ru: "ruby-lsp",
+  cs: "csharp-ls",
+  csx: "csharp-ls",
+  kt: "kotlin",
+  kts: "kotlin",
   go: "gopls",
   c: "clangd",
   h: "clangd",
@@ -260,6 +287,7 @@ export async function openDocument(path: string, text: string): Promise<void> {
       },
     },
   }).catch((error) => useUiStore.getState().setLastError(String(error)));
+  pullDiagnostics(path, 300);
 }
 
 /**
@@ -283,6 +311,7 @@ export async function changeDocument(
       contentChanges: [{ text }],
     },
   }).catch((error) => useUiStore.getState().setLastError(String(error)));
+  pullDiagnostics(path, 500);
 }
 
 /** Tell the server a document was closed (and clear its tracking). */
@@ -341,6 +370,19 @@ export async function setUpPythonSemanticHighlighting(): Promise<void> {
     await installBasedpyright();
     await restartLanguageServers();
     ui.showStatus("basedpyright installed — Python semantic highlighting is on");
+  } catch (error) {
+    ui.setLastError(String(error));
+  }
+}
+
+/** Install Intelephense (PHP), then restart the servers. */
+export async function setUpPhpServer(): Promise<void> {
+  const ui = useUiStore.getState();
+  ui.showStatus("Installing Intelephense…");
+  try {
+    await installPhpServer();
+    await restartLanguageServers();
+    ui.showStatus("PHP language server installed");
   } catch (error) {
     ui.setLastError(String(error));
   }
@@ -495,20 +537,44 @@ export function initLspListeners(): void {
 
     if (message.method === "textDocument/publishDiagnostics" && message.params) {
       const params = message.params as { uri: string; diagnostics: LspDiagnostic[] };
-      const path = uriToPath(params.uri);
-      const diagnostics = params.diagnostics;
-      diagnosticsByPath.set(path, diagnostics);
-      useProblemsStore.getState().setLspDiagnostics(path, diagnostics);
-      applyDiagnostics(
-        path,
-        diagnostics,
-        SERVER_LABELS[extensionOf(path)] ?? "lsp",
-      );
-      // Count error-severity (1) diagnostics for the explorer's red dot.
-      const errorCount = diagnostics.filter(
-        (diagnostic) => (diagnostic.severity ?? 1) === 1,
-      ).length;
-      useDiagnosticsStore.getState().setFileErrorCount(path, errorCount);
+      showDiagnostics(uriToPath(params.uri), params.diagnostics);
     }
   });
+}
+
+/** A file's diagnostics, pushed by its server or pulled from it. */
+function showDiagnostics(path: string, diagnostics: LspDiagnostic[]) {
+  diagnosticsByPath.set(path, diagnostics);
+  useProblemsStore.getState().setLspDiagnostics(path, diagnostics);
+  applyDiagnostics(path, diagnostics, SERVER_LABELS[extensionOf(path)] ?? "lsp");
+  // Count error-severity (1) diagnostics for the explorer's red dot.
+  const errorCount = diagnostics.filter((diagnostic) => (diagnostic.severity ?? 1) === 1).length;
+  useDiagnosticsStore.getState().setFileErrorCount(path, errorCount);
+}
+
+/**
+ * Servers that answer `textDocument/diagnostic` (pull diagnostics — Ruby
+ * LSP, csharp-ls, …) send nothing on their own: ask after a document
+ * opens and, briefly debounced, after each change.
+ */
+const pullTimers = new Map<string, ReturnType<typeof setTimeout>>();
+function pullDiagnostics(path: string, delay: number) {
+  const serverId = serverIdFor(path);
+  if (!serverId || !capabilitiesOf(serverId)?.diagnosticProvider) return;
+  clearTimeout(pullTimers.get(path));
+  pullTimers.set(
+    path,
+    setTimeout(() => {
+      pullTimers.delete(path);
+      const version = documentVersions.get(path);
+      void sendRequest(extensionOf(path), "textDocument/diagnostic", { textDocument: { uri: pathToUri(path) } }, 15_000).then(
+        (result) => {
+          // Stale (edited since) or closed: a newer pull is on its way.
+          if (documentVersions.get(path) !== version || !result) return;
+          const report = result as { kind?: string; items?: LspDiagnostic[] };
+          if (report.kind === "full" && report.items) showDiagnostics(path, report.items);
+        },
+      );
+    }, delay),
+  );
 }

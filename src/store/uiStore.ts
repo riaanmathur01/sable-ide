@@ -21,6 +21,8 @@ export interface PanelSizes {
 export type PaletteMode =
   | "commands"
   | "files"
+  /** Pick a file to compare the active one with. */
+  | "compareWith"
   /** File Structure (⌘F12): the current file's symbols. */
   | "structure"
   /** Go to Symbol (⌥⌘O / ⌘T): symbols across the project. */

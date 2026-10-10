@@ -57,6 +57,10 @@ fn server_id_for_extension(extension: &str) -> Option<&'static str> {
         "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" | "mts" | "cts" => Some("typescript"),
         "go" => Some("gopls"),
         "c" | "h" | "cc" | "cpp" | "cxx" | "hpp" | "hh" | "hxx" => Some("clangd"),
+        "php" | "phtml" => Some("intelephense"),
+        "rb" | "rake" | "gemspec" | "ru" => Some("ruby"),
+        "cs" | "csx" => Some("csharp"),
+        "kt" | "kts" => Some("kotlin"),
         // JS/TS intelligence is provided by Monaco's built-in language
         // service; a typescript-language-server entry can be added here
         // when we want full LSP for it.
@@ -146,6 +150,48 @@ fn server_for_extension(extension: &str, root: &str) -> Option<ServerSpec> {
                 (or install the Xcode Command Line Tools)"
                 .into(),
         },
+        // PHP: Intelephense (Sable can install it: install_php_server).
+        "intelephense" => ServerSpec {
+            id: id.into(),
+            name: "Intelephense".into(),
+            binary: "intelephense".into(),
+            args: vec!["--stdio".into()],
+            install_hint: "Intelephense not found — run “PHP: Install Language Server” from the \
+                command palette (or `npm install -g intelephense`)"
+                .into(),
+        },
+        // Ruby: Shopify's Ruby LSP, else Solargraph.
+        "ruby" => {
+            let solargraph = resolve_binary("ruby-lsp").is_none() && resolve_binary("solargraph").is_some();
+            ServerSpec {
+                id: id.into(),
+                name: if solargraph { "Solargraph" } else { "Ruby LSP" }.into(),
+                binary: if solargraph { "solargraph" } else { "ruby-lsp" }.into(),
+                args: if solargraph { vec!["stdio".into()] } else { vec![] },
+                install_hint: "Ruby LSP not found — run `gem install ruby-lsp` (Ruby 3+)".into(),
+            }
+        }
+        // C#: csharp-ls (a .NET tool; opens the project's .sln/.csproj).
+        "csharp" => ServerSpec {
+            id: id.into(),
+            name: "csharp-ls".into(),
+            binary: "csharp-ls".into(),
+            args: vec![],
+            install_hint: "csharp-ls not found — install the .NET SDK, then run \
+                `dotnet tool install --global csharp-ls`"
+                .into(),
+        },
+        // Kotlin: JetBrains' kotlin-lsp, else kotlin-language-server.
+        "kotlin" => {
+            let legacy = resolve_binary("kotlin-lsp").is_none() && resolve_binary("kotlin-language-server").is_some();
+            ServerSpec {
+                id: id.into(),
+                name: if legacy { "kotlin-language-server" } else { "Kotlin LSP" }.into(),
+                binary: if legacy { "kotlin-language-server" } else { "kotlin-lsp" }.into(),
+                args: if legacy { vec![] } else { vec!["--stdio".into()] },
+                install_hint: "Kotlin LSP not found — run `brew install JetBrains/utils/kotlin-lsp`".into(),
+            }
+        }
         _ => return None,
     })
 }
@@ -224,6 +270,34 @@ pub(crate) fn resolve_binary(name: &str) -> Option<PathBuf> {
     for candidate in candidates {
         if candidate.exists() {
             return Some(candidate);
+        }
+    }
+    // Per-user tool folders (apps started from the Dock don't get the
+    // shell's PATH): .NET global tools, pipx/uv/JetBrains, Ruby gems and
+    // version managers.
+    if let Ok(home) = std::env::var("HOME") {
+        let home = PathBuf::from(home);
+        let mut dirs = vec![
+            home.join(".dotnet/tools"),
+            home.join(".local/bin"),
+            home.join(".rbenv/shims"),
+            home.join(".asdf/shims"),
+            home.join(".rvm/bin"),
+            PathBuf::from("/opt/homebrew/opt/ruby/bin"),
+            PathBuf::from("/usr/local/opt/ruby/bin"),
+        ];
+        // Gem executables live in versioned folders; newest first.
+        for gems in [home.join(".gem/ruby"), PathBuf::from("/opt/homebrew/lib/ruby/gems"), PathBuf::from("/usr/local/lib/ruby/gems")] {
+            let mut versions: Vec<PathBuf> = std::fs::read_dir(&gems).into_iter().flatten().flatten().map(|entry| entry.path()).collect();
+            versions.sort();
+            dirs.extend(versions.into_iter().rev().map(|version| version.join("bin")));
+        }
+        for dir in dirs {
+            for candidate in [dir.join(name), dir.join(format!("{name}.exe"))] {
+                if candidate.exists() {
+                    return Some(candidate);
+                }
+            }
         }
     }
     // Fall back to scanning PATH ourselves (also covers Windows `.cmd`).
@@ -431,6 +505,8 @@ fn base_initialize_params(root_path: &str) -> Value {
                     "multilineTokenSupport": false,
                     "overlappingTokenSupport": false
                 },
+                // Pull diagnostics too (Ruby LSP, csharp-ls ask for them).
+                "diagnostic": { "dynamicRegistration": false, "relatedDocumentSupport": false },
                 "publishDiagnostics": {
                     "relatedInformation": false,
                     // Unnecessary (unused) / deprecated code renders faded
@@ -936,6 +1012,12 @@ pub async fn install_basedpyright() -> Result<(), String> {
     npm_install_tools(&["basedpyright"]).await
 }
 
+/// Install Intelephense (PHP) into Sable's tools folder.
+#[tauri::command]
+pub async fn install_php_server() -> Result<(), String> {
+    npm_install_tools(&["intelephense"]).await
+}
+
 /// Install typescript-language-server with TypeScript 5 into Sable's tools
 /// folder (TypeScript 7 lacks the tsserver it needs — see
 /// `fallback_tsserver`).
@@ -979,6 +1061,16 @@ pub fn python_server_has_semantic_tokens() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// For probing a server outside the app with exactly Sable's settings:
+    ///   SABLE_LSP_ROOT=… SABLE_LSP_ID=kotlin cargo test --lib print_initialize_params -- --ignored --nocapture
+    #[test]
+    #[ignore = "a tool, not a test"]
+    fn print_initialize_params() {
+        let root = std::env::var("SABLE_LSP_ROOT").unwrap_or_else(|_| ".".into());
+        let id = std::env::var("SABLE_LSP_ID").unwrap_or_else(|_| "pyright".into());
+        println!("SABLE_PARAMS {}", initialize_params(&root, &id));
+    }
 
     #[tokio::test]
     async fn typescript_server_gets_a_working_tsserver() {

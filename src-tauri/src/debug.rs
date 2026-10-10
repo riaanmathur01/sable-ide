@@ -1881,6 +1881,32 @@ mod tests {
         attach_and_check(program, target, &file, 8, "count").await;
     }
 
+    #[tokio::test]
+    async fn python_stops_on_raised_exceptions_when_asked() {
+        let python = std::env::var("SABLE_TEST_PYTHON").unwrap_or_else(|_| "python3".into());
+        let program = write_program(
+            "raised.py",
+            "import time\ntime.sleep(1.5)\ntry:\n    raise ValueError('caught one')\nexcept ValueError:\n    pass\nprint('done')\n",
+        );
+        let Some(mut harness) = Harness::start(&program, Some(&python), vec![], RunOptions::default(), "").await else {
+            return;
+        };
+        // As the frontend does: once Sable's default (uncaught) is set,
+        // the user's choice — here "Raised" switched on — replaces it.
+        loop {
+            let message = harness.next("Sable's setExceptionBreakpoints").await;
+            if message["type"] == "response" && message["command"] == "setExceptionBreakpoints" {
+                break;
+            }
+        }
+        harness.request("setExceptionBreakpoints", json!({ "filters": ["raised", "uncaught"] })).await;
+        let stopped = harness.event("stopped").await;
+        assert_eq!(stopped["body"]["reason"], "exception", "{stopped}");
+        let Harness { session, terminal, .. } = harness;
+        session.shutdown().await;
+        terminal.kill_all();
+    }
+
     // --- Conditional breakpoints, hit counts, logpoints -----------------------
 
     /// A loop over i = 0..6. `condition_line` gets "stop when i == 4";

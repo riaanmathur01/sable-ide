@@ -23,6 +23,8 @@ pub fn run() {
         // Updates: signed builds from the GitHub releases (see README).
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // Web links (Markdown preview) open in the default browser.
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             // Sable's private tools folder (e.g. basedpyright).
             use tauri::Manager;
@@ -46,6 +48,7 @@ pub fn run() {
             commands::history::history_read,
             commands::history::history_deleted_files,
             commands::fs::read_file,
+            commands::fs::read_file_base64,
             commands::fs::write_file,
             commands::fs::is_directory,
             commands::fs::create_file,
@@ -123,6 +126,7 @@ pub fn run() {
             lsp::lsp_set_python_path,
             lsp::install_basedpyright,
             lsp::install_typescript_server,
+            lsp::install_php_server,
             lsp::python_server_has_semantic_tokens,
             debug::start_debug,
             debug::debug_request,

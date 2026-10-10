@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Bug, Columns2, Play, Settings, SlidersHorizontal, X } from "lucide-react";
+import { BookOpen, Bug, Columns2, Play, Settings, SlidersHorizontal, X } from "lucide-react";
 import { MAX_GROUPS, useTabsStore, type EditorGroup } from "../../store/tabsStore";
 import { isDebuggable, useDebugStore } from "../../store/debugStore";
 import { runActiveFile } from "../../lib/runFile";
@@ -75,6 +75,15 @@ export function TabBar({
         ))}
       </div>
       <div className="tab-bar-actions">
+        {group.lastFilePath && /\.(md|markdown|mdx)$/i.test(group.lastFilePath) && (
+          <button
+            className="tab-bar-run"
+            title="Open Preview to the Side (⇧⌘V)"
+            onClick={() => useTabsStore.getState().openPreview(group.lastFilePath!, true)}
+          >
+            <BookOpen size={14} strokeWidth={1.5} />
+          </button>
+        )}
         {canSplit && (
           <button
             className="tab-bar-run"

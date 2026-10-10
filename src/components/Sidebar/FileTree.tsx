@@ -89,6 +89,9 @@ function flattenVisibleRows(
   }
 }
 
+/** "Select for Compare": the file the next "Compare with …" diffs against. */
+let compareSelection: string | null = null;
+
 export function FileTree() {
   const rootPath = useWorkspaceStore((state) => state.rootPath);
   const childrenByPath = useWorkspaceStore((state) => state.childrenByPath);
@@ -326,7 +329,24 @@ export function FileTree() {
       },
       ...(entry.isDirectory
         ? []
-        : [{ label: "Local History", onSelect: () => useTabsStore.getState().openHistory(entry.path) }]),
+        : [
+            { label: "Local History", onSelect: () => useTabsStore.getState().openHistory(entry.path) },
+            ...(compareSelection && compareSelection !== entry.path
+              ? [
+                  {
+                    label: `Compare with ${compareSelection.split(/[/\\]/).pop()}`,
+                    onSelect: () =>
+                      useTabsStore.getState().openDiff({ kind: "files", filePath: compareSelection!, other: entry.path }),
+                  },
+                ]
+              : []),
+            {
+              label: "Select for Compare",
+              onSelect: () => {
+                compareSelection = entry.path;
+              },
+            },
+          ]),
       {
         label: "Delete",
         danger: true,

@@ -141,6 +141,7 @@ export function DebugPanel() {
         </>
       )}
       <BreakpointsSection rootPath={rootPath} />
+      <ExceptionsSection />
     </div>
   );
 }
@@ -339,6 +340,27 @@ function BreakpointsSection({ rootPath }: { rootPath: string | null }) {
           </div>
         ))
       )}
+    </Section>
+  );
+}
+
+/** Which exceptions stop the program — the kinds this debugger offers. */
+function ExceptionsSection() {
+  const filters = useDebugStore((state) => state.exceptionFilters);
+  const selection = useDebugStore((state) => state.exceptionSelection);
+  if (filters.length === 0) return null;
+  return (
+    <Section title="Stop on Exceptions">
+      {filters.map((filter) => (
+        <label key={filter.filter} className="debug-row debug-exception" title={filter.description ?? filter.label}>
+          <input
+            type="checkbox"
+            checked={selection.includes(filter.filter)}
+            onChange={() => useDebugStore.getState().toggleExceptionFilter(filter.filter)}
+          />
+          <span>{filter.label}</span>
+        </label>
+      ))}
     </Section>
   );
 }

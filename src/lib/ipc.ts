@@ -29,6 +29,11 @@ export function readFile(path: string): Promise<string> {
   return invoke<string>("read_file", { path });
 }
 
+/** A file's bytes, base64 (images in the Markdown preview). */
+export function readFileBase64(path: string): Promise<string> {
+  return invoke<string>("read_file_base64", { path });
+}
+
 export function writeFile(path: string, contents: string): Promise<void> {
   return invoke<void>("write_file", { path, contents });
 }
@@ -446,6 +451,10 @@ export function lspSetPythonPath(path: string | null): Promise<void> {
 }
 
 /** Install basedpyright into Sable's tools folder (semantic highlighting). */
+export function installPhpServer(): Promise<void> {
+  return invoke<void>("install_php_server");
+}
+
 export function installTypeScriptServer(): Promise<void> {
   return invoke<void>("install_typescript_server");
 }

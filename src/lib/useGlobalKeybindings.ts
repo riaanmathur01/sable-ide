@@ -190,6 +190,15 @@ export function useGlobalKeybindings() {
           case "b":
             void useNavigationStore.getState().goToAtCursor("typeDefinition");
             return true;
+          case "v": {
+            // ⇧⌘V: Markdown preview beside the file (VS Code's binding).
+            const file = tabs.lastFilePath;
+            if (file && /\.(md|markdown|mdx)$/i.test(file)) {
+              tabs.openPreview(file, true);
+              return true;
+            }
+            return false;
+          }
         }
         if (event.code === "BracketRight") {
           tabs.cycleTab(1);

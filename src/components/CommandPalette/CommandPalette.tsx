@@ -39,6 +39,7 @@ import {
   restartLanguageServers,
   setUpPythonSemanticHighlighting,
   setUpTypeScriptServer,
+  setUpPhpServer,
 } from "../../lib/lsp/lspClient";
 import "./CommandPalette.css";
 
@@ -63,6 +64,7 @@ const MAX_RESULTS = 50;
 const PLACEHOLDERS: Record<PaletteMode, string> = {
   commands: "Type a command…",
   files: "Go to file…",
+  compareWith: "Compare the current file with…",
   structure: "Go to a class, function or member in this file…",
   symbols: "Go to a class, function or variable in the project…",
   everywhere: "Search files, symbols and actions…",
@@ -145,7 +147,7 @@ function PaletteInner({ mode, onClose }: { mode: PaletteMode; onClose: () => voi
 
   // The workspace's files (quick open, Search Everywhere).
   useEffect(() => {
-    if (mode !== "files" && mode !== "everywhere") return;
+    if (mode !== "files" && mode !== "everywhere" && mode !== "compareWith") return;
     const root = useWorkspaceStore.getState().rootPath;
     if (!root) return;
     listWorkspaceFiles(root)
@@ -193,6 +195,21 @@ function PaletteInner({ mode, onClose }: { mode: PaletteMode; onClose: () => voi
     switch (mode) {
       case "files":
         return rank(files.map((path) => fileItem(path)), query, MAX_RESULTS);
+      case "compareWith": {
+        const base = currentPath;
+        return rank(
+          files
+            .filter((path) => path !== base)
+            .map((path) => ({
+              ...fileItem(path),
+              run: () => {
+                if (base) useTabsStore.getState().openDiff({ kind: "files", filePath: base, other: path });
+              },
+            })),
+          query,
+          MAX_RESULTS,
+        );
+      }
       case "commands":
         return rank(buildCommands(), query, MAX_RESULTS);
       case "structure":
@@ -413,6 +430,11 @@ function buildCommands(): PaletteItem[] {
       run: () => void setUpPythonSemanticHighlighting(),
     },
     {
+      id: "install-php-server",
+      label: "PHP: Install Language Server (Intelephense)",
+      run: () => void setUpPhpServer(),
+    },
+    {
       id: "install-typescript-server",
       label: "TypeScript: Install Language Server",
       run: () => void setUpTypeScriptServer(),
@@ -448,6 +470,58 @@ function buildCommands(): PaletteItem[] {
       },
     },
     { id: "check-updates", label: "Check for Updates…", run: () => void checkForUpdates() },
+    {
+      id: "snippets",
+      label: "Snippets: Configure User Snippets",
+      run: () => {
+        const model = getEditor()?.getModel();
+        void import("../../lib/snippets").then(({ configureSnippets }) =>
+          configureSnippets(model && model.uri.scheme === "file" ? model.getLanguageId() : null),
+        );
+      },
+    },
+    {
+      id: "compare-with",
+      label: "File: Compare Active File With…",
+      run: () => ui.openPalette("compareWith"),
+    },
+    {
+      id: "compare-saved",
+      label: "File: Compare with Saved (Unsaved Changes)",
+      run: () => {
+        const file = useTabsStore.getState().lastFilePath;
+        if (file) useTabsStore.getState().openDiff({ kind: "saved", filePath: file });
+      },
+    },
+    {
+      id: "compare-clipboard",
+      label: "File: Compare with Clipboard",
+      run: () => {
+        const file = useTabsStore.getState().lastFilePath;
+        if (!file) return;
+        navigator.clipboard.readText().then(
+          (text) => useTabsStore.getState().openDiff({ kind: "clipboard", filePath: file, text }),
+          () => ui.setLastError("Couldn't read the clipboard"),
+        );
+      },
+    },
+    {
+      id: "markdown-preview-side",
+      label: "Markdown: Open Preview to the Side",
+      detail: "⇧⌘V",
+      run: () => {
+        const file = useTabsStore.getState().lastFilePath;
+        if (file) useTabsStore.getState().openPreview(file, true);
+      },
+    },
+    {
+      id: "markdown-preview",
+      label: "Markdown: Open Preview",
+      run: () => {
+        const file = useTabsStore.getState().lastFilePath;
+        if (file) useTabsStore.getState().openPreview(file, false);
+      },
+    },
     { id: "inline-completions", label: "AI: Toggle Inline Completions", run: toggleInlineCompletions },
     {
       id: "debug-attach",

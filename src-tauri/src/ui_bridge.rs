@@ -31,6 +31,7 @@ async fn dispatch(command: &str, args: &Value) -> Result<Value, String> {
     Ok(match command {
         "read_directory" => reply(fs::read_directory(arg(args, "path")?)),
         "read_file" => reply(fs::read_file(arg(args, "path")?)),
+        "read_file_base64" => reply(fs::read_file_base64(arg(args, "path")?)),
         "write_file" => reply(fs::write_file(arg(args, "path")?, arg(args, "contents")?)),
         "is_directory" => reply(fs::is_directory(arg(args, "path")?)),
         "create_file" => reply(fs::create_file(arg(args, "path")?)),

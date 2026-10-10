@@ -80,6 +80,19 @@ pub fn read_file(path: String) -> Result<String, String> {
         .map_err(|error| format!("Could not open {path}: {error}"))
 }
 
+/// A file's bytes as base64 (images in the Markdown preview). Capped so a
+/// huge file can't stall the webview.
+#[tauri::command]
+pub fn read_file_base64(path: String) -> Result<String, String> {
+    use base64::Engine;
+    let metadata = std::fs::metadata(&path).map_err(|error| format!("Could not open {path}: {error}"))?;
+    if metadata.len() > 20 * 1024 * 1024 {
+        return Err(format!("{path} is too large to show"));
+    }
+    let bytes = std::fs::read(&path).map_err(|error| format!("Could not open {path}: {error}"))?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
+}
+
 /// Write editor contents back to disk (Cmd/Ctrl+S).
 #[tauri::command]
 pub fn write_file(path: String, contents: String) -> Result<(), String> {

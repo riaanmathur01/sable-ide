@@ -52,6 +52,28 @@ export interface DebugLaunch {
   jvm?: { command: (port: number) => Promise<string> };
 }
 
+/** One kind of exception a debugger can stop on (DAP's
+ *  ExceptionBreakpointsFilter). */
+export interface ExceptionFilter {
+  filter: string;
+  label: string;
+  description?: string;
+  default?: boolean;
+}
+
+/** Saved exception choices, keyed by the debugger's set of filters. */
+const exceptionKey = (filters: ExceptionFilter[]) =>
+  "sable.exceptionFilters:" + filters.map((filter) => filter.filter).sort().join(",");
+
+export function savedExceptionSelection(filters: ExceptionFilter[]): string[] | null {
+  try {
+    const raw = localStorage.getItem(exceptionKey(filters));
+    return raw ? (JSON.parse(raw) as string[]) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** What to attach to: a debugpy/--inspect/JDWP port, or a process. */
 export interface AttachTarget {
   kind: "python" | "node" | "go" | "native" | "java";
@@ -125,6 +147,13 @@ interface DebugState {
   start: (program?: string, launch?: DebugLaunch) => Promise<void>;
   /** Attach to a program that's already running. */
   attach: (target: AttachTarget) => Promise<void>;
+  /** The exception kinds this debugger can stop on, and which are on. */
+  exceptionFilters: ExceptionFilter[];
+  exceptionSelection: string[];
+  /** The adapter announced its exception kinds (initialize response). */
+  setExceptionFilters: (filters: ExceptionFilter[]) => void;
+  /** Stop on an exception kind, or not (remembered per debugger). */
+  toggleExceptionFilter: (filter: string) => void;
   /** The Attach to Process dialog. */
   attachDialogOpen: boolean;
   setAttachDialogOpen: (open: boolean) => void;
@@ -213,6 +242,26 @@ export const useDebugStore = create<DebugState>((set, get) => {
   return {
     ...IDLE,
     attachDialogOpen: false,
+    exceptionFilters: [],
+    exceptionSelection: [],
+    setExceptionFilters: (filters) => {
+      // Sable's own default: uncaught exceptions, where offered.
+      const fallback = filters.some((filter) => filter.filter === "uncaught") ? ["uncaught"] : [];
+      set({ exceptionFilters: filters, exceptionSelection: savedExceptionSelection(filters) ?? fallback });
+    },
+    toggleExceptionFilter: (filter) => {
+      const { exceptionFilters, exceptionSelection, isDebugging } = get();
+      const selection = exceptionSelection.includes(filter)
+        ? exceptionSelection.filter((existing) => existing !== filter)
+        : [...exceptionSelection, filter];
+      set({ exceptionSelection: selection });
+      try {
+        localStorage.setItem(exceptionKey(exceptionFilters), JSON.stringify(selection));
+      } catch {
+        /* not remembered */
+      }
+      if (isDebugging) void sendDebugRequest("setExceptionBreakpoints", { filters: selection });
+    },
     setAttachDialogOpen: (open) => set({ attachDialogOpen: open }),
 
     attach: async (target) => {

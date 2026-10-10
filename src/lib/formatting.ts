@@ -18,7 +18,7 @@ import { useUiStore } from "../store/uiStore";
 type Monaco = typeof MonacoTypes;
 
 /** Languages formatted by their language server. */
-const SERVER_FORMATTED = ["go", "rust", "c", "cpp", "java"];
+const SERVER_FORMATTED = ["go", "rust", "c", "cpp", "java", "php", "ruby", "csharp", "kotlin"];
 
 interface LspTextEdit {
   range: { start: { line: number; character: number }; end: { line: number; character: number } };

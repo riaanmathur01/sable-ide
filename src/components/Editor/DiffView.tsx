@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Columns2, Minus, Plus, Rows2 } from "lucide-react";
 import type * as MonacoTypes from "monaco-editor";
-import { gitCommitFileDiff, gitFileDiff } from "../../lib/ipc";
+import { gitCommitFileDiff, gitFileDiff, readFile } from "../../lib/ipc";
+import { getModelValue } from "../../lib/editorRegistry";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import type { DiffSource } from "../../store/tabsStore";
 import { monaco } from "../../lib/monacoSetup";
@@ -65,6 +66,27 @@ interface DiffViewProps {
   source: DiffSource;
 }
 
+/** A file as the editor has it (unsaved edits included), else on disk. */
+async function currentText(path: string): Promise<string> {
+  return getModelValue(path) ?? (await readFile(path));
+}
+
+/** The two sides of a diff. */
+async function loadSides(root: string, source: DiffSource): Promise<{ original: string; modified: string; isBinary: boolean }> {
+  switch (source.kind) {
+    case "working":
+      return gitFileDiff(root, source.filePath, source.staged);
+    case "commit":
+      return gitCommitFileDiff(root, source.hash, source.filePath);
+    case "files":
+      return { original: await currentText(source.filePath), modified: await currentText(source.other), isBinary: false };
+    case "saved":
+      return { original: await readFile(source.filePath), modified: await currentText(source.filePath), isBinary: false };
+    case "clipboard":
+      return { original: await currentText(source.filePath), modified: source.text, isBinary: false };
+  }
+}
+
 /** Pick a Monaco language id from a file's extension. */
 function languageForPath(path: string): string {
   const extension = "." + (path.split(".").pop()?.toLowerCase() ?? "");
@@ -81,6 +103,8 @@ function languageForPath(path: string): string {
  */
 export default function DiffView({ source }: DiffViewProps) {
   const filePath = source.filePath;
+  // Re-fetch when what's compared changes.
+  const sourceKey = JSON.stringify(source);
   const containerRef = useRef<HTMLDivElement>(null);
   const [sideBySide, setSideBySide] = useState(true);
   const [message, setMessage] = useState<string | null>("Loading diff…");
@@ -105,10 +129,7 @@ export default function DiffView({ source }: DiffViewProps) {
       null;
     let disposed = false;
 
-    const fetchDiff =
-      source.kind === "working"
-        ? gitFileDiff(root, source.filePath, source.staged)
-        : gitCommitFileDiff(root, source.hash, source.filePath);
+    const fetchDiff = loadSides(root, source);
 
     fetchDiff
       .then((diff) => {
@@ -204,12 +225,7 @@ export default function DiffView({ source }: DiffViewProps) {
     // Re-fetch only when the target changes; the toggle is handled below.
     // (EditorArea also keys this component by the diff's tab id.)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    filePath,
-    source.kind,
-    source.kind === "working" ? source.staged : source.hash,
-    reloadToken,
-  ]);
+  }, [filePath, sourceKey, reloadToken]);
 
   // Apply the side-by-side / inline toggle without re-fetching.
   useEffect(() => {

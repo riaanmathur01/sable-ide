@@ -125,7 +125,7 @@ function markedStringToMarkdown(
 }
 
 /** Monaco language ids backed by an LSP server (mirrors the Rust map). */
-const LSP_LANGUAGES = ["python", "java", "rust", "go", "c", "cpp", "typescript", "javascript"];
+const LSP_LANGUAGES = ["python", "java", "rust", "go", "c", "cpp", "typescript", "javascript", "php", "ruby", "csharp", "kotlin"];
 
 /** Monaco languages each server handles (for semantic highlighting). */
 const LANGUAGES_BY_SERVER: Record<string, string[]> = {
@@ -135,6 +135,10 @@ const LANGUAGES_BY_SERVER: Record<string, string[]> = {
   gopls: ["go"],
   clangd: ["c", "cpp"],
   typescript: ["typescript", "javascript"],
+  intelephense: ["php"],
+  ruby: ["ruby"],
+  csharp: ["csharp"],
+  kotlin: ["kotlin"],
 };
 
 const APPLY_CODE_ACTION = "sable.lsp.applyCodeAction";
