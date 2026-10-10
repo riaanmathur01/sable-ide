@@ -70,6 +70,9 @@ interface CompletionResult {
 const ACTIVATE_TIMEOUT_MS = 15_000;
 const CALLBACK_TIMEOUT_MS: Record<string, number> = { formatter: 10_000, completions: 3_000, command: 120_000, event: 10_000 };
 
+/** Rename suggestions shown per plugin, at most. */
+const MAX_RENAME_SUGGESTIONS = 20;
+
 let sableVersion: Promise<string> | null = null;
 
 function resolvePath(path: string): string {
@@ -296,6 +299,21 @@ export class PluginRuntime {
       case "window.showError":
         useUiStore.getState().setLastError(`${this.name}: ${String(args[0])}`);
         return null;
+      case "window.showQuickPick": {
+        const [items, placeholder] = args as [unknown[], string | undefined];
+        if (!Array.isArray(items) || items.length === 0) return null;
+        const choices = items.slice(0, 1000).map((item) =>
+          typeof item === "string"
+            ? { label: item }
+            : {
+                label: String((item as { label?: unknown }).label ?? ""),
+                detail: [(item as { description?: unknown }).description, (item as { detail?: unknown }).detail]
+                  .filter((part) => typeof part === "string" && part)
+                  .join("  ·  ") || undefined,
+              },
+        );
+        return useUiStore.getState().openPick(choices, placeholder ? String(placeholder) : `${this.name}: choose…`);
+      }
       case "statusBar.set": {
         const [text, options] = args as [string, { tooltip?: string; command?: string } | undefined];
         this.listener.statusChanged({ text, tooltip: options?.tooltip, command: options?.command });
@@ -449,6 +467,34 @@ export class PluginRuntime {
                 };
               } catch {
                 return { suggestions: [] };
+              }
+            },
+          }),
+        );
+        return null;
+      }
+      case "languages.registerRenameSuggestions": {
+        this.require("editor");
+        const [handler, language] = args as [number, string];
+        await this.register(handler, (monaco) =>
+          // Listed under the rename box (F2) as soon as it opens.
+          monaco.languages.registerNewSymbolNameProvider(language, {
+            supportsAutomaticNewSymbolNamesTriggerKind: Promise.resolve(true),
+            provideNewSymbolNames: async (model, range) => {
+              if (model.uri.scheme !== "file") return [];
+              const name = model.getValueInRange(range);
+              try {
+                const names = await this.callback(
+                  handler,
+                  [{ path: pathFromUri(model.uri), language: model.getLanguageId(), name, line: range.startLineNumber }],
+                  "completions",
+                );
+                return (Array.isArray(names) ? names : [])
+                  .filter((candidate): candidate is string => typeof candidate === "string" && candidate.trim() !== "" && candidate !== name)
+                  .slice(0, MAX_RENAME_SUGGESTIONS)
+                  .map((newSymbolName) => ({ newSymbolName }));
+              } catch {
+                return [];
               }
             },
           }),

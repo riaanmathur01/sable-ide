@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { BookOpen, Bug, Columns2, Play, Settings, SlidersHorizontal, X } from "lucide-react";
+import { BookOpen, Bug, Columns2, Play, Puzzle, Settings, SlidersHorizontal, X } from "lucide-react";
 import { MAX_GROUPS, useTabsStore, type EditorGroup } from "../../store/tabsStore";
 import { isDebuggable, useDebugStore } from "../../store/debugStore";
 import { runActiveFile } from "../../lib/runFile";
@@ -58,6 +58,9 @@ export function TabBar({
           >
             {tab.kind === "settings" && (
               <Settings size={13} strokeWidth={1.5} className="editor-tab-icon" />
+            )}
+            {tab.kind === "plugin" && (
+              <Puzzle size={13} strokeWidth={1.5} className="editor-tab-icon" />
             )}
             <span className="editor-tab-name">{tab.name}</span>
             <span

@@ -40,7 +40,8 @@ may ask once too (More info → Run anyway).
 - **Highlighting** — the same TextMate grammars VS Code uses (via
   [Shiki](https://shiki.style)), plus semantic highlighting from the
   language servers (parameters, `self`, fields, mutable bindings,
-  declarations vs. calls). Themes: Sable Dark, Catppuccin Mocha, and three
+  declarations vs. calls). Themes: Sable Dark, all four Catppuccin flavours (Latte — light —
+  Frappé, Macchiato and Mocha), and three
   JetBrains themes — Darcula, Dark, and Islands Dark — with the exact
   colors each JetBrains IDE uses for its language (PyCharm for Python,
   WebStorm for JS/TS, GoLand, RustRover, CLion, IntelliJ IDEA for Java and
@@ -184,7 +185,9 @@ may ask once too (More info → Run anyway).
   (or the puzzle icon) has a **Marketplace** to browse and install from,
   and also installs from a GitHub repository, a `.zip` /
   `.tar.gz` link, or a folder; turns them on and off; updates, reloads and
-  uninstalls them; and shows each one's permissions and log. **Create…**
+  uninstalls them; and shows each one's permissions and log. **Details**
+  opens a plugin's page in an editor tab, like VS Code's: its README,
+  permissions, and Install / Update / Uninstall. **Create…**
   writes a working plugin to start from, which reloads every time you
   save it. Each plugin runs sandboxed in its own worker with only the
   permissions it declares (`editor`, `workspace:read`, `workspace:write`,

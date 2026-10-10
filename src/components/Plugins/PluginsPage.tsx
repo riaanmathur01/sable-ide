@@ -189,10 +189,14 @@ function MarketplaceCard({ entry }: { entry: MarketplaceEntry }) {
     }
   };
 
+  const details = () => useTabsStore.getState().openPluginDetails(entry.id, entry.name);
+
   return (
     <div className="marketplace-card">
       <div className="marketplace-card-title">
-        <span className="marketplace-card-name">{entry.name}</span>
+        <button className="marketplace-card-name" title="Show details" onClick={details}>
+          {entry.name}
+        </button>
         <span className="plugin-version">{entry.version}</span>
       </div>
       {entry.author && <div className="marketplace-card-author">by {entry.author}</div>}
@@ -210,12 +214,20 @@ function MarketplaceCard({ entry }: { entry: MarketplaceEntry }) {
         ))}
       </div>
       <div className="marketplace-card-actions">
-        {entry.homepage && (
-          <button className="plugins-link-button" onClick={() => open(entry.homepage!)}>
-            Details
+        <button className="plugins-link-button" onClick={details}>
+          Details
+        </button>
+        <span className="plugins-spacer" />
+        {installed && (
+          <button
+            className="plugins-button danger"
+            disabled={busy}
+            title={`Uninstall ${entry.name}`}
+            onClick={() => void usePluginStore.getState().uninstall(entry.id)}
+          >
+            <Trash2 size={12} strokeWidth={1.5} /> Uninstall
           </button>
         )}
-        <span className="plugins-spacer" />
         {installed && !update ? (
           <span className="marketplace-installed">
             <Check size={13} strokeWidth={2} /> Installed
@@ -291,11 +303,36 @@ function PluginRow({ plugin }: { plugin: PluginInfo }) {
       <div className="plugin-header" onClick={() => setExpanded(!expanded)}>
         <Chevron size={13} strokeWidth={1.5} className="plugin-chevron" />
         <div className="plugin-title">
-          <span className="plugin-name">{manifest.name}</span>
+          <button
+            className="plugin-name"
+            title="Show details"
+            onClick={(event) => {
+              event.stopPropagation();
+              useTabsStore.getState().openPluginDetails(manifest.id, manifest.name);
+            }}
+          >
+            {manifest.name}
+          </button>
           <span className="plugin-version">{manifest.version}</span>
           {manifest.author && <span className="plugin-author">by {manifest.author}</span>}
           {plugin.linked && <span className="plugin-badge">dev</span>}
           {status === "error" && <span className="plugin-badge error">error</span>}
+        </div>
+        <div className="plugin-header-actions" onClick={(event) => event.stopPropagation()}>
+          <button
+            className="plugins-link-button"
+            onClick={() => useTabsStore.getState().openPluginDetails(manifest.id, manifest.name)}
+          >
+            Details
+          </button>
+          <button
+            className="plugin-header-uninstall"
+            disabled={busy}
+            title={plugin.linked ? `Remove ${manifest.name} (its folder is kept)` : `Uninstall ${manifest.name}`}
+            onClick={() => void store.uninstall(manifest.id)}
+          >
+            <Trash2 size={12} strokeWidth={1.5} /> {plugin.linked ? "Remove" : "Uninstall"}
+          </button>
         </div>
         <label className="plugin-toggle" title={plugin.enabled ? "Turn off" : "Turn on"} onClick={(event) => event.stopPropagation()}>
           <input
@@ -341,9 +378,6 @@ function PluginRow({ plugin }: { plugin: PluginInfo }) {
             {plugin.linked && (
               <button onClick={() => void useTabsStore.getState().openFile(`${plugin.path}/${manifest.main}`)}>Edit main.js</button>
             )}
-            <button className="danger" disabled={busy} onClick={() => void store.uninstall(manifest.id)}>
-              <Trash2 size={12} strokeWidth={1.5} /> {plugin.linked ? "Remove" : "Uninstall"}
-            </button>
           </div>
           <div className="plugin-log">
             {(logs ?? []).length === 0 ? (

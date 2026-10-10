@@ -71,6 +71,7 @@ const PLACEHOLDERS: Record<PaletteMode, string> = {
   everywhere: "Search files, symbols and actions…",
   recentFiles: "Recent files",
   recentLocations: "Recent locations",
+  pick: "Choose…",
 };
 
 function relativeTo(path: string): string {
@@ -143,6 +144,7 @@ function PaletteInner({ mode, onClose }: { mode: PaletteMode; onClose: () => voi
   const listRef = useRef<HTMLDivElement>(null);
   const recentFiles = useNavigationStore((state) => state.recentFiles);
   const recentLocations = useNavigationStore((state) => state.recentLocations);
+  const pick = useUiStore((state) => state.pick);
   /** The file the palette was opened over. */
   const [currentPath] = useState(() => cursorContext()?.path ?? useTabsStore.getState().activePath);
 
@@ -240,6 +242,22 @@ function PaletteInner({ mode, onClose }: { mode: PaletteMode; onClose: () => voi
           query,
           MAX_RESULTS,
         );
+      case "pick":
+        return rank(
+          (pick?.items ?? []).map((item, index) => ({
+            id: `pick:${index}`,
+            label: item.label,
+            detail: item.detail,
+            run: () => {
+              // Answer, then let closing find no list left to cancel.
+              const current = useUiStore.getState().pick;
+              useUiStore.setState({ pick: null });
+              current?.resolve(index);
+            },
+          })),
+          query,
+          1000,
+        );
       case "everywhere": {
         if (!query.trim()) {
           // Nothing typed: recent files, like JetBrains.
@@ -259,7 +277,7 @@ function PaletteInner({ mode, onClose }: { mode: PaletteMode; onClose: () => voi
         return [...fileResults, ...symbolResults, ...actionResults];
       }
     }
-  }, [mode, files, structure, symbols, query, recentFiles, recentLocations]);
+  }, [mode, files, structure, symbols, query, recentFiles, recentLocations, pick]);
 
   // Reset the selection when the results change. In Recent Files the
   // current file is first, so start on the one before it (⌘E, Enter
@@ -305,7 +323,7 @@ function PaletteInner({ mode, onClose }: { mode: PaletteMode; onClose: () => voi
         <input
           className="palette-input"
           autoFocus
-          placeholder={PLACEHOLDERS[mode]}
+          placeholder={mode === "pick" && pick?.placeholder ? pick.placeholder : PLACEHOLDERS[mode]}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
@@ -335,7 +353,11 @@ function PaletteInner({ mode, onClose }: { mode: PaletteMode; onClose: () => voi
                 data-index={index}
                 className={index === selected ? "palette-item selected" : "palette-item"}
                 style={item.depth ? { paddingLeft: 10 + item.depth * 16 } : undefined}
-                onMouseEnter={() => setSelected(index)}
+                // Only a moving mouse selects: the list changing under a
+                // resting pointer mustn't steal Enter from the top match.
+                onMouseMove={() => {
+                  if (index !== selected) setSelected(index);
+                }}
                 onClick={() => choose(item)}
               >
                 {item.tag && <span className="palette-item-tag">{item.tag}</span>}
@@ -906,6 +928,32 @@ function buildCommands(): PaletteItem[] {
     { id: "plugins-create", label: "Plugins: Create New Plugin…", run: () => tabs.openSettings("plugins", "create") },
     { id: "plugins-reload", label: "Plugins: Reload All Plugins", run: () => void plugins.reloadAll() },
   );
+  if (plugins.plugins.length > 0) {
+    const pickPlugin = (placeholder: string, then: (id: string, name: string) => void) => {
+      const list = plugins.plugins;
+      void useUiStore
+        .getState()
+        .openPick(
+          list.map((plugin) => ({ label: plugin.manifest.name, detail: `${plugin.manifest.version}${plugin.linked ? " · dev" : ""}` })),
+          placeholder,
+        )
+        .then((index) => {
+          if (index !== null) then(list[index].manifest.id, list[index].manifest.name);
+        });
+    };
+    items.push(
+      {
+        id: "plugins-details",
+        label: "Plugins: Show Plugin Details…",
+        run: () => pickPlugin("Show which plugin's page?", (id, name) => tabs.openPluginDetails(id, name)),
+      },
+      {
+        id: "plugins-uninstall",
+        label: "Plugins: Uninstall Plugin…",
+        run: () => pickPlugin("Uninstall which plugin?", (id) => void usePluginStore.getState().uninstall(id)),
+      },
+    );
+  }
 
   // The project's tasks (npm scripts, make targets, …).
   for (const task of useTasksStore.getState().tasks) {

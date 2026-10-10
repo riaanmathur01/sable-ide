@@ -116,6 +116,9 @@ const MINIMAP_SLIDER = {
 };
 
 const BASE_TOKEN_COLORS = {
+  "catppuccin-latte": () => import("@shikijs/themes/catppuccin-latte"),
+  "catppuccin-frappe": () => import("@shikijs/themes/catppuccin-frappe"),
+  "catppuccin-macchiato": () => import("@shikijs/themes/catppuccin-macchiato"),
   "catppuccin-mocha": () => import("@shikijs/themes/catppuccin-mocha"),
 };
 
@@ -126,7 +129,7 @@ export function buildTextmateTheme(
 ): ThemeRegistrationRaw {
   return {
     name: theme.id,
-    type: "dark",
+    type: theme.type ?? "dark",
     colors: {
       "editor.background": theme.editor.colors["editor.background"],
       "editor.foreground": theme.foreground,
@@ -227,7 +230,8 @@ export function installShikiHighlighting(monaco: Monaco, initialTheme: ThemeId) 
     const { colorMap } = highlighter.setTheme(theme.id);
     monaco.editor.defineTheme(theme.id, {
       ...theme.editor,
-      colors: { ...theme.editor.colors, ...MINIMAP_SLIDER },
+      // A theme's own slider colors win (light themes need dark ones).
+      colors: { ...MINIMAP_SLIDER, ...theme.editor.colors },
       // Monarch fallback rules, the exact TextMate colors, then semantic
       // categories (sem-*; matched only by semantic tokens).
       rules: [...theme.editor.rules, ...colorMapRules(colorMap), ...semanticRules(theme)],

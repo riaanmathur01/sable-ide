@@ -36,6 +36,9 @@ export type ThemeId =
   | "jetbrains-darcula"
   | "jetbrains-dark"
   | "jetbrains-islands-dark"
+  | "catppuccin-latte"
+  | "catppuccin-frappe"
+  | "catppuccin-macchiato"
   | "catppuccin-mocha";
 
 /** One TextMate theme rule (VS Code's `tokenColors` format). */
@@ -46,7 +49,7 @@ export interface TokenColorRule {
 
 /** Monaco's IStandaloneThemeData, kept structural to avoid importing it. */
 export interface EditorThemeData {
-  base: "vs-dark";
+  base: "vs-dark" | "vs";
   inherit: boolean;
   rules: { token: string; foreground?: string; background?: string; fontStyle?: string }[];
   colors: Record<string, string>;
@@ -95,13 +98,15 @@ export type SemanticStyles = Record<
 export interface ThemeDefinition {
   id: ThemeId;
   label: string;
+  /** Light themes get light native controls and Monaco's light base. */
+  type?: "dark" | "light";
   ui: Record<string, string>;
   /** Default text color for TextMate highlighting. */
   foreground: string;
   /** Rules applied on top of `baseTokenColors` (later rules win). */
   tokenColors: TokenColorRule[];
   /** Start from a published theme's token colors (loaded with Shiki). */
-  baseTokenColors?: "catppuccin-mocha";
+  baseTokenColors?: "catppuccin-latte" | "catppuccin-frappe" | "catppuccin-macchiato" | "catppuccin-mocha";
   editor: EditorThemeData;
   /** Semantic highlighting (needs a language server that provides it). */
   semantic: SemanticStyles;
@@ -558,150 +563,206 @@ const JETBRAINS_DARK: ThemeDefinition = {
 };
 
 
-/**
- * Catppuccin Mocha, matching the JetBrains Catppuccin plugin: the
- * official token colors plus the plugin's differences from the VS Code
- * port — sky operators, peach builtin types, mauve True/False/None, and
- * italic function calls.
- */
-const CATPPUCCIN_MOCHA: ThemeDefinition = {
-  id: "catppuccin-mocha",
-  label: "Catppuccin Mocha",
-  ui: {
-    "--bg-base": "#1e1e2e",
-    "--bg-panel": "#181825",
-    "--bg-elevated": "#313244",
-    "--border": "#11111b",
-    "--text": "#cdd6f4",
-    "--text-muted": "#7f849c",
-    "--accent": "#cba6f7",
-    "--on-accent": "#11111b",
-    "--danger": "#f38ba8",
-    "--git-modified": "#f9e2af",
-    "--git-added": "#a6e3a1",
-    "--git-deleted": "#f38ba8",
+/** A Catppuccin flavour's palette (github.com/catppuccin/palette). */
+interface CatppuccinPalette {
+  rosewater: string; flamingo: string; pink: string; mauve: string; red: string; maroon: string;
+  peach: string; yellow: string; green: string; teal: string; sky: string; sapphire: string;
+  blue: string; lavender: string; text: string; subtext1: string; subtext0: string;
+  overlay2: string; overlay1: string; overlay0: string; surface2: string; surface1: string;
+  surface0: string; base: string; mantle: string; crust: string;
+}
+
+const CATPPUCCIN: Record<"latte" | "frappe" | "macchiato" | "mocha", CatppuccinPalette> = {
+  latte: {
+    rosewater: "#dc8a78", flamingo: "#dd7878", pink: "#ea76cb", mauve: "#8839ef", red: "#d20f39", maroon: "#e64553",
+    peach: "#fe640b", yellow: "#df8e1d", green: "#40a02b", teal: "#179299", sky: "#04a5e5", sapphire: "#209fb5",
+    blue: "#1e66f5", lavender: "#7287fd", text: "#4c4f69", subtext1: "#5c5f77", subtext0: "#6c6f85",
+    overlay2: "#7c7f93", overlay1: "#8c8fa1", overlay0: "#9ca0b0", surface2: "#acb0be", surface1: "#bcc0cc",
+    surface0: "#ccd0da", base: "#eff1f5", mantle: "#e6e9ef", crust: "#dce0e8",
   },
-  foreground: "#cdd6f4",
-  baseTokenColors: "catppuccin-mocha",
-  tokenColors: [
-    { scope: ["keyword.operator", "punctuation.separator.dict.python", "punctuation.separator.key-value", "punctuation.separator.annotation.python"], settings: { foreground: "#89dceb" } },
-    { scope: ["keyword.operator.logical.python", "keyword.operator.word", "keyword.operator.new", "keyword.operator.expression"], settings: { foreground: "#cba6f7" } },
-    { scope: ["support.type.python"], settings: { foreground: "#fab387", fontStyle: "italic" } },
-    { scope: ["constant.language.python"], settings: { foreground: "#cba6f7", fontStyle: "" } },
-    { scope: ["meta.function-call.generic.python", "meta.function-call.generic", "entity.name.function.member", "meta.method-call entity.name.function"], settings: { foreground: "#89b4fa", fontStyle: "italic" } },
-    { scope: ["storage.type.string.python"], settings: { foreground: "#a6e3a1", fontStyle: "" } },
-  ],
-  editor: {
-    base: "vs-dark",
-    inherit: true,
-    rules: [
-      { token: "", foreground: "cdd6f4" },
-      { token: "comment", foreground: "9399b2", fontStyle: "italic" },
-      { token: "keyword", foreground: "cba6f7" },
-      { token: "string", foreground: "a6e3a1" },
-      { token: "string.escape", foreground: "f5c2e7" },
-      { token: "number", foreground: "fab387" },
-      { token: "regexp", foreground: "f5c2e7" },
-      { token: "type", foreground: "f9e2af" },
-      { token: "type.identifier", foreground: "f9e2af" },
-      { token: "annotation", foreground: "fab387" },
-      { token: "tag", foreground: "cba6f7" },
-      { token: "tag.python", foreground: "fab387" },
-      { token: "attribute.name", foreground: "f9e2af" },
-      { token: "string.key.json", foreground: "89b4fa" },
-      { token: "delimiter", foreground: "9399b2" },
-      { token: "operator", foreground: "89dceb" },
-    ],
-    colors: {
-      "editor.background": "#1e1e2e",
-      "editor.foreground": "#cdd6f4",
-      "editorLineNumber.foreground": "#6c7086",
-      "editorLineNumber.activeForeground": "#b4befe",
-      "editorGutter.background": "#1e1e2e",
-      "editorCursor.foreground": "#f5e0dc",
-      "editor.selectionBackground": "#9399b240",
-      "editor.inactiveSelectionBackground": "#9399b226",
-      "editor.lineHighlightBackground": "#cdd6f408",
-      "editor.lineHighlightBorder": "#00000000",
-      "editor.findMatchBackground": "#5e3f53",
-      "editor.findMatchHighlightBackground": "#3e5767",
-      "editor.wordHighlightBackground": "#9399b233",
-      "editor.wordHighlightStrongBackground": "#89b4fa33",
-      "editorWhitespace.foreground": "#9399b266",
-      "editorIndentGuide.background1": "#313244",
-      "editorIndentGuide.activeBackground1": "#45475a",
-      "editorRuler.foreground": "#313244",
-      "editorBracketMatch.background": "#9399b21a",
-      "editorBracketMatch.border": "#9399b2",
-      "editorBracketHighlight.foreground1": "#f38ba8",
-      "editorBracketHighlight.foreground2": "#fab387",
-      "editorBracketHighlight.foreground3": "#f9e2af",
-      "editorBracketHighlight.unexpectedBracket.foreground": "#eba0ac",
-      "editorWidget.background": "#181825",
-      "editorWidget.border": "#313244",
-      "editorSuggestWidget.background": "#181825",
-      "editorSuggestWidget.border": "#313244",
-      "editorSuggestWidget.selectedBackground": "#313244",
-      "editorSuggestWidget.highlightForeground": "#cba6f7",
-      "editorHoverWidget.background": "#181825",
-      "editorHoverWidget.border": "#313244",
-      "editorStickyScroll.background": "#1e1e2e",
-      "editorStickyScroll.shadow": "#11111b",
-      "editorStickyScrollHover.background": "#313244",
-      "scrollbarSlider.background": "#585b7066",
-      "scrollbarSlider.hoverBackground": "#585b70aa",
-      "scrollbarSlider.activeBackground": "#585b70cc",
-      "editorError.foreground": "#f38ba8",
-      "editorWarning.foreground": "#fab387",
-      "editorInfo.foreground": "#89b4fa",
-      "editorLightBulb.foreground": "#f9e2af",
-      "editorLightBulbAutoFix.foreground": "#89b4fa",
-      "editorOverviewRuler.errorForeground": "#f38ba8",
-      "editorOverviewRuler.warningForeground": "#fab387",
-    },
+  frappe: {
+    rosewater: "#f2d5cf", flamingo: "#eebebe", pink: "#f4b8e4", mauve: "#ca9ee6", red: "#e78284", maroon: "#ea999c",
+    peach: "#ef9f76", yellow: "#e5c890", green: "#a6d189", teal: "#81c8be", sky: "#99d1db", sapphire: "#85c1dc",
+    blue: "#8caaee", lavender: "#babbf1", text: "#c6d0f5", subtext1: "#b5bfe2", subtext0: "#a5adce",
+    overlay2: "#949cbb", overlay1: "#838ba7", overlay0: "#737994", surface2: "#626880", surface1: "#51576d",
+    surface0: "#414559", base: "#303446", mantle: "#292c3c", crust: "#232634",
   },
-  // From the JetBrains Catppuccin plugin's color scheme (editor.tera):
-  // PARAMETER maroon italic, PY.SELF_PARAMETER red italic, CLASS_NAME
-  // yellow italic, FUNCTION_DECLARATION/CALL blue italic, PY.BUILTIN_NAME
-  // peach italic, PY.DECORATOR peach, PY.PREDEFINED_DEFINITION sapphire
-  // italic, STATIC_FIELD teal, CONSTANT peach.
-  semantic: {
-    "sem-parameter": { foreground: "#eba0ac", fontStyle: "italic" },
-    "sem-self": { foreground: "#f38ba8", fontStyle: "italic" },
-    "sem-class-decl": { foreground: "#f9e2af", fontStyle: "italic" },
-    "sem-class": { foreground: "#f9e2af" },
-    "sem-type-param": { foreground: "#f9e2af", fontStyle: "italic" },
-    "sem-function-decl": { foreground: "#89b4fa", fontStyle: "italic" },
-    "sem-function-call": { foreground: "#89b4fa", fontStyle: "italic" },
-    "sem-dunder-decl": { foreground: "#74c7ec", fontStyle: "italic" },
-    "sem-builtin": { foreground: "#fab387", fontStyle: "italic" },
-    "sem-decorator": { foreground: "#fab387" },
-    "sem-property": { foreground: "#cdd6f4" },
-    "sem-property-static": { foreground: "#94e2d5" },
-    "sem-enum-member": { foreground: "#fab387" },
+  macchiato: {
+    rosewater: "#f4dbd6", flamingo: "#f0c6c6", pink: "#f5bde6", mauve: "#c6a0f6", red: "#ed8796", maroon: "#ee99a0",
+    peach: "#f5a97f", yellow: "#eed49f", green: "#a6da95", teal: "#8bd5ca", sky: "#91d7e3", sapphire: "#7dc4e4",
+    blue: "#8aadf4", lavender: "#b7bdf8", text: "#cad3f5", subtext1: "#b8c0e0", subtext0: "#a5adcb",
+    overlay2: "#939ab7", overlay1: "#8087a2", overlay0: "#6e738d", surface2: "#5b6078", surface1: "#494d64",
+    surface0: "#363a4f", base: "#24273a", mantle: "#1e2030", crust: "#181926",
   },
-  terminal: {
-    foreground: "#cdd6f4",
-    cursor: "#f5e0dc",
-    selectionBackground: "#585b70",
-    black: "#45475a",
-    red: "#f38ba8",
-    green: "#a6e3a1",
-    yellow: "#f9e2af",
-    blue: "#89b4fa",
-    magenta: "#f5c2e7",
-    cyan: "#94e2d5",
-    white: "#bac2de",
-    brightBlack: "#585b70",
-    brightRed: "#f38ba8",
-    brightGreen: "#a6e3a1",
-    brightYellow: "#f9e2af",
-    brightBlue: "#89b4fa",
-    brightMagenta: "#f5c2e7",
-    brightCyan: "#94e2d5",
-    brightWhite: "#a6adc8",
+  mocha: {
+    rosewater: "#f5e0dc", flamingo: "#f2cdcd", pink: "#f5c2e7", mauve: "#cba6f7", red: "#f38ba8", maroon: "#eba0ac",
+    peach: "#fab387", yellow: "#f9e2af", green: "#a6e3a1", teal: "#94e2d5", sky: "#89dceb", sapphire: "#74c7ec",
+    blue: "#89b4fa", lavender: "#b4befe", text: "#cdd6f4", subtext1: "#bac2de", subtext0: "#a6adc8",
+    overlay2: "#9399b2", overlay1: "#7f849c", overlay0: "#6c7086", surface2: "#585b70", surface1: "#45475a",
+    surface0: "#313244", base: "#1e1e2e", mantle: "#181825", crust: "#11111b",
   },
 };
+
+const hex = (color: string) => color.replace("#", "");
+
+/**
+ * A Catppuccin flavour, matching the JetBrains Catppuccin plugin: the
+ * official token colors plus the plugin's differences from the VS Code
+ * port — sky operators, peach builtin types, mauve True/False/None, and
+ * italic function calls. Latte is the light flavour.
+ */
+function catppuccin(flavour: keyof typeof CATPPUCCIN, label: string): ThemeDefinition {
+  const c = CATPPUCCIN[flavour];
+  const light = flavour === "latte";
+  return {
+    id: `catppuccin-${flavour}` as ThemeId,
+    label,
+    type: light ? "light" : "dark",
+    ui: {
+      "--bg-base": c.base,
+      "--bg-panel": c.mantle,
+      "--bg-elevated": c.surface0,
+      "--border": light ? c.surface0 : c.crust,
+      "--text": c.text,
+      "--text-muted": light ? c.subtext0 : c.overlay1,
+      "--accent": c.mauve,
+      "--on-accent": light ? c.base : c.crust,
+      "--danger": c.red,
+      "--git-modified": c.yellow,
+      "--git-added": c.green,
+      "--git-deleted": c.red,
+    },
+    foreground: c.text,
+    baseTokenColors: `catppuccin-${flavour}` as ThemeDefinition["baseTokenColors"],
+    tokenColors: [
+      { scope: ["keyword.operator", "punctuation.separator.dict.python", "punctuation.separator.key-value", "punctuation.separator.annotation.python"], settings: { foreground: c.sky } },
+      { scope: ["keyword.operator.logical.python", "keyword.operator.word", "keyword.operator.new", "keyword.operator.expression"], settings: { foreground: c.mauve } },
+      { scope: ["support.type.python"], settings: { foreground: c.peach, fontStyle: "italic" } },
+      { scope: ["constant.language.python"], settings: { foreground: c.mauve, fontStyle: "" } },
+      { scope: ["meta.function-call.generic.python", "meta.function-call.generic", "entity.name.function.member", "meta.method-call entity.name.function"], settings: { foreground: c.blue, fontStyle: "italic" } },
+      { scope: ["storage.type.string.python"], settings: { foreground: c.green, fontStyle: "" } },
+    ],
+    editor: {
+      base: light ? "vs" : "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "", foreground: hex(c.text) },
+        { token: "comment", foreground: hex(c.overlay2), fontStyle: "italic" },
+        { token: "keyword", foreground: hex(c.mauve) },
+        { token: "string", foreground: hex(c.green) },
+        { token: "string.escape", foreground: hex(c.pink) },
+        { token: "number", foreground: hex(c.peach) },
+        { token: "regexp", foreground: hex(c.pink) },
+        { token: "type", foreground: hex(c.yellow) },
+        { token: "type.identifier", foreground: hex(c.yellow) },
+        { token: "annotation", foreground: hex(c.peach) },
+        { token: "tag", foreground: hex(c.mauve) },
+        { token: "tag.python", foreground: hex(c.peach) },
+        { token: "attribute.name", foreground: hex(c.yellow) },
+        { token: "string.key.json", foreground: hex(c.blue) },
+        { token: "delimiter", foreground: hex(c.overlay2) },
+        { token: "operator", foreground: hex(c.sky) },
+      ],
+      colors: {
+        "editor.background": c.base,
+        "editor.foreground": c.text,
+        "editorLineNumber.foreground": c.overlay0,
+        "editorLineNumber.activeForeground": c.lavender,
+        "editorGutter.background": c.base,
+        "editorCursor.foreground": c.rosewater,
+        "editor.selectionBackground": `${c.overlay2}40`,
+        "editor.inactiveSelectionBackground": `${c.overlay2}26`,
+        "editor.lineHighlightBackground": `${c.text}${light ? "0d" : "08"}`,
+        "editor.lineHighlightBorder": "#00000000",
+        "editor.findMatchBackground": `${c.red}40`,
+        "editor.findMatchHighlightBackground": `${c.sapphire}40`,
+        "editor.wordHighlightBackground": `${c.overlay2}33`,
+        "editor.wordHighlightStrongBackground": `${c.blue}33`,
+        "editorWhitespace.foreground": `${c.overlay2}66`,
+        "editorIndentGuide.background1": c.surface0,
+        "editorIndentGuide.activeBackground1": c.surface1,
+        "editorRuler.foreground": c.surface0,
+        "editorBracketMatch.background": `${c.overlay2}1a`,
+        "editorBracketMatch.border": c.overlay2,
+        "editorBracketHighlight.foreground1": c.red,
+        "editorBracketHighlight.foreground2": c.peach,
+        "editorBracketHighlight.foreground3": c.yellow,
+        "editorBracketHighlight.unexpectedBracket.foreground": c.maroon,
+        "editorWidget.background": c.mantle,
+        "editorWidget.border": c.surface0,
+        "editorSuggestWidget.background": c.mantle,
+        "editorSuggestWidget.border": c.surface0,
+        "editorSuggestWidget.selectedBackground": c.surface0,
+        "editorSuggestWidget.highlightForeground": c.mauve,
+        "editorHoverWidget.background": c.mantle,
+        "editorHoverWidget.border": c.surface0,
+        "editorStickyScroll.background": c.base,
+        "editorStickyScroll.shadow": light ? `${c.overlay0}66` : c.crust,
+        "editorStickyScrollHover.background": c.surface0,
+        "scrollbarSlider.background": `${c.surface2}66`,
+        "scrollbarSlider.hoverBackground": `${c.surface2}aa`,
+        "scrollbarSlider.activeBackground": `${c.surface2}cc`,
+        "minimapSlider.background": `${c.overlay0}33`,
+        "minimapSlider.hoverBackground": `${c.overlay0}4d`,
+        "minimapSlider.activeBackground": `${c.overlay0}66`,
+        "editorError.foreground": c.red,
+        "editorWarning.foreground": c.peach,
+        "editorInfo.foreground": c.blue,
+        "editorLightBulb.foreground": c.yellow,
+        "editorLightBulbAutoFix.foreground": c.blue,
+        "editorOverviewRuler.errorForeground": c.red,
+        "editorOverviewRuler.warningForeground": c.peach,
+      },
+    },
+    // From the JetBrains Catppuccin plugin's color scheme (editor.tera):
+    // PARAMETER maroon italic, PY.SELF_PARAMETER red italic, CLASS_NAME
+    // yellow italic, FUNCTION_DECLARATION/CALL blue italic, PY.BUILTIN_NAME
+    // peach italic, PY.DECORATOR peach, PY.PREDEFINED_DEFINITION sapphire
+    // italic, STATIC_FIELD teal, CONSTANT peach.
+    semantic: {
+      "sem-parameter": { foreground: c.maroon, fontStyle: "italic" },
+      "sem-self": { foreground: c.red, fontStyle: "italic" },
+      "sem-class-decl": { foreground: c.yellow, fontStyle: "italic" },
+      "sem-class": { foreground: c.yellow },
+      "sem-type-param": { foreground: c.yellow, fontStyle: "italic" },
+      "sem-function-decl": { foreground: c.blue, fontStyle: "italic" },
+      "sem-function-call": { foreground: c.blue, fontStyle: "italic" },
+      "sem-dunder-decl": { foreground: c.sapphire, fontStyle: "italic" },
+      "sem-builtin": { foreground: c.peach, fontStyle: "italic" },
+      "sem-decorator": { foreground: c.peach },
+      "sem-property": { foreground: c.text },
+      "sem-property-static": { foreground: c.teal },
+      "sem-enum-member": { foreground: c.peach },
+    },
+    // Catppuccin's terminal colours (Latte swaps the greys, being light).
+    terminal: {
+      foreground: c.text,
+      cursor: c.rosewater,
+      selectionBackground: light ? `${c.overlay2}4d` : c.surface2,
+      black: light ? c.subtext1 : c.surface1,
+      red: c.red,
+      green: c.green,
+      yellow: c.yellow,
+      blue: c.blue,
+      magenta: c.pink,
+      cyan: c.teal,
+      white: light ? c.surface2 : c.subtext1,
+      brightBlack: light ? c.subtext0 : c.surface2,
+      brightRed: c.red,
+      brightGreen: c.green,
+      brightYellow: c.yellow,
+      brightBlue: c.blue,
+      brightMagenta: c.pink,
+      brightCyan: c.teal,
+      brightWhite: light ? c.surface1 : c.subtext0,
+    },
+  };
+}
+
+const CATPPUCCIN_LATTE = catppuccin("latte", "Catppuccin Latte");
+const CATPPUCCIN_FRAPPE = catppuccin("frappe", "Catppuccin Frappé");
+const CATPPUCCIN_MACCHIATO = catppuccin("macchiato", "Catppuccin Macchiato");
+const CATPPUCCIN_MOCHA = catppuccin("mocha", "Catppuccin Mocha");
 
 /** Islands Dark, the default since 2025.3: Dark's syntax colors on the
  *  darker Islands background and UI. */
@@ -743,6 +804,9 @@ export const THEMES: Record<ThemeId, ThemeDefinition> = {
   "jetbrains-darcula": DARCULA,
   "jetbrains-dark": JETBRAINS_DARK,
   "jetbrains-islands-dark": JETBRAINS_ISLANDS_DARK,
+  "catppuccin-latte": CATPPUCCIN_LATTE,
+  "catppuccin-frappe": CATPPUCCIN_FRAPPE,
+  "catppuccin-macchiato": CATPPUCCIN_MACCHIATO,
   "catppuccin-mocha": CATPPUCCIN_MOCHA,
 };
 
@@ -761,6 +825,13 @@ export function applyUiTheme(id: string): void {
   for (const [name, value] of Object.entries(theme.ui)) {
     root.style.setProperty(name, value);
   }
+  // Native controls (scrollbars, form fields) and the window follow.
+  const scheme = theme.type ?? "dark";
+  root.style.colorScheme = scheme;
+  document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", scheme);
+  void import("@tauri-apps/api/window")
+    .then(({ getCurrentWindow }) => getCurrentWindow().setTheme(scheme))
+    .catch(() => {});
   try {
     localStorage.setItem(THEME_CACHE_KEY, theme.id);
   } catch {

@@ -36,7 +36,7 @@ export interface EditorTab {
   path: string;
   name: string;
   isDirty: boolean;
-  kind: "file" | "diff" | "settings" | "merge" | "history" | "preview";
+  kind: "file" | "diff" | "settings" | "merge" | "history" | "preview" | "plugin";
   /** Present on diff tabs: what to compare. */
   diff?: DiffSource;
   /** Present on merge tabs: the conflicted file. */
@@ -45,6 +45,8 @@ export interface EditorTab {
   historyFile?: string | null;
   /** On preview tabs: the Markdown file shown rendered. */
   previewFile?: string;
+  /** On plugin tabs: the plugin whose details page this is. */
+  pluginId?: string;
 }
 
 /**
@@ -125,6 +127,8 @@ interface TabsState {
   /** Open a Markdown file's rendered preview — beside it (the next
    *  editor group) or in its place. */
   openPreview: (filePath: string, side: boolean) => void;
+  /** Open (or focus) a plugin's details page (like VS Code's). */
+  openPluginDetails: (pluginId: string, name: string) => void;
   /** Open (or focus) a file's local history (null: deleted files). */
   openHistory: (filePath: string | null) => void;
   /** Activate a tab in a group (default: focused) and focus that group. */
@@ -429,6 +433,26 @@ export const useTabsStore = create<TabsState>((set, get) => ({
         ),
         // Keep typing in the file; the preview follows along.
         side ? activeGroupId : targetId,
+      ),
+    );
+  },
+
+  openPluginDetails: (pluginId, name) => {
+    const key = `plugin:${pluginId}`;
+    const existing = get().groups.find((group) => group.tabs.some((tab) => tab.path === key));
+    if (existing) {
+      get().setActive(key, existing.id);
+      return;
+    }
+    const groupId = get().activeGroupId;
+    set((state) =>
+      withGroups(
+        updateGroup(state.groups, groupId, (group) => ({
+          ...group,
+          tabs: [...group.tabs, { path: key, name: `Plugin: ${name}`, isDirty: false, kind: "plugin", pluginId }],
+          activePath: key,
+        })),
+        groupId,
       ),
     );
   },

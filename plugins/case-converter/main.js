@@ -25,20 +25,57 @@ const CASES = {
   lower: ["lowercase", (t) => t.toLowerCase()],
 };
 
+/** `text` in case `id`. Identifier cases convert line by line, so a
+ *  selected list converts item by item. */
+function convertText(id, text) {
+  const convert = CASES[id][1];
+  if (["title", "sentence", "upper", "lower"].includes(id)) return convert(text);
+  return text
+    .split("\n")
+    .map((line) => {
+      const indent = line.match(/^\s*/)?.[0] ?? "";
+      return line.trim() ? indent + convert(line.trim()) : line;
+    })
+    .join("\n");
+}
+
+/** Cases that make valid names in code, offered when renaming (F2). */
+const NAME_CASES = ["camel", "pascal", "snake", "constant"];
+/** Languages where kebab-case names are valid too. */
+const KEBAB_LANGUAGES = new Set(["css", "scss", "less", "html"]);
+
 /** @param {Sable} sable */
 export function activate(sable) {
-  for (const [id, [name, convert]] of Object.entries(CASES)) {
+  // Under the rename box (F2 / ⇧F6): the symbol in the other cases.
+  sable.languages.registerRenameSuggestions("*", ({ name, language }) => {
+    const cases = KEBAB_LANGUAGES.has(language) ? [...NAME_CASES, "kebab"] : NAME_CASES;
+    return [...new Set(cases.map((id) => convertText(id, name)))].filter((candidate) => candidate !== name);
+  });
+
+  const selection = async () => {
+    const editor = await sable.editor.active();
+    const selected = editor?.selection?.text;
+    if (!selected) await sable.window.showError("Select the text to convert first");
+    return selected || null;
+  };
+
+  // One command for all of them: pick a case, seeing what you'd get.
+  sable.commands.register("convert", "Convert Case…", async () => {
+    const selected = await selection();
+    if (!selected) return;
+    const sample = selected.split("\n")[0].slice(0, 60);
+    const choice = await sable.window.showQuickPick(
+      Object.entries(CASES).map(([id, [name]]) => ({ label: name, description: convertText(id, sample), id })),
+      { placeholder: "Convert the selection to…" },
+    );
+    if (choice) await sable.editor.replaceSelection(convertText(choice.id, selected));
+  });
+
+  // And each case as its own command.
+  for (const [id, [name]] of Object.entries(CASES)) {
     sable.commands.register(id, `Convert to ${name}`, async () => {
-      const editor = await sable.editor.active();
-      const selected = editor?.selection?.text;
-      if (!selected) return sable.window.showError("Select the text to convert first");
-      // Each line on its own, so a selected list converts item by item.
-      const isIdentifierCase = !["title", "sentence", "upper", "lower"].includes(id);
-      const result = isIdentifierCase ? selected.split("\n").map((line) => {
-        const indent = line.match(/^\s*/)?.[0] ?? "";
-        return line.trim() ? indent + convert(line.trim()) : line;
-      }).join("\n") : convert(selected);
-      await sable.editor.replaceSelection(result);
+      const selected = await selection();
+      if (selected) await sable.editor.replaceSelection(convertText(id, selected));
     });
   }
 }

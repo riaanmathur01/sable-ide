@@ -1,11 +1,13 @@
 {
   "id": "case-converter",
   "name": "Case Converter",
-  "version": "1.0.0",
-  "description": "Convert the selection to camelCase, PascalCase, snake_case, kebab-case, CONSTANT_CASE, Title Case and more.",
+  "version": "1.1.0",
+  "description": "Rename a symbol into another case (F2 lists camelCase, snake_case, PascalCase, CONSTANT_CASE), or convert selected text to any case from the command palette.",
   "author": "Sable",
   "main": "main.js",
-  "permissions": ["editor"],
-  "minSableVersion": "0.3.3",
+  "permissions": [
+    "editor"
+  ],
+  "minSableVersion": "0.3.4",
   "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/case-converter"
 }

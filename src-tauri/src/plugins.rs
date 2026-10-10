@@ -329,6 +329,24 @@ pub async fn plugin_marketplace(url: String) -> Result<serde_json::Value, String
     serde_json::from_slice(&bytes).map_err(|error| format!("The marketplace catalogue isn't valid JSON: {error}"))
 }
 
+/// A plugin's README from where it's published (for its details page
+/// before it's installed). Text only, capped; a missing README is `None`.
+#[tauri::command]
+pub async fn plugin_fetch_readme(url: String) -> Result<Option<String>, String> {
+    const MAX_README_BYTES: usize = 1024 * 1024;
+    if !url.starts_with("https://") && !url.starts_with("http://") {
+        return Err("The README address must start with https://".into());
+    }
+    let response = reqwest::get(&url).await.map_err(|error| format!("Couldn't load the README: {error}"))?;
+    if response.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
+    let response = response.error_for_status().map_err(|error| format!("Couldn't load the README: {error}"))?;
+    let bytes = response.bytes().await.map_err(|error| format!("Couldn't load the README: {error}"))?;
+    let bytes = &bytes[..bytes.len().min(MAX_README_BYTES)];
+    Ok(Some(String::from_utf8_lossy(bytes).into_owned()))
+}
+
 fn staging_dir() -> Result<PathBuf, String> {
     Ok(plugins_dir()?.join(".staging"))
 }

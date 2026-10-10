@@ -72,3 +72,10 @@ body {
   outline-offset: -1px;
 }
 
+
+/* Rename suggestions (plugins such as Case Converter) arrive as soon as
+   the rename box opens; Monaco's sparkle "generate" button only suggests
+   AI, which Sable doesn't use there. */
+.monaco-editor .rename-box .rename-suggestions-button {
+  display: none;
+}

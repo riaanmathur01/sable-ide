@@ -87,6 +87,7 @@ export function StatusBar() {
   const rootPath = useWorkspaceStore((state) => state.rootPath);
   const lastError = useUiStore((state) => state.lastError);
   const statusMessage = useUiStore((state) => state.statusMessage);
+  const updateProgress = useUiStore((state) => state.updateProgress);
   const setLastError = useUiStore((state) => state.setLastError);
   const cursorPosition = useUiStore((state) => state.cursorPosition);
   const lastFileForLsp = useTabsStore((state) => state.lastFilePath);
@@ -203,6 +204,12 @@ export function StatusBar() {
       {currentFilePath && (
         <span className="status-bar-filepath" title={lastFilePath ?? undefined}>
           {currentFilePath}
+        </span>
+      )}
+      {updateProgress && (
+        <span className="status-bar-update" title="Sable is updating — it restarts when done">
+          <RefreshCw size={12} strokeWidth={1.75} className="spinning" />
+          {updateProgress}
         </span>
       )}
       {!lastError && statusMessage && (

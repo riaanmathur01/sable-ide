@@ -100,3 +100,16 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* An update in progress: stays until it's done, beside any message. */
+.status-bar-update {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 0 8px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--text);
+  white-space: nowrap;
+}

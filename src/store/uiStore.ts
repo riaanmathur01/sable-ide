@@ -35,7 +35,16 @@ export type PaletteMode =
   /** Recent Files (⌘E). */
   | "recentFiles"
   /** Recent Locations (⇧⌘E). */
-  | "recentLocations";
+  | "recentLocations"
+  /** A list a plugin asked the user to choose from (showQuickPick). */
+  | "pick";
+
+/** One choice in a plugin's pick list. */
+export interface PickItem {
+  label: string;
+  /** Dim text after the label. */
+  detail?: string;
+}
 
 /** What the status bar shows about the active editor. */
 export interface EditorInfo {
@@ -52,6 +61,9 @@ interface UiState {
   /** Transient non-error notice (e.g. "Installed requests"). */
   statusMessage: string | null;
   showStatus: (message: string) => void;
+  /** An update being downloaded/installed (stays until it's done). */
+  updateProgress: string | null;
+  setUpdateProgress: (text: string | null) => void;
   cursorPosition: CursorPosition | null;
   editorInfo: EditorInfo | null;
   setEditorInfo: (info: EditorInfo | null) => void;
@@ -84,6 +96,10 @@ interface UiState {
   setLspStatus: (serverId: string | null, status: string | null) => void;
   openPalette: (mode: PaletteMode) => void;
   closePalette: () => void;
+  /** The open pick list (paletteMode "pick"). */
+  pick: { items: PickItem[]; placeholder: string; resolve: (index: number | null) => void } | null;
+  /** Ask the user to choose; resolves to the chosen index, or null. */
+  openPick: (items: PickItem[], placeholder: string) => Promise<number | null>;
   toggleBlame: () => void;
   setBottomPanel: (panel: BottomPanel) => void;
   toggleAgent: () => void;
@@ -135,6 +151,8 @@ export const useUiStore = create<UiState>((set) => ({
   terminalVisible: false,
   lastError: null,
   statusMessage: null,
+  updateProgress: null,
+  setUpdateProgress: (text) => set({ updateProgress: text }),
   showStatus: (message) => {
     set({ statusMessage: message });
     clearTimeout(statusDismissTimer);
@@ -155,7 +173,20 @@ export const useUiStore = create<UiState>((set) => ({
     }),
   paletteMode: null,
   openPalette: (mode) => set({ paletteMode: mode }),
-  closePalette: () => set({ paletteMode: null }),
+  closePalette: () =>
+    set((state) => {
+      // Closing an unanswered pick list answers "nothing chosen".
+      state.pick?.resolve(null);
+      return { paletteMode: null, pick: null };
+    }),
+  pick: null,
+  openPick: (items, placeholder) =>
+    new Promise((resolve) =>
+      set((state) => {
+        state.pick?.resolve(null); // a newer list replaces an older one
+        return { paletteMode: "pick", pick: { items, placeholder, resolve } };
+      }),
+    ),
   blameEnabled: false,
   toggleBlame: () => set((state) => ({ blameEnabled: !state.blameEnabled })),
   bottomPanel: "terminal",

@@ -119,6 +119,12 @@ function bootstrap() {
       window: {
         showMessage: (text: string) => call("window.showMessage", String(text)),
         showError: (text: string) => call("window.showError", String(text)),
+        /** Resolves to the chosen item (as given), or null if dismissed. */
+        showQuickPick: async (items: unknown[], options: { placeholder?: string } = {}) => {
+          const list = Array.isArray(items) ? items : [];
+          const index = await call("window.showQuickPick", list, options.placeholder ?? "");
+          return typeof index === "number" ? list[index] : null;
+        },
       },
       statusBar: {
         set: (text: string, options: { tooltip?: string; command?: string } = {}) =>
@@ -161,6 +167,11 @@ function bootstrap() {
         ) {
           const id = handler(provide);
           void call("languages.registerCompletions", id, String(language), options.triggerCharacters ?? []);
+          return disposable("languages.unregister", id);
+        },
+        registerRenameSuggestions(language: string, provide: (request: unknown) => unknown) {
+          const id = handler(provide);
+          void call("languages.registerRenameSuggestions", id, String(language));
           return disposable("languages.unregister", id);
         },
         setDiagnostics: (path: string, diagnostics: unknown[]) => call("languages.setDiagnostics", String(path), diagnostics),

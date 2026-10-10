@@ -38,6 +38,8 @@ export interface MarketplaceEntry {
   /** Where it installs from (a GitHub repo or folder link, or an archive). */
   url: string;
   homepage?: string;
+  /** Its README's address (default: worked out from a GitHub `url`). */
+  readme?: string;
 }
 
 /** The catalogue's plugins; malformed entries are left out. */
@@ -58,7 +60,20 @@ function parseCatalogue(raw: unknown): MarketplaceEntry[] {
       tags: Array.isArray(entry.tags) ? entry.tags.filter((tag): tag is string => typeof tag === "string") : [],
       url: text(entry.url),
       homepage: text(entry.homepage) || undefined,
+      readme: text(entry.readme) || undefined,
     }));
+}
+
+/**
+ * Where a published plugin's README is: the catalogue's `readme`, else
+ * worked out from a GitHub repository or folder link.
+ */
+export function readmeUrlFor(entry: { url: string; readme?: string }): string | null {
+  if (entry.readme) return entry.readme;
+  const match = /^https:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?(?:\/tree\/([^/]+)(?:\/(.+?))?)?\/?$/.exec(entry.url.trim());
+  if (!match) return null;
+  const [, owner, repo, ref = "HEAD", folder] = match;
+  return `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${folder ? `${folder}/` : ""}README.md`;
 }
 
 /** Whether version `a` is newer than `b` ("1.10.0" > "1.9.2"). */

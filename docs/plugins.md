@@ -114,6 +114,10 @@ open folder. Lines and columns are 1-based, like the editor.
 
 ### `sable.window`
 - `showMessage(text)`, `showError(text)`: status-bar messages.
+- `showQuickPick(items, { placeholder? })` asks the user to choose from
+  a list, shown like the command palette and filterable as they type.
+  Items are strings or `{ label, description?, detail? }`. It resolves to
+  the chosen item as you passed it, or `null` if dismissed.
 
 ### `sable.statusBar`
 - `set(text, { tooltip?, command? })`: your status-bar item. Clicking it
@@ -153,6 +157,11 @@ Language ids are Monaco's (`python`, `typescript`, `rust`, `plaintext`, …);
   by default it replaces the word being typed. The editor asks once (at a
   trigger character or the start of a word) and narrows the list itself
   as the user types on, so return every candidate, not just the best few.
+- `registerRenameSuggestions(language, ({ path, language, name, line }) => names)`
+  lists names under the rename box (F2, or ⇧F6) as soon as it opens; the
+  user picks one with ↓ and Enter, or keeps typing. `language` can be `"*"`
+  for every language. Case Converter uses it to offer the symbol in other
+  cases.
 - `setDiagnostics(path, diagnostics)` sets squiggles and Problems entries,
   replacing your earlier ones for that file. A diagnostic is
   `{ line, column?, endLine?, endColumn?, message, severity?, source? }`,
@@ -185,7 +194,8 @@ a subfolder, so one repository can hold several. A link to a `.zip` or
 **Settings → Plugins → Marketplace** lists the plugins in a catalogue,
 [`plugins/registry.json`](../plugins/registry.json) in this repository.
 To list yours, open a pull request adding an entry. The format is in
-[`plugins/README.md`](../plugins/README.md). Users get an **Update**
+[`plugins/README.md`](../plugins/README.md). Each plugin's **Details**
+page shows its `README.md`, so include one. Users get an **Update**
 button when the catalogue lists a newer version than theirs. A team can
 run a private marketplace by pointing **Marketplace URL** (on the same
 page) at its own catalogue file.

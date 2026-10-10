@@ -25,6 +25,11 @@ folder here is one plugin.
 }
 ```
 
+Optionally add `"readme": "<a raw README URL>"`. Without it, Sable shows
+the `README.md` next to `sable-plugin.json` (worked out from a GitHub
+`url`) on the plugin's **Details** page, so write one: it's what people
+read before installing.
+
 `url` is where Sable installs from. It can be a repository with
 `sable-plugin.json` at the top, a `…/tree/<branch>/<folder>` link for a
 plugin in a subfolder, or a link to a `.zip` / `.tar.gz`. The entry's

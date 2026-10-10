@@ -61,6 +61,13 @@ export interface CompletionItem {
     | "keyword" | "snippet" | "constant" | "value" | "file" | "color";
 }
 
+export interface QuickPickItem {
+  label: string;
+  /** Dim text shown after the label. */
+  description?: string;
+  detail?: string;
+}
+
 export interface CompletionRequest {
   path: string;
   language: string;
@@ -90,6 +97,12 @@ export interface Sable {
     /** A message in the status bar. */
     showMessage(text: string): Promise<void>;
     showError(text: string): Promise<void>;
+    /**
+     * Ask the user to choose from a list (shown like the command palette,
+     * filterable). Resolves to the chosen item as you passed it, or null
+     * if they dismissed it.
+     */
+    showQuickPick<T extends string | QuickPickItem>(items: T[], options?: { placeholder?: string }): Promise<T | null>;
   };
 
   statusBar: {
@@ -132,6 +145,14 @@ export interface Sable {
       language: string,
       provide: (request: CompletionRequest) => CompletionItem[] | Promise<CompletionItem[]>,
       options?: { triggerCharacters?: string[] },
+    ): Disposable;
+    /**
+     * Names to offer under the rename box (F2 / ⇧F6): return the
+     * suggestions for the symbol being renamed. Language "*" means all.
+     */
+    registerRenameSuggestions(
+      language: string,
+      provide: (request: { path: string; language: string; name: string; line: number }) => string[] | Promise<string[]>,
     ): Disposable;
     /** Squiggles (and Problems entries) for a file; replaces your previous ones for it. */
     setDiagnostics(path: string, diagnostics: Diagnostic[]): Promise<void>;

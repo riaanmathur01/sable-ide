@@ -100,6 +100,7 @@ async fn dispatch(command: &str, args: &Value) -> Result<Value, String> {
         "plugin_read_main" => reply(plugins::plugin_read_main(arg(args, "id")?)),
         "plugin_discard" => reply(plugins::plugin_discard(arg(args, "path")?)),
         "plugin_marketplace" => reply(plugins::plugin_marketplace(arg(args, "url")?).await),
+        "plugin_fetch_readme" => reply(plugins::plugin_fetch_readme(arg(args, "url")?).await),
         _ => json!({ "unknown": true }),
     })
 }
