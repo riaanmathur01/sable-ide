@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../../lib/backend";
 import { useDebugStore, type AttachTarget } from "../../store/debugStore";
 import "./AttachDialog.css";
 

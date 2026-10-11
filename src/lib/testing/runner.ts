@@ -1,4 +1,5 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isRemoteActive } from "../backend";
+import { useRemoteStore } from "../../store/remoteStore";
 import { join, tempDir } from "@tauri-apps/api/path";
 import { deletePath, pathExists, readDirectory, readFile, writeFile } from "../ipc";
 import { shellQuote } from "../runConfig";
@@ -99,7 +100,11 @@ function run(command: string, cwd: string): Promise<ShellOutput> {
 }
 
 async function reportPath(extension: string): Promise<string> {
-  return join(await tempDir(), `sable-tests-${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`);
+  const name = `sable-tests-${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+  // In a remote window the tests run there, so the file goes there too.
+  const remoteTmp = isRemoteActive() ? useRemoteStore.getState().agent?.tmp : undefined;
+  if (remoteTmp) return `${remoteTmp.replace(/\/+$/, "")}/${name}`;
+  return join(await tempDir(), name);
 }
 
 async function readReport(path: string): Promise<string | null> {

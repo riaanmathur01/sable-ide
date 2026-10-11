@@ -16,6 +16,7 @@ import { listWorkspaceFiles } from "../../lib/ipc";
 import { fuzzyScore } from "../../lib/fuzzy";
 import { runActiveFile } from "../../lib/runFile";
 import { openFolderDialog } from "../../lib/openFolder";
+import { useRemoteStore } from "../../store/remoteStore";
 import { useDebugStore } from "../../store/debugStore";
 import { useAgentStore } from "../../store/agentStore";
 import { useBreakpointsStore } from "../../store/breakpointsStore";
@@ -242,22 +243,30 @@ function PaletteInner({ mode, onClose }: { mode: PaletteMode; onClose: () => voi
           query,
           MAX_RESULTS,
         );
-      case "pick":
-        return rank(
+      case "pick": {
+        // Answer, then let closing find no list left to cancel.
+        const answer = (choice: number | string) => {
+          const current = useUiStore.getState().pick;
+          useUiStore.setState({ pick: null });
+          current?.resolve(choice);
+        };
+        const ranked = rank(
           (pick?.items ?? []).map((item, index) => ({
             id: `pick:${index}`,
             label: item.label,
             detail: item.detail,
-            run: () => {
-              // Answer, then let closing find no list left to cancel.
-              const current = useUiStore.getState().pick;
-              useUiStore.setState({ pick: null });
-              current?.resolve(index);
-            },
+            run: () => answer(index),
           })),
           query,
           1000,
         );
+        const typed = query.trim();
+        // What's typed, as a choice of its own (unless it's listed).
+        if (pick?.text && typed && !ranked.some((item) => item.label === typed)) {
+          return [{ id: "pick:text", label: pick.text.replace("%s", typed), run: () => answer(typed) }, ...ranked];
+        }
+        return ranked;
+      }
       case "everywhere": {
         if (!query.trim()) {
           // Nothing typed: recent files, like JetBrains.
@@ -953,6 +962,25 @@ function buildCommands(): PaletteItem[] {
         run: () => pickPlugin("Uninstall which plugin?", (id) => void usePluginStore.getState().uninstall(id)),
       },
     );
+  }
+
+  // Remote development.
+  const remote = useRemoteStore.getState();
+  items.push(
+    { id: "remote-ssh", label: "Remote: Connect to SSH Host…", run: () => void remote.pickSshHost() },
+    { id: "remote-container", label: "Remote: Attach to Running Container…", run: () => void remote.pickContainer() },
+  );
+  if (navigator.userAgent.includes("Windows")) {
+    items.push({ id: "remote-wsl", label: "Remote: Connect to WSL…", run: () => void remote.pickWsl() });
+  }
+  if (remote.status === "connected") {
+    items.push({ id: "remote-folder", label: "Remote: Open Folder…", detail: remote.label ?? undefined, run: () => void remote.openFolder() });
+  }
+  if (remote.status === "lost") {
+    items.push({ id: "remote-reconnect", label: "Remote: Reconnect", detail: remote.label ?? undefined, run: () => void remote.reconnect() });
+  }
+  if (remote.status !== "local") {
+    items.push({ id: "remote-close", label: "Remote: Close Remote Connection", detail: remote.label ?? undefined, run: () => void remote.close() });
   }
 
   // The project's tasks (npm scripts, make targets, …).

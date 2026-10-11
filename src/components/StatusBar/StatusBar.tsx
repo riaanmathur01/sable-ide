@@ -4,7 +4,9 @@ import {
   CircleX,
   TriangleAlert,
   GitBranch,
+  Network,
   RefreshCw,
+  Unplug,
   Settings,
   Sparkles,
   SquareTerminal,
@@ -21,6 +23,7 @@ import { serverIdFor } from "../../lib/lsp/lspClient";
 import { InterpreterPicker } from "./InterpreterPicker";
 import { BranchPicker } from "./BranchPicker";
 import { usePluginStore } from "../../store/pluginStore";
+import { useRemoteStore } from "../../store/remoteStore";
 import "../Plugins/Plugins.css";
 import "./StatusBar.css";
 
@@ -73,6 +76,47 @@ function PluginStatusItems() {
         );
       })}
     </>
+  );
+}
+
+/** Where the workspace is: this computer, or a remote (click: menu). */
+function RemoteItem() {
+  const status = useRemoteStore((state) => state.status);
+  const label = useRemoteStore((state) => state.label);
+  const message = useRemoteStore((state) => state.message);
+  const showMenu = () => void useRemoteStore.getState().showMenu();
+  if (status === "connecting") {
+    return (
+      <span className="status-bar-remote connecting" title={message ?? undefined}>
+        <RefreshCw size={12} strokeWidth={1.75} className="spinning" />
+        {message ?? `Connecting to ${label}…`}
+      </span>
+    );
+  }
+  if (status === "lost") {
+    return (
+      <button
+        className="status-bar-remote lost"
+        title={`${message ?? "The connection was lost"} — click to reconnect`}
+        onClick={() => void useRemoteStore.getState().reconnect()}
+      >
+        <Unplug size={12} strokeWidth={1.75} />
+        {label} · Reconnect
+      </button>
+    );
+  }
+  if (status === "connected") {
+    return (
+      <button className="status-bar-remote connected" title={`Connected to ${label} — click for options`} onClick={showMenu}>
+        <Network size={12} strokeWidth={1.75} />
+        {label}
+      </button>
+    );
+  }
+  return (
+    <button className="status-bar-remote" title="Open a remote folder (SSH, WSL, container)" onClick={showMenu}>
+      <Network size={12} strokeWidth={1.75} />
+    </button>
   );
 }
 
@@ -144,6 +188,7 @@ export function StatusBar() {
   return (
     <footer className="status-bar">
       <div className="status-bar-group">
+        <RemoteItem />
         <button
           className={
             terminalVisible

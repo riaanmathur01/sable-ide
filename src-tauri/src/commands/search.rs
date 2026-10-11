@@ -18,7 +18,9 @@ use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::mpsc::RecvTimeoutError;
 use std::sync::Arc;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, State};
+use crate::events::{emit, Events};
+#[cfg(feature = "desktop")]
+use tauri::{AppHandle, State};
 
 /// Stop after this many matches — a too-broad query on a big repo should
 /// not flood the UI.
@@ -26,6 +28,7 @@ const MATCH_LIMIT: usize = 500;
 const BATCH_SIZE: usize = 50;
 const BATCH_FLUSH_INTERVAL: Duration = Duration::from_millis(60);
 
+#[derive(Default)]
 pub struct SearchState(pub Arc<AtomicU64>);
 
 #[derive(Clone, Serialize)]
@@ -66,7 +69,7 @@ struct SearchDone {
 /// List every file in the workspace for quick-open (Cmd+P). Uses the
 /// same gitignore-aware walk as search (skips hidden dirs, node_modules,
 /// etc.), returning absolute paths. Capped so a huge repo can't stall.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn list_workspace_files(root: String) -> Result<Vec<String>, String> {
     const FILE_LIMIT: usize = 20000;
     let mut files = Vec::new();
@@ -126,10 +129,22 @@ fn build_matcher(query: &str, options: SearchOptions) -> Result<RegexMatcher, St
 /// (monotonically increasing) so the store knows it before any result
 /// batch can possibly arrive — results racing ahead of the invoke
 /// response must never be dropped as stale.
-#[tauri::command]
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn search_workspace(
     app: AppHandle,
     state: State<SearchState>,
+    root: String,
+    query: String,
+    search_id: u64,
+    options: Option<SearchOptions>,
+) -> Result<(), String> {
+    search(crate::events::for_app(&app), &state, root, query, search_id, options)
+}
+
+pub fn search(
+    events: Events,
+    state: &SearchState,
     root: String,
     query: String,
     search_id: u64,
@@ -139,7 +154,8 @@ pub fn search_workspace(
     state.0.store(search_id, Ordering::SeqCst);
 
     if query.trim().is_empty() {
-        let _ = app.emit(
+        emit(
+            &events,
             "search:done",
             SearchDone {
                 search_id,
@@ -158,7 +174,7 @@ pub fn search_workspace(
 
     // Collector thread: batches matches into events so the UI gets a few
     // updates per second instead of one event per match.
-    let collector_app = app.clone();
+    let collector_events = events.clone();
     let collector_total = total_matches.clone();
     std::thread::spawn(move || {
         let mut batch: Vec<SearchMatch> = Vec::new();
@@ -167,7 +183,8 @@ pub fn search_workspace(
                 Ok(search_match) => {
                     batch.push(search_match);
                     if batch.len() >= BATCH_SIZE {
-                        let _ = collector_app.emit(
+                        emit(
+                            &collector_events,
                             "search:results",
                             SearchBatch {
                                 search_id,
@@ -178,7 +195,8 @@ pub fn search_workspace(
                 }
                 Err(RecvTimeoutError::Timeout) => {
                     if !batch.is_empty() {
-                        let _ = collector_app.emit(
+                        emit(
+                            &collector_events,
                             "search:results",
                             SearchBatch {
                                 search_id,
@@ -190,7 +208,8 @@ pub fn search_workspace(
                 Err(RecvTimeoutError::Disconnected) => {
                     // Walk finished; flush what's left and close out.
                     if !batch.is_empty() {
-                        let _ = collector_app.emit(
+                        emit(
+                            &collector_events,
                             "search:results",
                             SearchBatch {
                                 search_id,
@@ -199,7 +218,8 @@ pub fn search_workspace(
                         );
                     }
                     let total = collector_total.load(Ordering::Relaxed);
-                    let _ = collector_app.emit(
+                    emit(
+                            &collector_events,
                         "search:done",
                         SearchDone {
                             search_id,
@@ -342,7 +362,7 @@ pub fn search_workspace(
 
 /// Every file containing at least one match — for "Replace All", which
 /// must reach all matching files, not just the (capped) result list.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn files_with_matches(
     root: String,
     query: String,
@@ -389,7 +409,7 @@ pub async fn files_with_matches(
 /// `search` tool. Same gitignore-aware walk and smart-case matching as
 /// the streaming search, but returns results directly. `is_regex` lets
 /// the agent use patterns; otherwise the query is literal.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn search_text(
     root: String,
     query: String,

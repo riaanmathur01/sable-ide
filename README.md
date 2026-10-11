@@ -193,6 +193,14 @@ may ask once too (More info → Run anyway).
   permissions it declares (`editor`, `workspace:read`, `workspace:write`,
   `shell`, `network`), and you see them before installing. Guide and API
   reference: [docs/plugins.md](docs/plugins.md).
+- **Remote development** — open a folder on an SSH host, in WSL, or in a
+  running Docker/Podman container, and edit, search, run, test, and use
+  git and the terminal there as if it were local (debugging is local-only
+  for now). Click the
+  remote button at the left of the status bar (or **Remote: Connect to
+  SSH Host…** in the command palette). Sable uses your own `ssh`
+  (`~/.ssh/config`, keys and agents) and copies a small agent to the
+  remote the first time. Guide: [docs/remote.md](docs/remote.md).
 - **Layout** — switch views (Explorer, Search, Source Control, History,
   Run and Debug, Plugins) from a VS Code-style activity bar at the left
   edge, from icons in the sidebar header, or from a ☰ menu: Settings →
@@ -237,6 +245,15 @@ PTY sessions, search, file watching — lives behind Rust functions exposed
 as Tauri commands (`#[tauri::command]`), which the frontend calls via
 `invoke()`. Long-running streams (terminal output, search results) arrive
 as Tauri events rather than blocking calls.
+
+**Remote workspaces: the same commands, run elsewhere.** The workspace
+half of the backend (files, search, git, terminals, language servers,
+the watcher) also builds without the desktop parts, as `sable-agent`
+(`src-tauri/agent/`). The app runs it on the remote over `ssh`,
+`wsl.exe` or `docker exec` and speaks JSON lines to it
+(`src-tauri/src/remote.rs`, `src-tauri/src/agent.rs`); the frontend's
+`invoke()` (`src/lib/backend.ts`) sends workspace commands there and the
+agent's events come back under their usual names.
 
 Frontend state is held in small [zustand](https://github.com/pmndrs/zustand)
 stores under `src/store/`. Design tokens (colors, typography, motion) are
@@ -351,7 +368,7 @@ essentials:
 ## Testing
 
 ```sh
-cd src-tauri && cargo test --lib   # shell runner, search, AI streaming, debugger, git
+cd src-tauri && cargo test --lib   # shell runner, search, AI streaming, debugger, git, remote
 npx tsc --noEmit                    # type-check the frontend
 ```
 

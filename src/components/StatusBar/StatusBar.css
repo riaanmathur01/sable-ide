@@ -113,3 +113,49 @@
   color: var(--text);
   white-space: nowrap;
 }
+
+/* Remote connection (far left). */
+.status-bar-remote {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  margin-left: -12px;
+  padding: 0 10px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-status);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.status-bar-remote:hover {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.status-bar-remote.connected {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.status-bar-remote.connected:hover {
+  background: color-mix(in srgb, var(--accent) 85%, var(--text));
+  color: var(--on-accent);
+}
+
+.status-bar-remote.connecting {
+  max-width: 420px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--text);
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.status-bar-remote.lost {
+  background: color-mix(in srgb, var(--danger) 25%, transparent);
+  color: var(--text);
+}

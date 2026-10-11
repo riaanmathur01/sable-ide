@@ -86,7 +86,7 @@ fn extra_search_dirs() -> Vec<PathBuf> {
 /// (so a project's own deps resolve), then CPython/PyPy on the system.
 /// The frontend picks the default (the latest Python version); PyPy is
 /// listed as a selectable option but isn't the default.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn discover_python_interpreters(root: Option<String>) -> Vec<Interpreter> {
     let mut found: Vec<Interpreter> = Vec::new();
     // Dedupe system interpreters by their real path (python3 and
@@ -148,7 +148,7 @@ pub fn discover_python_interpreters(root: Option<String>) -> Vec<Interpreter> {
 /// Create a new virtualenv at `target_dir` using `base` as the base
 /// interpreter, and return the new interpreter. If the venv already
 /// exists, `python -m venv` reuses it harmlessly.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn create_python_venv(
     base: String,
     target_dir: String,

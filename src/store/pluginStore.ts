@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { invoke } from "@tauri-apps/api/core";
+import { addLocalRoot, invoke } from "../lib/backend";
 import { ask as confirmNative } from "@tauri-apps/plugin-dialog";
 import { getVersion } from "@tauri-apps/api/app";
 import { createDirectory, pathExists, writeFile } from "../lib/ipc";
@@ -185,6 +185,8 @@ export const usePluginStore = create<PluginState_>((set, get) => {
 
   async function refreshList(): Promise<PluginInfo[]> {
     const plugins = await invoke<PluginInfo[]>("plugin_list");
+    // Plugins live on this computer, even in a remote window.
+    for (const plugin of plugins) addLocalRoot(plugin.path);
     set({ plugins });
     return plugins;
   }
@@ -345,6 +347,7 @@ export const usePluginStore = create<PluginState_>((set, get) => {
       guarded(async () => {
         const separator = parent.includes("\\") && !parent.includes("/") ? "\\" : "/";
         const folder = `${parent.replace(/[/\\]+$/, "")}${separator}${id}`;
+        addLocalRoot(parent);
         if (await pathExists(folder)) throw new Error(`${folder} already exists — choose another name or location`);
         await createDirectory(parent).catch(() => {});
         await createDirectory(folder);

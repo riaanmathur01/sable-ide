@@ -97,9 +97,17 @@ interface UiState {
   openPalette: (mode: PaletteMode) => void;
   closePalette: () => void;
   /** The open pick list (paletteMode "pick"). */
-  pick: { items: PickItem[]; placeholder: string; resolve: (index: number | null) => void } | null;
+  pick: {
+    items: PickItem[];
+    placeholder: string;
+    /** Offer what's typed as a choice: "Connect to %s". */
+    text?: string;
+    resolve: (choice: number | string | null) => void;
+  } | null;
   /** Ask the user to choose; resolves to the chosen index, or null. */
   openPick: (items: PickItem[], placeholder: string) => Promise<number | null>;
+  /** Choose from `items` or type something (resolves to the text). */
+  openPickOrText: (items: PickItem[], placeholder: string, text: string) => Promise<number | string | null>;
   toggleBlame: () => void;
   setBottomPanel: (panel: BottomPanel) => void;
   toggleAgent: () => void;
@@ -184,7 +192,17 @@ export const useUiStore = create<UiState>((set) => ({
     new Promise((resolve) =>
       set((state) => {
         state.pick?.resolve(null); // a newer list replaces an older one
-        return { paletteMode: "pick", pick: { items, placeholder, resolve } };
+        return {
+          paletteMode: "pick",
+          pick: { items, placeholder, resolve: (choice) => resolve(typeof choice === "number" ? choice : null) },
+        };
+      }),
+    ),
+  openPickOrText: (items, placeholder, text) =>
+    new Promise((resolve) =>
+      set((state) => {
+        state.pick?.resolve(null);
+        return { paletteMode: "pick", pick: { items, placeholder, text, resolve } };
       }),
     ),
   blameEnabled: false,

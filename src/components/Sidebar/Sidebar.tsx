@@ -14,6 +14,7 @@ import { DebugPanel } from "../Debug/DebugPanel";
 import { PAGES, VIEWS, openPage, showView } from "../ActivityBar/views";
 import { ViewMenu } from "../ActivityBar/ViewMenu";
 import { useSetting } from "../../store/settingsStore";
+import { useRemoteStore } from "../../store/remoteStore";
 import "./Sidebar.css";
 
 type PendingCreate = "file" | "folder" | null;
@@ -26,6 +27,7 @@ type PendingCreate = "file" | "folder" | null;
 export function Sidebar() {
   const rootPath = useWorkspaceStore((state) => state.rootPath);
   const rootName = useWorkspaceStore((state) => state.rootName);
+  const remoteLabel = useRemoteStore((state) => (state.status === "local" ? null : state.label));
   const refreshDirectory = useWorkspaceStore((state) => state.refreshDirectory);
   const setLastError = useUiStore((state) => state.setLastError);
   const sidebarView = useUiStore((state) => state.sidebarView);
@@ -156,7 +158,7 @@ export function Sidebar() {
               Open Folder
             </button>
             <p className="sidebar-empty-hint">
-              or drag a folder into the window
+              {remoteLabel ? `on ${remoteLabel}` : "or drag a folder into the window"}
             </p>
           </div>
         ))}

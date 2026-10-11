@@ -18,7 +18,7 @@ pub struct FsEntry {
 /// Read a single directory level. The tree loads lazily — one level per
 /// expanded folder — so opening a workspace with tens of thousands of
 /// files stays instant.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn read_directory(path: String) -> Result<Vec<FsEntry>, String> {
     let entries = std::fs::read_dir(&path)
         .map_err(|error| format!("Could not read {path}: {error}"))?;
@@ -53,13 +53,13 @@ pub fn read_directory(path: String) -> Result<Vec<FsEntry>, String> {
 
 /// Used by drag-and-drop to decide whether a dropped path can be opened
 /// as a workspace.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn is_directory(path: String) -> Result<bool, String> {
     Ok(Path::new(&path).is_dir())
 }
 
 /// Whether anything (file or folder) exists at `path` — without reading it.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn path_exists(path: String) -> bool {
     Path::new(&path).exists()
 }
@@ -67,7 +67,7 @@ pub fn path_exists(path: String) -> bool {
 /// `path` with every symlink resolved. Parts that don't exist yet (a file
 /// about to be created) are appended to their nearest existing ancestor's
 /// real path, so the result says where a write would really land.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn real_path(path: String) -> Result<String, String> {
     let mut existing = Path::new(&path).to_path_buf();
     let mut missing = Vec::new();
@@ -91,7 +91,7 @@ pub fn real_path(path: String) -> Result<String, String> {
     }
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn create_file(path: String) -> Result<(), String> {
     // `create_new` fails if the file exists, so we never clobber data.
     std::fs::File::create_new(&path)
@@ -99,7 +99,7 @@ pub fn create_file(path: String) -> Result<(), String> {
         .map_err(|error| format!("Could not create file {path}: {error}"))
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn create_directory(path: String) -> Result<(), String> {
     std::fs::create_dir(&path)
         .map_err(|error| format!("Could not create folder {path}: {error}"))
@@ -107,7 +107,7 @@ pub fn create_directory(path: String) -> Result<(), String> {
 
 /// Read a file as UTF-8 text for the editor. Binary/non-UTF-8 files
 /// produce a friendly error instead of garbage in Monaco.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn read_file(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path)
         .map_err(|error| format!("Could not open {path}: {error}"))
@@ -115,7 +115,7 @@ pub fn read_file(path: String) -> Result<String, String> {
 
 /// A file's bytes as base64 (images in the Markdown preview). Capped so a
 /// huge file can't stall the webview.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn read_file_base64(path: String) -> Result<String, String> {
     use base64::Engine;
     let metadata = std::fs::metadata(&path).map_err(|error| format!("Could not open {path}: {error}"))?;
@@ -127,7 +127,7 @@ pub fn read_file_base64(path: String) -> Result<String, String> {
 }
 
 /// Write editor contents back to disk (Cmd/Ctrl+S).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn write_file(path: String, contents: String) -> Result<(), String> {
     super::history::record_original(&path);
     std::fs::write(&path, &contents)
@@ -138,7 +138,7 @@ pub fn write_file(path: String, contents: String) -> Result<(), String> {
 
 /// Permanently delete a file or folder (recursively). The frontend shows
 /// a native confirm dialog before calling this.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn delete_path(path: String) -> Result<(), String> {
     super::history::record_deletion(&path);
     let target = Path::new(&path);
@@ -152,7 +152,7 @@ pub fn delete_path(path: String) -> Result<(), String> {
 
 /// Move a file or folder into another directory (tree drag-and-drop).
 /// Returns the new absolute path.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn move_path(source: String, target_directory: String) -> Result<String, String> {
     let source_path = Path::new(&source);
     let target_dir = Path::new(&target_directory);
@@ -189,7 +189,7 @@ fn is_same_file(a: &Path, b: &Path) -> bool {
     }
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn rename_path(path: String, new_name: String) -> Result<String, String> {
     let source = Path::new(&path);
     let parent = source

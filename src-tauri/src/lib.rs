@@ -5,18 +5,33 @@
 // lives behind Tauri commands registered here. The frontend never touches
 // the OS directly; it calls these commands via `invoke()`.
 
+// The workspace half (files, search, git, terminals, language servers,
+// running code) also builds without the desktop parts, as the remote
+// agent (agent/) that serves it over SSH, WSL or a
+// container.
+pub mod agent;
 mod commands;
-mod debug;
+pub mod events;
 mod lsp;
-mod plugins;
 mod watcher;
-#[cfg(test)]
+
+#[cfg(feature = "desktop")]
+mod debug;
+#[cfg(feature = "desktop")]
+mod plugins;
+#[cfg(feature = "desktop")]
+mod remote;
+#[cfg(all(test, feature = "desktop"))]
 mod ui_bridge;
 
+#[cfg(feature = "desktop")]
 use std::collections::HashMap;
+#[cfg(feature = "desktop")]
 use std::sync::atomic::AtomicU64;
+#[cfg(feature = "desktop")]
 use std::sync::{Arc, Mutex};
 
+#[cfg(feature = "desktop")]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -157,6 +172,11 @@ pub fn run() {
             plugins::plugin_discard,
             plugins::plugin_marketplace,
             plugins::plugin_fetch_readme,
+            remote::remote_connect,
+            remote::remote_disconnect,
+            remote::remote_info,
+            remote::remote_call,
+            remote::remote_targets,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

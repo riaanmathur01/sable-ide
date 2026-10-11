@@ -120,7 +120,7 @@ jobs:
             | Linux, Fedora / RHEL / openSUSE | `…_Linux_x64.rpm` |
             | Linux, any distribution | `…_Linux_x64.AppImage` |
 
-            The `.app.tar.gz`, `.sig` and `latest.json` files are for automatic updates — you don't need them.
+            The `.app.tar.gz`, `.sig` and `latest.json` files are for automatic updates, and the `sable-agent-…` files for remote development (Sable fetches them itself) — you don't need them.
 
             The apps aren't code-signed yet: on macOS, right-click Sable → Open the first time (or System Settings → Privacy & Security → Open Anyway); on Windows, SmartScreen → More info → Run anyway.
 
@@ -134,13 +134,81 @@ jobs:
           assetNamePattern: "[name]_[version]_${{ matrix.label }}[setup][ext]"
           args: ${{ matrix.args }}
 
-  # Publish the draft once every installer is in it (a failed build leaves
-  # it a draft, so installed copies never see a half-finished release).
+  # Sable's remote agent for each kind of machine it runs on (SSH hosts,
+  # WSL, containers): static Linux builds (cross-compiled with zig, so they
+  # run on any distribution, Alpine included) and macOS builds. The app
+  # downloads the one a remote needs from the release
+  # (src-tauri/src/remote.rs).
+  agents:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-musl
+            platform: linux-x86_64
+          - os: ubuntu-22.04
+            target: aarch64-unknown-linux-musl
+            platform: linux-aarch64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            platform: macos-aarch64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            platform: macos-x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: agent-${{ matrix.target }}
+
+      - name: zig, to cross-compile the static Linux agent
+        if: runner.os == 'Linux'
+        run: |
+          python3 -m pip install --user ziglang cargo-zigbuild
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Build the agent
+        working-directory: src-tauri
+        env:
+          CARGO_PROFILE_RELEASE_STRIP: "true"
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            cargo zigbuild --release -p sable-agent --target ${{ matrix.target }}
+          else
+            cargo build --release -p sable-agent --target ${{ matrix.target }}
+          fi
+          gzip -9 -c target/${{ matrix.target }}/release/sable-agent > ../sable-agent-${{ matrix.platform }}.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sable-agent-${{ matrix.platform }}
+          path: sable-agent-${{ matrix.platform }}.gz
+          if-no-files-found: error
+
+  # Add the agents, then publish the draft once every installer is in it
+  # (a failed build leaves it a draft, so installed copies never see a
+  # half-finished release).
   publish:
-    needs: build
+    needs: [build, agents]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: sable-agent-*
+          path: agents
+          merge-multiple: true
+
       - name: Publish the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "${{ github.ref_name }}" --repo "${{ github.repository }}" --draft=false --latest
+        run: |
+          gh release upload "${{ github.ref_name }}" agents/sable-agent-*.gz --repo "${{ github.repository }}" --clobber
+          gh release edit "${{ github.ref_name }}" --repo "${{ github.repository }}" --draft=false --latest

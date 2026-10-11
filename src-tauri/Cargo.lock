@@ -3581,6 +3581,7 @@ name = "sable"
 version = "0.3.4"
 dependencies = [
  "base64 0.23.1",
+ "flate2",
  "fontdb",
  "futures-util",
  "git2",
@@ -3603,6 +3604,14 @@ dependencies = [
  "tauri-plugin-updater",
  "tokio",
  "ttf-parser",
+]
+
+[[package]]
+name = "sable-agent"
+version = "0.0.0"
+dependencies = [
+ "sable",
+ "tokio",
 ]
 
 [[package]]

@@ -1,5 +1,5 @@
 import type * as MonacoTypes from "monaco-editor";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "./backend";
 import { pathFromUri } from "./editorRegistry";
 import { capabilitiesOf, changeDocument, extensionOf, pathToUri, sendRequestWithError, serverIdFor } from "./lsp/lspClient";
 import { useInterpreterStore } from "../store/interpreterStore";

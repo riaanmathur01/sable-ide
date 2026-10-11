@@ -189,7 +189,7 @@ fn relative_to_workdir(
 
 /// Read git status for the workspace folder. Returns a non-repo result
 /// (not an error) when there's no repo, so the UI degrades cleanly.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_status(path: String) -> Result<GitStatus, String> {
     let repo = match Repository::discover(&path) {
         Ok(repo) => repo,
@@ -249,7 +249,7 @@ pub fn git_status(path: String) -> Result<GitStatus, String> {
 
 /// Stage one path: add it to the index (or stage its deletion if it's
 /// gone from disk), then persist the index.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_stage(root: String, file: String) -> Result<(), String> {
     let repo = open_repo(&root)?;
     let relative = relative_to_workdir(&repo, &file)?;
@@ -272,7 +272,7 @@ pub fn git_stage(root: String, file: String) -> Result<(), String> {
 
 /// Unstage one path: reset its index entry back to HEAD. With no commits
 /// yet (no HEAD), "unstage" means removing the entry from the index.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_unstage(root: String, file: String) -> Result<(), String> {
     let repo = open_repo(&root)?;
     let relative = relative_to_workdir(&repo, &file)?;
@@ -306,7 +306,7 @@ pub fn git_unstage(root: String, file: String) -> Result<(), String> {
 
 /// Stage every change (like `git add -A`): new/modified via add_all,
 /// deletions of tracked files via update_all.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_stage_all(root: String) -> Result<(), String> {
     let repo = open_repo(&root)?;
     let mut index = repo
@@ -325,7 +325,7 @@ pub fn git_stage_all(root: String) -> Result<(), String> {
 
 /// Unstage everything: reset the whole index to HEAD, or clear it when
 /// there are no commits yet.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_unstage_all(root: String) -> Result<(), String> {
     let repo = open_repo(&root)?;
     let result = match repo.head() {
@@ -355,7 +355,7 @@ pub fn git_unstage_all(root: String) -> Result<(), String> {
 /// hunks are staged or unstaged: the frontend applies the hunk to the
 /// staged text and sends the result. Keeps the entry's mode; a file new to
 /// the index gets the working file's.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_stage_content(root: String, file: String, content: String) -> Result<(), String> {
     let repo = open_repo(&root)?;
     let relative = relative_to_workdir(&repo, &file)?;
@@ -408,7 +408,7 @@ const IDENTITY_UNSET: &str = "identity-unset";
 
 /// Commit the staged changes. Carefully handles the empty-repo (no
 /// parent) and missing-identity cases.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_commit(root: String, message: String) -> Result<(), String> {
     if message.trim().is_empty() {
         return Err("Commit message is empty".to_string());
@@ -503,7 +503,7 @@ pub struct ConflictVersions {
     theirs_label: String,
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_conflict_versions(root: String, file: String) -> Result<ConflictVersions, String> {
     let repo = open_repo(&root)?;
     let relative = relative_to_workdir(&repo, &file)?;
@@ -538,7 +538,7 @@ pub fn git_conflict_versions(root: String, file: String) -> Result<ConflictVersi
 
 /// Abandon the merge in progress: back to HEAD, MERGE_HEAD cleared (like
 /// `git merge --abort` from a clean tree).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_merge_abort(root: String) -> Result<(), String> {
     let repo = open_repo(&root)?;
     let head = repo
@@ -553,7 +553,7 @@ pub fn git_merge_abort(root: String) -> Result<(), String> {
 
 /// Write user.name / user.email to the global git config — backs the
 /// in-app identity prompt when a commit hits the missing-identity case.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_set_identity(name: String, email: String) -> Result<(), String> {
     let mut config = git2::Config::open_default()
         .map_err(|error| format!("Could not open git config: {error}"))?;
@@ -649,7 +649,7 @@ pub struct FileDiff {
 ///   - unstaged → original = index (or HEAD if unstaged-only), modified =
 ///                working tree.
 /// New files leave the original empty; deletions leave the modified empty.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_file_diff(
     root: String,
     file: String,
@@ -736,7 +736,7 @@ fn refs_by_commit(repo: &Repository) -> HashMap<git2::Oid, Vec<String>> {
 /// repo with thousands of commits never loads all at once. An empty repo
 /// (no HEAD to push) returns an empty page. `branch` shows another
 /// branch's history (to cherry-pick from it).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_log(
     root: String,
     limit: usize,
@@ -836,7 +836,7 @@ fn commit_and_parent_tree<'repo>(
 }
 
 /// The files a commit changed (commit tree vs first-parent tree).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_commit_files(
     root: String,
     hash: String,
@@ -872,7 +872,7 @@ pub fn git_commit_files(
 /// Before/after content of one file at a commit (parent tree vs commit
 /// tree), for the diff viewer. `file` is repo-relative (as returned by
 /// git_commit_files).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_commit_file_diff(
     root: String,
     hash: String,
@@ -929,7 +929,7 @@ pub struct BlameLine {
 /// Per-line blame for a file: the commit that last touched each line.
 /// Returns one entry per line in file order. A new/untracked file (or a
 /// binary one) yields an empty list rather than an error.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_blame(root: String, file: String) -> Result<Vec<BlameLine>, String> {
     let repo = open_repo(&root)?;
     let relative = relative_to_workdir(&repo, &file)?;
@@ -1007,7 +1007,7 @@ pub struct BranchInfo {
 }
 
 /// List local branches, marking the current one.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_branches(root: String) -> Result<Vec<BranchInfo>, String> {
     let repo = open_repo(&root)?;
     let branches = repo
@@ -1057,7 +1057,7 @@ fn checkout_branch(repo: &Repository, name: &str) -> Result<(), String> {
 }
 
 /// Create a branch from the current HEAD and switch to it.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_create_branch(root: String, name: String) -> Result<(), String> {
     let repo = open_repo(&root)?;
     let head_commit = repo
@@ -1070,14 +1070,14 @@ pub fn git_create_branch(root: String, name: String) -> Result<(), String> {
 }
 
 /// Switch to an existing local branch (safe — see checkout_branch).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_switch_branch(root: String, name: String) -> Result<(), String> {
     let repo = open_repo(&root)?;
     checkout_branch(&repo, &name)
 }
 
 /// Delete a local branch. Refuses to delete the branch you're on.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_delete_branch(root: String, name: String) -> Result<(), String> {
     let repo = open_repo(&root)?;
     let mut branch = repo
@@ -1108,7 +1108,7 @@ pub struct AheadBehind {
 /// (e.g. origin/main). `graph_ahead_behind(local, upstream)` returns the
 /// number of commits each has that the other doesn't. No upstream (or a
 /// detached/empty HEAD) yields zero counts and has_upstream:false.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_ahead_behind(root: String) -> Result<AheadBehind, String> {
     let repo = open_repo(&root)?;
     let has_remote = repo.remotes().map(|r| r.len() > 0).unwrap_or(false);
@@ -1206,13 +1206,13 @@ async fn run_git_with(cwd: &str, args: &[&str], env: &[(&str, &str)]) -> Result<
     }
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn git_fetch(root: String) -> Result<String, String> {
     let workdir = repo_workdir(&root)?;
     run_git(&workdir, &["fetch"]).await
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn git_pull(root: String) -> Result<String, String> {
     let workdir = repo_workdir(&root)?;
     run_git(&workdir, &["pull"]).await
@@ -1220,7 +1220,7 @@ pub async fn git_pull(root: String) -> Result<String, String> {
 
 /// Push the current branch. If it has no upstream yet, push with
 /// `-u origin <branch>` to create and track it.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn git_push(root: String) -> Result<String, String> {
     // git2 reads (sync) fully complete and drop before we await.
     let workdir = repo_workdir(&root)?;
@@ -1250,7 +1250,7 @@ pub async fn git_push(root: String) -> Result<String, String> {
 
 /// Merge a branch into the current one. Conflicts are left in the working
 /// tree for the merge tool.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn git_merge(root: String, branch: String) -> Result<String, String> {
     let workdir = repo_workdir(&root)?;
     run_git(&workdir, &["merge", "--no-edit", &branch]).await
@@ -1592,7 +1592,7 @@ pub struct StashInfo {
     timestamp: i64,
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn git_stash_list(root: String) -> Result<Vec<StashInfo>, String> {
     let mut repo = open_repo(&root)?;
     let mut found = Vec::new();
@@ -1618,7 +1618,7 @@ pub fn git_stash_list(root: String) -> Result<Vec<StashInfo>, String> {
 }
 
 /// Stash the working changes (and untracked files, if asked).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn git_stash_save(root: String, message: Option<String>, include_untracked: bool) -> Result<String, String> {
     let workdir = repo_workdir(&root)?;
     let mut args = vec!["stash", "push"];
@@ -1633,14 +1633,14 @@ pub async fn git_stash_save(root: String, message: Option<String>, include_untra
 }
 
 /// Apply a stash, keeping it (`pop: false`) or dropping it once applied.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn git_stash_apply(root: String, index: usize, pop: bool) -> Result<String, String> {
     let workdir = repo_workdir(&root)?;
     let reference = format!("stash@{{{index}}}");
     run_git(&workdir, &["stash", if pop { "pop" } else { "apply" }, &reference]).await
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn git_stash_drop(root: String, index: usize) -> Result<String, String> {
     let workdir = repo_workdir(&root)?;
     let reference = format!("stash@{{{index}}}");
@@ -1648,21 +1648,21 @@ pub async fn git_stash_drop(root: String, index: usize) -> Result<String, String
 }
 
 /// Apply a commit's change onto the current branch (a new commit).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn git_cherry_pick(root: String, hash: String) -> Result<String, String> {
     let workdir = repo_workdir(&root)?;
     run_git(&workdir, &["cherry-pick", &hash]).await
 }
 
 /// Undo a commit with a new commit that reverses it.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn git_revert_commit(root: String, hash: String) -> Result<String, String> {
     let workdir = repo_workdir(&root)?;
     run_git(&workdir, &["revert", "--no-edit", &hash]).await
 }
 
 /// Abandon the operation in progress (merge, cherry-pick, revert, rebase).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn git_abort(root: String) -> Result<String, String> {
     let (workdir, operation) = {
         let repo = open_repo(&root)?;
@@ -1681,7 +1681,7 @@ pub async fn git_abort(root: String) -> Result<String, String> {
 const NO_EDITOR: &[(&str, &str)] = &[("GIT_EDITOR", "true"), ("GIT_SEQUENCE_EDITOR", "true")];
 
 /// Rebase the current branch onto `onto` (a branch or commit).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn git_rebase(root: String, onto: String) -> Result<String, String> {
     let workdir = repo_workdir(&root)?;
     run_git_with(&workdir, &["rebase", &onto], NO_EDITOR).await
@@ -1724,7 +1724,7 @@ fn rebase_todo(steps: &[RebaseStep], message_file: impl Fn(usize) -> String) -> 
 
 /// Rewrite the commits after `base` as `steps` says (`base` itself
 /// stays). Stops for conflicts like any rebase.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn git_rebase_interactive(root: String, base: String, steps: Vec<RebaseStep>) -> Result<String, String> {
     let workdir = repo_workdir(&root)?;
     let dir = std::env::temp_dir().join(format!("sable-rebase-{}-{}", std::process::id(), base.get(..8).unwrap_or(&base)));
@@ -1755,7 +1755,7 @@ pub async fn git_rebase_interactive(root: String, base: String, steps: Vec<Rebas
 }
 
 /// After resolving a stop: go on (`skip`: drop the commit that stopped).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn git_rebase_continue(root: String, skip: bool) -> Result<String, String> {
     let workdir = repo_workdir(&root)?;
     run_git_with(&workdir, &["rebase", if skip { "--skip" } else { "--continue" }], NO_EDITOR).await

@@ -9,7 +9,9 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter, State};
+use crate::events::{emit, Events};
+#[cfg(feature = "desktop")]
+use tauri::{AppHandle, State};
 
 pub struct PtySession {
     master: Box<dyn MasterPty + Send>,
@@ -17,6 +19,7 @@ pub struct PtySession {
     child: Box<dyn Child + Send + Sync>,
 }
 
+#[derive(Default)]
 pub struct TerminalState(pub Mutex<HashMap<String, PtySession>>);
 
 #[derive(Clone, Serialize)]
@@ -35,10 +38,22 @@ fn default_shell() -> String {
     }
 }
 
-#[tauri::command]
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn create_terminal(
     app: AppHandle,
     state: State<TerminalState>,
+    id: String,
+    cols: u16,
+    rows: u16,
+    cwd: Option<String>,
+) -> Result<(), String> {
+    open_terminal(crate::events::for_app(&app), &state, id, cols, rows, cwd)
+}
+
+pub fn open_terminal(
+    events: Events,
+    state: &TerminalState,
     id: String,
     cols: u16,
     rows: u16,
@@ -53,16 +68,31 @@ pub fn create_terminal(
     if let Some(directory) = cwd {
         shell_command.cwd(directory);
     }
-    spawn_session(&app, &mut sessions, id, cols, rows, shell_command).map(|_| ())
+    spawn_session(events, &mut sessions, id, cols, rows, shell_command).map(|_| ())
 }
 
 /// A terminal running one program instead of a shell — e.g. a program
 /// being debugged, so it can read keyboard input. Returns its process id.
-#[tauri::command]
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
 #[allow(clippy::too_many_arguments)] // each is a separate argument from the frontend
 pub fn create_command_terminal(
     app: AppHandle,
     state: State<TerminalState>,
+    id: String,
+    args: Vec<String>,
+    cwd: Option<String>,
+    env: Option<HashMap<String, Option<String>>>,
+    cols: u16,
+    rows: u16,
+) -> Result<u32, String> {
+    open_command_terminal(crate::events::for_app(&app), &state, id, args, cwd, env, cols, rows)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn open_command_terminal(
+    events: Events,
+    state: &TerminalState,
     id: String,
     args: Vec<String>,
     cwd: Option<String>,
@@ -85,13 +115,13 @@ pub fn create_command_terminal(
         }
     }
     let mut sessions = state.0.lock().unwrap();
-    spawn_session(&app, &mut sessions, id, cols, rows, command)
+    spawn_session(events, &mut sessions, id, cols, rows, command)
 }
 
 /// Start `command` in a new PTY and stream its output. Returns the
 /// process id (0 if the platform doesn't report one).
 fn spawn_session(
-    app: &AppHandle,
+    events: Events,
     sessions: &mut HashMap<String, PtySession>,
     id: String,
     cols: u16,
@@ -128,7 +158,6 @@ fn spawn_session(
     // Reader thread: PTY bytes → frontend events. Reads can split
     // multi-byte UTF-8 sequences, so an incomplete tail is carried over
     // to the next chunk instead of being emitted as garbage.
-    let app_handle = app.clone();
     let session_id = id.clone();
     std::thread::spawn(move || {
         let mut read_buffer = [0u8; 8192];
@@ -136,7 +165,7 @@ fn spawn_session(
         loop {
             match output_reader.read(&mut read_buffer) {
                 Ok(0) | Err(_) => {
-                    let _ = app_handle.emit("terminal:exit", session_id.clone());
+                    emit(&events, "terminal:exit", session_id.clone());
                     break;
                 }
                 Ok(byte_count) => {
@@ -149,7 +178,8 @@ fn spawn_session(
                         let text = String::from_utf8_lossy(&carry_over[..valid_length])
                             .into_owned();
                         carry_over.drain(..valid_length);
-                        let _ = app_handle.emit(
+                        emit(
+                            &events,
                             "terminal:output",
                             TerminalOutput {
                                 id: session_id.clone(),
@@ -173,12 +203,13 @@ fn spawn_session(
     Ok(process_id)
 }
 
-#[tauri::command]
-pub fn write_terminal(
-    state: State<TerminalState>,
-    id: String,
-    data: String,
-) -> Result<(), String> {
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
+pub fn write_terminal(state: State<TerminalState>, id: String, data: String) -> Result<(), String> {
+    write_to_terminal(&state, id, data)
+}
+
+pub fn write_to_terminal(state: &TerminalState, id: String, data: String) -> Result<(), String> {
     let mut sessions = state.0.lock().unwrap();
     let session = sessions
         .get_mut(&id)
@@ -189,13 +220,13 @@ pub fn write_terminal(
         .map_err(|error| format!("Could not write to the terminal: {error}"))
 }
 
-#[tauri::command]
-pub fn resize_terminal(
-    state: State<TerminalState>,
-    id: String,
-    cols: u16,
-    rows: u16,
-) -> Result<(), String> {
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
+pub fn resize_terminal(state: State<TerminalState>, id: String, cols: u16, rows: u16) -> Result<(), String> {
+    resize(&state, id, cols, rows)
+}
+
+pub fn resize(state: &TerminalState, id: String, cols: u16, rows: u16) -> Result<(), String> {
     let sessions = state.0.lock().unwrap();
     let session = sessions
         .get(&id)
@@ -211,8 +242,13 @@ pub fn resize_terminal(
         .map_err(|error| format!("Could not resize the terminal: {error}"))
 }
 
-#[tauri::command]
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn kill_terminal(state: State<TerminalState>, id: String) -> Result<(), String> {
+    kill(&state, id)
+}
+
+pub fn kill(state: &TerminalState, id: String) -> Result<(), String> {
     let mut sessions = state.0.lock().unwrap();
     if let Some(mut session) = sessions.remove(&id) {
         let _ = session.child.kill();

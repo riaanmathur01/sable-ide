@@ -30,6 +30,8 @@ import {
 import { useSearchStore } from "./store/searchStore";
 import { useGitStore } from "./store/gitStore";
 import { isDirectory, type SearchMatch } from "./lib/ipc";
+import { initLocalRoots, isRemoteActive } from "./lib/backend";
+import { lastRemote, useRemoteStore } from "./store/remoteStore";
 import { useGlobalKeybindings } from "./lib/useGlobalKeybindings";
 import { initLspListeners } from "./lib/lsp/lspClient";
 import { initDebugListeners } from "./lib/debug/debugClient";
@@ -84,20 +86,26 @@ function App() {
     if (restoredRef.current) return;
     restoredRef.current = true;
     const last = lastOpenedFolder();
-    if (!last) return;
-    isDirectory(last)
-      .then(async (exists) => {
-        if (!exists) {
+    const remote = lastRemote();
+    void (async () => {
+      // Sable's own files stay local even in a remote window.
+      await initLocalRoots();
+      if (!last) return;
+      if (remote && remote.folder === last) {
+        // A remote folder: reconnect to it, as VS Code does.
+        if (!(await useRemoteStore.getState().connect(remote.target, remote.folder))) return;
+      } else {
+        if (!(await isDirectory(last).catch(() => false))) {
           clearLastOpenedFolder();
           return;
         }
         await openWorkspace(last);
-        await useTabsStore.getState().restoreSession();
-        if (lastTerminalVisible()) {
-          useUiStore.getState().setTerminalVisible(true);
-        }
-      })
-      .catch(() => clearLastOpenedFolder());
+      }
+      await useTabsStore.getState().restoreSession();
+      if (lastTerminalVisible()) {
+        useUiStore.getState().setTerminalVisible(true);
+      }
+    })();
   }, [openWorkspace]);
 
   // The Rust watcher reports which directories changed on disk (already
@@ -154,6 +162,10 @@ function App() {
         setIsDropTarget(false);
         const droppedPath = event.payload.paths[0];
         if (!droppedPath) return;
+        if (isRemoteActive()) {
+          setLastError(`This window is connected to ${useRemoteStore.getState().label} — close the remote connection to open folders on this computer`);
+          return;
+        }
         isDirectory(droppedPath)
           .then((directory) => {
             if (directory) return openWorkspace(droppedPath);

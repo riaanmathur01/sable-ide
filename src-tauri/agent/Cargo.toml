@@ -1,0 +1,11 @@
+[package]
+name = "sable-agent"
+version = "0.0.0"
+description = "Sable's remote agent: the workspace commands over stdin/stdout"
+edition = "2021"
+publish = false
+
+[dependencies]
+# The workspace half of Sable, without the desktop app.
+sable = { path = "..", default-features = false }
+tokio = { version = "1.52.3", features = ["rt-multi-thread"] }

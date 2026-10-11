@@ -25,6 +25,8 @@ interface WorkspaceState {
   /** Absolute paths of directories currently expanded in the tree. */
   expandedPaths: Set<string>;
   openWorkspace: (path: string) => Promise<void>;
+  /** Close the folder (e.g. when its remote connection is closed). */
+  closeWorkspace: () => void;
   toggleDirectory: (path: string) => Promise<void>;
   /** Re-read a directory from disk (after create/delete/rename). */
   refreshDirectory: (path: string) => Promise<void>;
@@ -101,6 +103,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     } catch (error) {
       reportError(error);
     }
+  },
+
+  closeWorkspace: () => {
+    useTabsStore.getState().resetTabs();
+    useSearchStore.getState().reset();
+    useDiagnosticsStore.getState().clear();
+    useProblemsStore.getState().clear();
+    useGitStore.getState().reset();
+    useInterpreterStore.getState().reset();
+    localStorage.removeItem(LAST_FOLDER_KEY);
+    set({ rootPath: null, rootName: null, childrenByPath: {}, expandedPaths: new Set() });
   },
 
   toggleDirectory: async (path) => {

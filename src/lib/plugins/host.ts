@@ -1,5 +1,5 @@
 import type * as MonacoTypes from "monaco-editor";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../backend";
 import { getVersion } from "@tauri-apps/api/app";
 import { listWorkspaceFiles, runShell } from "../ipc";
 import { getEditor, pathFromUri, whenMonaco } from "../editorRegistry";

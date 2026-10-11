@@ -21,7 +21,9 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
-use tauri::{AppHandle, Emitter, State};
+use crate::events::{emit, Events};
+#[cfg(feature = "desktop")]
+use tauri::{AppHandle, State};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
@@ -677,13 +679,18 @@ fn server_request_result(method: &str, message: &Value) -> Value {
 
 /// Start (or no-op if already running for this language) the language
 /// server for `extension`, completing the LSP handshake before returning.
-#[tauri::command]
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn start_language_server(
     app: AppHandle,
     manager: State<'_, LspManager>,
     extension: String,
     root_path: String,
 ) -> Result<(), String> {
+    start(crate::events::for_app(&app), &manager, extension, root_path).await
+}
+
+pub async fn start(events: Events, manager: &LspManager, extension: String, root_path: String) -> Result<(), String> {
     let spec = server_for_extension(&extension, &root_path)
         .ok_or_else(|| format!("No language server configured for .{extension}"))?;
     let server_id = spec.id.clone();
@@ -704,7 +711,7 @@ pub async fn start_language_server(
 
     // From here, on any early return we must clear the `starting` flag.
     let result =
-        spawn_and_handshake(&app, &spec, &root_path).await;
+        spawn_and_handshake(&events, &spec, &root_path).await;
     match result {
         Ok((mut child, writer)) => {
             let mut state = manager.0.lock().await;
@@ -734,14 +741,11 @@ pub async fn start_language_server(
 /// writer channel. Factored out of the command so the manager lock can be
 /// released during the (sometimes slow) handshake.
 async fn spawn_and_handshake(
-    app: &AppHandle,
+    events: &Events,
     spec: &ServerSpec,
     root_path: &str,
 ) -> Result<(Child, mpsc::UnboundedSender<String>), String> {
-    let _ = app.emit(
-        "lsp:status",
-        json!({ "state": "starting", "server": spec.name, "id": spec.id }),
-    );
+    emit(events, "lsp:status", json!({ "state": "starting", "server": spec.name, "id": spec.id }));
 
     let binary = resolve_binary(&spec.binary)
         .ok_or_else(|| spec.install_hint.clone())?;
@@ -764,7 +768,7 @@ async fn spawn_and_handshake(
     if let Some(stderr) = child.stderr.take() {
         let name = spec.name.clone();
         let tail = stderr_tail.clone();
-        tauri::async_runtime::spawn(async move {
+        tokio::spawn(async move {
             let mut lines = BufReader::new(stderr).lines();
             while let Ok(Some(line)) = lines.next_line().await {
                 eprintln!("[lsp {name}] {line}");
@@ -823,7 +827,7 @@ async fn spawn_and_handshake(
                         .unwrap_or(Value::Null);
                 }
                 // Pre-initialize notification — relay it to the frontend.
-                let _ = app.emit("lsp:message", message);
+                emit(events, "lsp:message", message);
             }
             Ok(None) => {
                 // Let the exit (and its last stderr lines) land first.
@@ -853,7 +857,7 @@ async fn spawn_and_handshake(
     // reader's own request replies) funnels through this channel, so
     // frames never interleave.
     let (writer_tx, mut writer_rx) = mpsc::unbounded_channel::<String>();
-    tauri::async_runtime::spawn(async move {
+    tokio::spawn(async move {
         let mut stdin = stdin;
         while let Some(payload) = writer_rx.recv().await {
             if framing::write_message(&mut stdin, &payload).await.is_err() {
@@ -883,11 +887,11 @@ async fn spawn_and_handshake(
     //   - server→client REQUEST  (has id AND method): we must reply.
     //   - response               (has id, no method): forward to frontend.
     //   - notification           (method, no id): forward to frontend.
-    let reader_app = app.clone();
+    let reader_events = events.clone();
     let reader_tx = writer_tx.clone();
     let reader_server_name = server_name.clone();
     let reader_server_id = server_id.clone();
-    tauri::async_runtime::spawn(async move {
+    tokio::spawn(async move {
         let mut reader = reader;
         loop {
             match framing::read_message(&mut reader).await {
@@ -904,16 +908,13 @@ async fn spawn_and_handshake(
                             // Server-pushed edits are applied by the
                             // frontend, so it needs to see this request.
                             if method == "workspace/applyEdit" {
-                                let _ = reader_app.emit("lsp:message", message.clone());
+                                emit(&reader_events, "lsp:message", message.clone());
                             }
                             // "Pull diagnostics again" (e.g. rust-analyzer
                             // once the project has loaded): the frontend
                             // does the pulling.
                             if method == "workspace/diagnostic/refresh" {
-                                let _ = reader_app.emit(
-                                    "lsp:diagnostic-refresh",
-                                    json!({ "id": reader_server_id }),
-                                );
+                                emit(&reader_events, "lsp:diagnostic-refresh", json!({ "id": reader_server_id }));
                             }
                             // Server is asking us something — reply by id.
                             let result =
@@ -930,12 +931,13 @@ async fn spawn_and_handshake(
                         _ => {
                             // Response or notification — let the frontend
                             // correlate / dispatch it.
-                            let _ = reader_app.emit("lsp:message", message);
+                            emit(&reader_events, "lsp:message", message);
                         }
                     }
                 }
                 Ok(None) | Err(_) => {
-                    let _ = reader_app.emit(
+                    emit(
+                        &reader_events,
                         "lsp:status",
                         json!({
                             "state": "disconnected",
@@ -949,7 +951,8 @@ async fn spawn_and_handshake(
         }
     });
 
-    let _ = app.emit(
+    emit(
+        events,
         "lsp:status",
         json!({
             "state": "connected",
@@ -979,13 +982,13 @@ fn startup_failure(spec: &ServerSpec, stderr_tail: &[String]) -> String {
 /// Send a JSON-RPC *notification* (no id, no response) to the server that
 /// handles `extension` — used for document sync (`didOpen`/`didChange`/
 /// `didClose`). A no-op if that server isn't running.
-#[tauri::command]
-pub async fn lsp_notify(
-    manager: State<'_, LspManager>,
-    extension: String,
-    method: String,
-    params: Value,
-) -> Result<(), String> {
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
+pub async fn lsp_notify(manager: State<'_, LspManager>, extension: String, method: String, params: Value) -> Result<(), String> {
+    notify(&manager, extension, method, params).await
+}
+
+pub async fn notify(manager: &LspManager, extension: String, method: String, params: Value) -> Result<(), String> {
     let Some(server_id) = server_id_for_extension(&extension) else {
         return Ok(());
     };
@@ -1009,7 +1012,8 @@ pub async fn lsp_notify(
 /// server. The id is minted by the frontend; the server's response comes
 /// back through the reader loop as an `lsp:message` event, which the
 /// frontend correlates by that id.
-#[tauri::command]
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn lsp_request(
     manager: State<'_, LspManager>,
     extension: String,
@@ -1017,6 +1021,10 @@ pub async fn lsp_request(
     params: Value,
     id: i64,
 ) -> Result<(), String> {
+    request(&manager, extension, method, params, id).await
+}
+
+pub async fn request(manager: &LspManager, extension: String, method: String, params: Value, id: i64) -> Result<(), String> {
     let server_id = server_id_for_extension(&extension)
         .ok_or_else(|| format!("No language server for .{extension}"))?;
     let state = manager.0.lock().await;
@@ -1040,10 +1048,13 @@ pub async fn lsp_request(
 /// changes: servers are rooted at the folder they were started in, so
 /// they must restart for the new one. Servers still mid-handshake are
 /// discarded when they finish (see `generation`).
-#[tauri::command]
-pub async fn stop_language_servers(
-    manager: State<'_, LspManager>,
-) -> Result<(), String> {
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
+pub async fn stop_language_servers(manager: State<'_, LspManager>) -> Result<(), String> {
+    stop_all(&manager).await
+}
+
+pub async fn stop_all(manager: &LspManager) -> Result<(), String> {
     let handles: Vec<LspHandle> = {
         let mut state = manager.0.lock().await;
         state.generation += 1;
@@ -1068,11 +1079,13 @@ pub async fn stop_language_servers(
 /// Point Pyright at the selected Python interpreter. Pyright re-reads its
 /// configuration on `didChangeConfiguration` (pulling `python.pythonPath`
 /// via `workspace/configuration`) and re-resolves every import.
-#[tauri::command]
-pub async fn lsp_set_python_path(
-    manager: State<'_, LspManager>,
-    path: Option<String>,
-) -> Result<(), String> {
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
+pub async fn lsp_set_python_path(manager: State<'_, LspManager>, path: Option<String>) -> Result<(), String> {
+    set_python_path(&manager, path).await
+}
+
+pub async fn set_python_path(manager: &LspManager, path: Option<String>) -> Result<(), String> {
     *PYTHON_PATH.write().unwrap() = path;
     let state = manager.0.lock().await;
     if let Some(handle) = state.servers.get("pyright") {
@@ -1094,13 +1107,13 @@ pub async fn lsp_set_python_path(
 /// Install basedpyright into Sable's private tools folder (an npm
 /// prefix — a global install would clash with Pyright's `pyright`
 /// command). Language servers restart afterwards to pick it up.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn install_basedpyright() -> Result<(), String> {
     npm_install_tools(&["basedpyright"]).await
 }
 
 /// Install Intelephense (PHP) into Sable's tools folder.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn install_php_server() -> Result<(), String> {
     npm_install_tools(&["intelephense"]).await
 }
@@ -1108,7 +1121,7 @@ pub async fn install_php_server() -> Result<(), String> {
 /// Install typescript-language-server with TypeScript 5 into Sable's tools
 /// folder (TypeScript 7 lacks the tsserver it needs — see
 /// `fallback_tsserver`).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn install_typescript_server() -> Result<(), String> {
     npm_install_tools(&["typescript-language-server", "typescript@5"]).await
 }
@@ -1140,7 +1153,7 @@ async fn npm_install_tools(packages: &[&str]) -> Result<(), String> {
 }
 
 /// Whether the Python server would be basedpyright (semantic highlighting).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn python_server_has_semantic_tokens() -> bool {
     resolve_binary("basedpyright-langserver").is_some()
 }

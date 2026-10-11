@@ -150,7 +150,7 @@ pub struct FileChange {
 /// Run a Rope refactoring on a saved file. `kind`: extract_method,
 /// extract_variable, extract_constant or inline; `start`/`end` are
 /// [line, column] (1-based, the editor's).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 #[allow(clippy::too_many_arguments)] // each is a separate argument from the frontend
 pub async fn python_refactor(
     python: Option<String>,
@@ -211,7 +211,7 @@ pub async fn python_refactor(
 
 /// Install Rope into Sable's tools folder (pip, into a plain folder: no
 /// environment of the user's is touched).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn install_rope(python: Option<String>) -> Result<(), String> {
     let dir = rope_dir().ok_or("No tools folder")?;
     let python = python

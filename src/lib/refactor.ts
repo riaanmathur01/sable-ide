@@ -1,5 +1,5 @@
 import type * as MonacoTypes from "monaco-editor";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "./backend";
 import { ask as confirmNative } from "@tauri-apps/plugin-dialog";
 import { getEditor, getModelValue, pathFromUri } from "./editorRegistry";
 import { changeDocument, extensionOf, pathToUri, sendRequest } from "./lsp/lspClient";

@@ -45,7 +45,7 @@ async fn has_module(python: &str, module: &str) -> bool {
 }
 
 /// The Python formatter to use, if any is available.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn python_formatter(python: Option<String>) -> Option<Formatter> {
     let ruff = |program: String| Formatter {
         name: "ruff".into(),
@@ -87,7 +87,7 @@ pub async fn python_formatter(python: Option<String>) -> Option<Formatter> {
 }
 
 /// Format `text` with a formatter: text in on stdin, formatted text out.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn format_with(formatter: Formatter, path: String, text: String) -> Result<String, String> {
     let cwd = Path::new(&path).parent().map(Path::to_path_buf).unwrap_or_default();
     let mut child = Command::new(&formatter.program)
@@ -132,7 +132,7 @@ fn ruff_asset() -> Option<&'static str> {
 }
 
 /// Download Ruff (a single binary) into Sable's tools folder.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn install_ruff() -> Result<(), String> {
     let asset = ruff_asset().ok_or("Install Ruff with `pip install ruff` on this platform")?;
     let url = format!("https://github.com/astral-sh/ruff/releases/latest/download/{asset}.tar.gz");

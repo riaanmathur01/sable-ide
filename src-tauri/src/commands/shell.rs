@@ -50,7 +50,7 @@ fn shell_command(command: &str) -> Command {
     }
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn run_shell(
     command: String,
     cwd: String,

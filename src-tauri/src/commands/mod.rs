@@ -1,4 +1,6 @@
+#[cfg(feature = "desktop")]
 pub mod ai;
+#[cfg(feature = "desktop")]
 pub mod fonts;
 pub mod format;
 pub mod fs;
@@ -7,6 +9,7 @@ pub mod history;
 pub mod interpreter;
 pub mod refactor;
 pub mod search;
+#[cfg(feature = "desktop")]
 pub mod settings;
 pub mod shell;
 pub mod terminal;

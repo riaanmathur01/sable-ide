@@ -10,23 +10,27 @@ use std::path::Path;
 use std::sync::mpsc::RecvTimeoutError;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Emitter, State};
+use crate::events::{emit, Events};
+#[cfg(feature = "desktop")]
+use tauri::{AppHandle, State};
 
 const DEBOUNCE_WINDOW: Duration = Duration::from_millis(300);
 
 /// Holds the active watcher. Replacing it drops the previous watcher,
 /// which closes its channel and ends the old forwarding thread.
+#[derive(Default)]
 pub struct WatcherState(pub Mutex<Option<RecommendedWatcher>>);
 
 /// Start (or restart) watching a workspace root. Changed paths are
 /// collapsed to their parent directories and emitted to the frontend as
 /// an `fs:changed` event carrying `Vec<String>` of directory paths.
-#[tauri::command]
-pub fn watch_workspace(
-    app: AppHandle,
-    state: State<WatcherState>,
-    path: String,
-) -> Result<(), String> {
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
+pub fn watch_workspace(app: AppHandle, state: State<WatcherState>, path: String) -> Result<(), String> {
+    watch(crate::events::for_app(&app), &state, path)
+}
+
+pub fn watch(events: Events, state: &WatcherState, path: String) -> Result<(), String> {
     let (event_sender, event_receiver) = std::sync::mpsc::channel();
 
     let mut watcher = notify::recommended_watcher(event_sender)
@@ -63,7 +67,7 @@ pub fn watch_workspace(
             {
                 let directories: Vec<String> =
                     changed_directories.drain().collect();
-                let _ = app.emit("fs:changed", directories);
+                emit(&events, "fs:changed", directories);
                 last_flush = Instant::now();
             }
         }

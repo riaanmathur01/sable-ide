@@ -178,7 +178,7 @@ fn collect_files(dir: &Path, files: &mut Vec<PathBuf>, depth: usize) {
 }
 
 /// A file's snapshots, newest first.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn history_list(path: String) -> Vec<Snapshot> {
     let Some(folder) = folder_for(&path) else { return Vec::new() };
     let mut snapshots = read_index(&folder);
@@ -186,7 +186,7 @@ pub fn history_list(path: String) -> Vec<Snapshot> {
     snapshots
 }
 
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn history_read(path: String, id: String) -> Result<String, String> {
     let folder = folder_for(&path).ok_or("No history folder")?;
     if id.contains('/') || id.contains('\\') || id.contains("..") {
@@ -205,7 +205,7 @@ pub struct DeletedFile {
 
 /// Files under `root` that Sable deleted and that are still gone, newest
 /// first — for "Recover Deleted File".
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn history_deleted_files(root: String) -> Vec<DeletedFile> {
     let Some(dir) = HISTORY_DIR.get() else { return Vec::new() };
     let mut found: Vec<DeletedFile> = std::fs::read_dir(dir)
