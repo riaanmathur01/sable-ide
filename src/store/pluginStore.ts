@@ -6,6 +6,7 @@ import { createDirectory, pathExists, writeFile } from "../lib/ipc";
 import { PluginRuntime, type PluginCommand, type PluginStatusItem } from "../lib/plugins/host";
 import { onPluginEvent } from "../lib/plugins/events";
 import { scaffoldFiles } from "../lib/plugins/scaffold";
+import { matchesKey, parseKeybinding, type ParsedKey } from "../lib/plugins/keybindings";
 import {
   PERMISSION_DESCRIPTIONS,
   type InspectedPlugin,
@@ -130,7 +131,17 @@ export const usePluginStore = create<PluginState_>((set, get) => {
     useUiStore.getState().setLastError(String(error instanceof Error ? error.message : error));
   }
 
+  /** Running plugins' keyboard shortcuts. */
+  let shortcuts: { key: ParsedKey; pluginId: string; handler: number }[] = [];
+
   function collectCommands() {
+    shortcuts = [...runtimes.values()].flatMap((runtime) =>
+      (runtime.info.manifest.keybindings ?? []).flatMap((binding) => {
+        const key = parseKeybinding(binding);
+        const command = [...runtime.commands.values()].find((candidate) => candidate.id === binding.command);
+        return key && command ? [{ key, pluginId: runtime.id, handler: command.handler }] : [];
+      }),
+    );
     set({
       commands: [...runtimes.values()].flatMap((runtime) =>
         [...runtime.commands.values()].map((command) => ({
@@ -224,9 +235,23 @@ export const usePluginStore = create<PluginState_>((set, get) => {
     }
   }
 
+  // Plugin shortcuts, after Sable's own (which mark the event handled).
+  window.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.defaultPrevented || shortcuts.length === 0) return;
+      const shortcut = shortcuts.find((candidate) => matchesKey(event, candidate.key));
+      if (!shortcut) return;
+      event.preventDefault();
+      event.stopPropagation();
+      void runtimes.get(shortcut.pluginId)?.runCommand(shortcut.handler);
+    },
+    true,
+  );
+
   // Linked plugins reload when one of their files is saved in Sable.
   onPluginEvent((name, { path }) => {
-    if (name !== "didSave") return;
+    if (name !== "didSave" || !path) return;
     for (const plugin of get().plugins) {
       const inside = path.startsWith(`${plugin.path}/`) || path.startsWith(`${plugin.path}\\`);
       if (plugin.linked && plugin.enabled && inside) {

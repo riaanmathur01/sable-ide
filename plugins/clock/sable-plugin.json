@@ -1,0 +1,11 @@
+{
+  "id": "clock",
+  "name": "Clock",
+  "version": "1.0.0",
+  "description": "The time in the status bar. Click it to switch between 12-hour and 24-hour time; hover for the full date.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": [],
+  "minSableVersion": "0.3.6",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/clock"
+}

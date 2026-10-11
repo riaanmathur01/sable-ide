@@ -1,0 +1,11 @@
+{
+  "id": "text-transforms",
+  "name": "Text Transforms",
+  "version": "1.0.0",
+  "description": "Reverse, ROT13, slugify, trim, join, number and word-wrap the selection or the whole file.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.3",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/text-transforms"
+}

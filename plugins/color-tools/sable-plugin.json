@@ -1,0 +1,11 @@
+{
+  "id": "color-tools",
+  "name": "Color Tools",
+  "version": "1.0.0",
+  "description": "Hover a CSS color to see it as hex, rgb() and hsl(), convert colors between those formats, and lighten or darken them.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.6",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/color-tools"
+}

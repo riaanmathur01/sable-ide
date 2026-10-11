@@ -41,6 +41,12 @@ function bootstrap() {
     },
   });
 
+  const subscribe = (event: string, listener: unknown) => {
+    const id = handler(listener);
+    void call("events.subscribe", id, event);
+    return disposable("events.unsubscribe", id);
+  };
+
   // console.* goes to the plugin's log (Settings → Plugins → Installed).
   const format = (args: unknown[]) =>
     args
@@ -119,6 +125,10 @@ function bootstrap() {
       window: {
         showMessage: (text: string) => call("window.showMessage", String(text)),
         showError: (text: string) => call("window.showError", String(text)),
+        showWarning: (text: string) => call("window.showWarning", String(text)),
+        /** Ask for a line of text; null if dismissed. */
+        showInputBox: (options: { prompt?: string; placeholder?: string; value?: string } = {}) =>
+          call("window.showInputBox", options),
         /** Resolves to the chosen item (as given), or null if dismissed. */
         showQuickPick: async (items: unknown[], options: { placeholder?: string } = {}) => {
           const list = Array.isArray(items) ? items : [];
@@ -135,6 +145,22 @@ function bootstrap() {
         active: () => call("editor.active"),
         replaceSelection: (text: string) => call("editor.replaceSelection", String(text)),
         setText: (text: string) => call("editor.setText", String(text)),
+        applyEdits: (edits: unknown[]) => call("editor.applyEdits", edits),
+        setSelection: (range: unknown) => call("editor.setSelection", range),
+        executeAction: (id: string) => call("editor.executeAction", String(id)),
+        open: (path: string, options: { line?: number } = {}) => call("editor.open", String(path), options.line ?? 0),
+      },
+      env: {
+        clipboard: {
+          readText: () => call("env.readClipboard"),
+          writeText: (text: string) => call("env.writeClipboard", String(text)),
+        },
+        openExternal: (url: string) => call("env.openExternal", String(url)),
+      },
+      storage: {
+        get: (key: string) => call("storage.get", String(key)),
+        set: (key: string, value: unknown) => call("storage.set", String(key), value ?? null),
+        keys: () => call("storage.keys"),
       },
       workspace: {
         root,
@@ -143,16 +169,11 @@ function bootstrap() {
         listFiles: () => call("workspace.listFiles"),
       },
       events: {
-        onDidSave: (listener: (event: { path: string }) => unknown) => {
-          const id = handler(listener);
-          void call("events.subscribe", id, "didSave");
-          return disposable("events.unsubscribe", id);
-        },
-        onDidOpen: (listener: (event: { path: string }) => unknown) => {
-          const id = handler(listener);
-          void call("events.subscribe", id, "didOpen");
-          return disposable("events.unsubscribe", id);
-        },
+        onDidSave: (listener: (event: { path: string }) => unknown) => subscribe("didSave", listener),
+        onDidOpen: (listener: (event: { path: string }) => unknown) => subscribe("didOpen", listener),
+        onDidChange: (listener: (event: unknown) => unknown) => subscribe("didChange", listener),
+        onDidChangeActiveEditor: (listener: (event: unknown) => unknown) => subscribe("didChangeActiveEditor", listener),
+        onDidChangeSelection: (listener: (event: unknown) => unknown) => subscribe("didChangeSelection", listener),
       },
       languages: {
         registerFormatter(language: string, format: (document: unknown) => unknown) {
@@ -167,6 +188,11 @@ function bootstrap() {
         ) {
           const id = handler(provide);
           void call("languages.registerCompletions", id, String(language), options.triggerCharacters ?? []);
+          return disposable("languages.unregister", id);
+        },
+        registerHover(language: string, provide: (request: unknown) => unknown) {
+          const id = handler(provide);
+          void call("languages.registerHover", id, String(language));
           return disposable("languages.unregister", id);
         },
         registerRenameSuggestions(language: string, provide: (request: unknown) => unknown) {

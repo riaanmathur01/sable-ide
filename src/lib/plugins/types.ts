@@ -21,6 +21,8 @@ export interface PluginManifest {
   permissions: PluginPermission[];
   minSableVersion?: string;
   homepage?: string;
+  /** Shortcuts for the plugin's commands: "ctrl+alt+c" (and a "mac" variant: "cmd+alt+c"). */
+  keybindings?: { command: string; key: string; mac?: string }[];
 }
 
 export interface PluginInfo {

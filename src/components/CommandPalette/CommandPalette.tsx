@@ -136,7 +136,7 @@ export function CommandPalette() {
 }
 
 function PaletteInner({ mode, onClose }: { mode: PaletteMode; onClose: () => void }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(() => (mode === "pick" ? (useUiStore.getState().pick?.value ?? "") : ""));
   const [selected, setSelected] = useState(0);
   const [files, setFiles] = useState<string[]>([]);
   const [structure, setStructure] = useState<SymbolEntry[] | null>(null);
@@ -936,6 +936,17 @@ function buildCommands(): PaletteItem[] {
     { id: "plugins-show", label: "Plugins: Show Installed Plugins", run: () => tabs.openSettings("plugins", "installed") },
     { id: "plugins-create", label: "Plugins: Create New Plugin…", run: () => tabs.openSettings("plugins", "create") },
     { id: "plugins-reload", label: "Plugins: Reload All Plugins", run: () => void plugins.reloadAll() },
+    {
+      id: "plugins-convert-vscode",
+      label: "Plugins: Convert VS Code Extension…",
+      run: () =>
+        void useUiStore
+          .getState()
+          .openPickOrText([], "A VS Code extension: publisher.name, or its Open VSX / Marketplace link", "Convert and install %s")
+          .then((reference) => {
+            if (typeof reference === "string") void usePluginStore.getState().installFromUrl(reference);
+          }),
+    },
   );
   if (plugins.plugins.length > 0) {
     const pickPlugin = (placeholder: string, then: (id: string, name: string) => void) => {
@@ -974,7 +985,17 @@ function buildCommands(): PaletteItem[] {
     items.push({ id: "remote-wsl", label: "Remote: Connect to WSL…", run: () => void remote.pickWsl() });
   }
   if (remote.status === "connected") {
-    items.push({ id: "remote-folder", label: "Remote: Open Folder…", detail: remote.label ?? undefined, run: () => void remote.openFolder() });
+    items.push(
+      { id: "remote-folder", label: "Remote: Open Folder…", detail: remote.label ?? undefined, run: () => void remote.openFolder() },
+      { id: "remote-forward", label: "Remote: Forward a Port…", detail: remote.label ?? undefined, run: () => void remote.promptForwardPort() },
+      { id: "remote-ports", label: "Remote: Show Ports", run: () => useUiStore.getState().setBottomPanel("ports") },
+    );
+  }
+  if (remote.status === "local" && useWorkspaceStore.getState().rootPath) {
+    items.push({ id: "remote-devcontainer", label: "Remote: Reopen Folder in Container", run: () => void remote.reopenInContainer() });
+  }
+  if (remote.localFolder) {
+    items.push({ id: "remote-local", label: "Remote: Reopen Folder Locally", detail: remote.localFolder, run: () => void remote.reopenLocally() });
   }
   if (remote.status === "lost") {
     items.push({ id: "remote-reconnect", label: "Remote: Reconnect", detail: remote.label ?? undefined, run: () => void remote.reconnect() });

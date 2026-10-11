@@ -120,10 +120,24 @@ pub fn read_file_base64(path: String) -> Result<String, String> {
     use base64::Engine;
     let metadata = std::fs::metadata(&path).map_err(|error| format!("Could not open {path}: {error}"))?;
     if metadata.len() > 20 * 1024 * 1024 {
-        return Err(format!("{path} is too large to show"));
+        return Err(format!("{path} is too large (over 20 MB)"));
     }
     let bytes = std::fs::read(&path).map_err(|error| format!("Could not open {path}: {error}"))?;
     Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
+}
+
+/// Write bytes (base64) to a file, creating its folder — copying files
+/// between this computer and a remote workspace.
+#[cfg_attr(feature = "desktop", tauri::command)]
+pub fn write_file_base64(path: String, data: String) -> Result<(), String> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(data.as_bytes())
+        .map_err(|error| format!("Invalid data for {path}: {error}"))?;
+    if let Some(parent) = std::path::Path::new(&path).parent() {
+        std::fs::create_dir_all(parent).map_err(|error| format!("Could not create {}: {error}", parent.display()))?;
+    }
+    std::fs::write(&path, bytes).map_err(|error| format!("Could not write {path}: {error}"))
 }
 
 /// Write editor contents back to disk (Cmd/Ctrl+S).

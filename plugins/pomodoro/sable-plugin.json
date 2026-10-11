@@ -1,0 +1,11 @@
+{
+  "id": "pomodoro",
+  "name": "Pomodoro",
+  "version": "1.0.0",
+  "description": "A focus timer in the status bar: 25-minute focus sessions and 5-minute breaks, with a count of today's completed sessions.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": [],
+  "minSableVersion": "0.3.6",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/pomodoro"
+}

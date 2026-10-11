@@ -11,6 +11,8 @@ import { UsagesPanel } from "../Navigation/UsagesPanel";
 import { CallHierarchyPanel } from "../Navigation/CallHierarchyPanel";
 import { TestsPanel } from "../Tests/TestsPanel";
 import { useTestStore } from "../../store/testStore";
+import { useRemoteStore } from "../../store/remoteStore";
+import { PortsPanel } from "../Ports/PortsPanel";
 import "./TerminalPanel.css";
 
 const TerminalView = lazy(() => import("./TerminalView"));
@@ -25,6 +27,8 @@ const TerminalView = lazy(() => import("./TerminalView"));
  */
 export function TerminalPanel() {
   const panelVisible = useUiStore((state) => state.terminalVisible);
+  const remoteConnected = useRemoteStore((state) => state.status !== "local");
+  const forwardedCount = useRemoteStore((state) => state.forwarded.length);
   const bottomPanel = useUiStore((state) => state.bottomPanel);
   const setBottomPanel = useUiStore((state) => state.setBottomPanel);
   const setTerminalVisible = useUiStore((state) => state.setTerminalVisible);
@@ -113,6 +117,17 @@ export function TerminalPanel() {
               {usageCount > 0 && <span className="terminal-panel-badge">{usageCount}</span>}
             </button>
           )}
+          {(remoteConnected || bottomPanel === "ports") && (
+            <button
+              role="tab"
+              aria-selected={bottomPanel === "ports"}
+              className={bottomPanel === "ports" ? "active" : undefined}
+              onClick={() => setBottomPanel("ports")}
+            >
+              Ports
+              {forwardedCount > 0 && <span className="terminal-panel-badge">{forwardedCount}</span>}
+            </button>
+          )}
           {(hasHierarchy || bottomPanel === "hierarchy") && (
             <button
               role="tab"
@@ -137,7 +152,7 @@ export function TerminalPanel() {
             >
               <Trash2 size={13} strokeWidth={1.5} />
             </button>
-          ) : bottomPanel === "problems" ? null : bottomPanel === "terminal" ? (
+          ) : bottomPanel === "problems" || bottomPanel === "ports" ? null : bottomPanel === "terminal" ? (
             <>
               <button
                 className="terminal-panel-action"
@@ -233,6 +248,7 @@ export function TerminalPanel() {
       {bottomPanel === "usages" && <UsagesPanel />}
       {bottomPanel === "tests" && <TestsPanel />}
       {bottomPanel === "hierarchy" && <CallHierarchyPanel />}
+      {bottomPanel === "ports" && <PortsPanel />}
     </div>
   );
 }

@@ -13,7 +13,7 @@ export type SidebarView = "files" | "search" | "git" | "history" | "debug";
 /** The Settings tab's pages, and the Plugins page's tabs. */
 export type SettingsPage = "settings" | "plugins";
 export type PluginsTab = "marketplace" | "installed" | "create";
-export type BottomPanel = "terminal" | "debug" | "problems" | "usages" | "hierarchy" | "tests";
+export type BottomPanel = "terminal" | "debug" | "problems" | "usages" | "hierarchy" | "tests" | "ports";
 
 /** Draggable panel sizes, in pixels. */
 export interface PanelSizes {
@@ -102,12 +102,14 @@ interface UiState {
     placeholder: string;
     /** Offer what's typed as a choice: "Connect to %s". */
     text?: string;
+    /** Text already typed when it opens. */
+    value?: string;
     resolve: (choice: number | string | null) => void;
   } | null;
   /** Ask the user to choose; resolves to the chosen index, or null. */
   openPick: (items: PickItem[], placeholder: string) => Promise<number | null>;
   /** Choose from `items` or type something (resolves to the text). */
-  openPickOrText: (items: PickItem[], placeholder: string, text: string) => Promise<number | string | null>;
+  openPickOrText: (items: PickItem[], placeholder: string, text: string, value?: string) => Promise<number | string | null>;
   toggleBlame: () => void;
   setBottomPanel: (panel: BottomPanel) => void;
   toggleAgent: () => void;
@@ -198,11 +200,11 @@ export const useUiStore = create<UiState>((set) => ({
         };
       }),
     ),
-  openPickOrText: (items, placeholder, text) =>
+  openPickOrText: (items, placeholder, text, value) =>
     new Promise((resolve) =>
       set((state) => {
         state.pick?.resolve(null);
-        return { paletteMode: "pick", pick: { items, placeholder, text, resolve } };
+        return { paletteMode: "pick", pick: { items, placeholder, text, value, resolve } };
       }),
     ),
   blameEnabled: false,

@@ -1,0 +1,21 @@
+{
+  "id": "bookmarks",
+  "name": "Bookmarks",
+  "version": "1.0.0",
+  "description": "Bookmark lines, jump between them in a file, and list every bookmark across your files.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": [
+    "editor",
+    "workspace:read"
+  ],
+  "minSableVersion": "0.3.6",
+  "keybindings": [
+    {
+      "command": "toggle",
+      "key": "ctrl+alt+b",
+      "mac": "cmd+alt+b"
+    }
+  ],
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/bookmarks"
+}

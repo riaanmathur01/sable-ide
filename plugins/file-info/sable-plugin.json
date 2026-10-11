@@ -1,0 +1,13 @@
+{
+  "id": "file-info",
+  "name": "File Info",
+  "version": "1.0.0",
+  "description": "The open file's size, line count and line endings in the status bar, with its longest line and indentation on hover.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": [
+    "editor"
+  ],
+  "minSableVersion": "0.3.6",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/file-info"
+}

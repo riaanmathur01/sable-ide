@@ -1,8 +1,10 @@
 import { create } from "zustand";
 import { listen } from "@tauri-apps/api/event";
-import { invokeLocal, setRemoteActive } from "../lib/backend";
+import { invoke, invokeLocal, setRemoteActive } from "../lib/backend";
+import { getSetting } from "./settingsStore";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { killTerminal, readDirectory } from "../lib/ipc";
-import { resetLanguageServers } from "../lib/lsp/lspClient";
+import { resetLanguageServers, restartLanguageServers } from "../lib/lsp/lspClient";
 import { useTerminalStore } from "./terminalStore";
 import { useUiStore } from "./uiStore";
 import { useWorkspaceStore } from "./workspaceStore";
@@ -16,7 +18,7 @@ import { useWorkspaceStore } from "./workspaceStore";
 export type RemoteTarget =
   | { kind: "ssh"; host: string }
   | { kind: "wsl"; distro: string }
-  | { kind: "container"; name: string; engine?: string };
+  | { kind: "container"; name: string; engine?: string; user?: string };
 
 export interface AgentInfo {
   version: string;
@@ -47,6 +49,14 @@ interface RecentRemote {
 
 export type RemoteStatus = "local" | "connecting" | "connected" | "lost";
 
+/** A remote port reachable here. */
+export interface ForwardedPort {
+  remotePort: number;
+  localPort: number;
+  /** Forwarded because it opened (not chosen by the user). */
+  auto: boolean;
+}
+
 interface RemoteState {
   status: RemoteStatus;
   target: RemoteTarget | null;
@@ -54,8 +64,15 @@ interface RemoteState {
   /** Progress while connecting; the reason when the connection is lost. */
   message: string | null;
   agent: AgentInfo | null;
-  /** Connect, then open `folder` (or ask for one). */
-  connect: (target: RemoteTarget, folder?: string) => Promise<boolean>;
+  /** Ports listening on the remote now. */
+  listening: number[];
+  forwarded: ForwardedPort[];
+  forwardPort: (remotePort: number, auto?: boolean) => Promise<number | null>;
+  stopForwarding: (remotePort: number) => Promise<void>;
+  /** Ask for a port number and forward it. */
+  promptForwardPort: () => Promise<void>;
+  /** Connect, then open `folder` (or ask for one). `quiet`: no error popup. */
+  connect: (target: RemoteTarget, folder?: string, options?: { quiet?: boolean }) => Promise<boolean>;
   reconnect: () => Promise<void>;
   /** Close the connection and the remote folder; back to local. */
   close: () => Promise<void>;
@@ -66,6 +83,12 @@ interface RemoteState {
   pickSshHost: () => Promise<void>;
   pickWsl: () => Promise<void>;
   pickContainer: () => Promise<void>;
+  /** The local folder this dev container window was reopened from. */
+  localFolder: string | null;
+  /** Open the (local) folder inside its dev container. */
+  reopenInContainer: () => Promise<void>;
+  /** Back from a dev container to the folder on this computer. */
+  reopenLocally: () => Promise<void>;
 }
 
 const LAST_REMOTE_KEY = "sable.lastRemote";
@@ -120,8 +143,34 @@ function remember(target: RemoteTarget, folder: string) {
 
 /** `~/x` for paths in the remote home. */
 function tidy(path: string, home: string | undefined): string {
-  if (home && home !== "/" && (path === home || path.startsWith(`${home}/`))) return `~${path.slice(home.length)}`;
+  if (home && home !== "/" && (path === home || path.startsWith(`${home}/`) || path.startsWith(`${home}\\`))) {
+    return `~${path.slice(home.length)}`;
+  }
   return path;
+}
+
+/** Path rules for the remote's OS (Windows: C:\\Users\\me). */
+function pathsFor(os: string) {
+  const windows = os === "windows";
+  const separator = windows ? "\\" : "/";
+  const isRoot = (path: string) => (windows ? /^[A-Za-z]:\\?$/.test(path) : path === "/");
+  const isAbsolute = (path: string) => (windows ? /^[A-Za-z]:[\\/]/.test(path) || /^[A-Za-z]:$/.test(path) : path.startsWith("/"));
+  const trim = (path: string) => {
+    if (isRoot(path)) return windows ? `${path.slice(0, 2)}\\` : "/";
+    return path.replace(/[\\/]+$/, "") || "/";
+  };
+  return {
+    separator,
+    isRoot,
+    isAbsolute,
+    join: (dir: string, name: string) => trim(`${dir.replace(/[\\/]+$/, "")}${separator}${name}`),
+    parent: (path: string) => {
+      if (isRoot(path)) return path;
+      const cut = path.replace(/[\\/][^\\/]*[\\/]?$/, "");
+      return trim(windows && /^[A-Za-z]:$/.test(cut) ? `${cut}\\` : cut || "/");
+    },
+    trim,
+  };
 }
 
 /**
@@ -137,8 +186,13 @@ async function switchSides(remote: boolean) {
   await terminals.restartAll();
 }
 
-const parentOf = (path: string) => path.replace(/\/[^/]*\/?$/, "") || "/";
-const joinPath = (dir: string, name: string) => (dir.endsWith("/") ? `${dir}${name}` : `${dir}/${name}`);
+/** Ports listening when the connection started (not auto-forwarded). */
+let baseline: Set<number> | null = null;
+/** Ports the user stopped forwarding: not forwarded again by themselves. */
+const ignoredPorts = new Set<number>();
+/** Never auto-forwarded: SSH, and ports below 1024 (system services). */
+const neverAuto = (port: number) => port < 1024;
+
 
 export const useRemoteStore = create<RemoteState>((set, get) => ({
   status: "local",
@@ -146,9 +200,88 @@ export const useRemoteStore = create<RemoteState>((set, get) => ({
   label: null,
   message: null,
   agent: null,
+  listening: [],
+  forwarded: [],
+  localFolder: null,
 
-  connect: async (target, folder) => {
+  reopenInContainer: async () => {
     const ui = useUiStore.getState();
+    const folder = useWorkspaceStore.getState().rootPath;
+    if (!folder || get().status !== "local") {
+      ui.setLastError("Open a folder on this computer first (one with .devcontainer/devcontainer.json)");
+      return;
+    }
+    if (!(await invokeLocal<boolean>("devcontainer_exists", { folder }))) {
+      ui.setLastError("This folder has no .devcontainer/devcontainer.json");
+      return;
+    }
+    set({ status: "connecting", label: "Dev Container", message: "Starting the dev container…" });
+    let started: { name: string; engine: string; user?: string | null; workspaceFolder: string; postCreateCommand?: string | null };
+    try {
+      started = await invokeLocal("devcontainer_up", { folder });
+    } catch (error) {
+      set({ status: "local", label: null, message: null });
+      ui.setLastError(String(error));
+      return;
+    }
+    const target: RemoteTarget = { kind: "container", name: started.name, engine: started.engine, user: started.user ?? undefined };
+    if (await get().connect(target, started.workspaceFolder)) {
+      set({ localFolder: folder });
+      if (started.postCreateCommand) {
+        // First start: the config's setup command, where it can be watched.
+        ui.setTerminalVisible(true);
+        useTerminalStore.getState().enqueueCommand(started.postCreateCommand);
+      }
+    }
+  },
+
+  reopenLocally: async () => {
+    const folder = get().localFolder;
+    await get().close();
+    set({ localFolder: null });
+    if (folder) await useWorkspaceStore.getState().openWorkspace(folder);
+  },
+
+  forwardPort: async (remotePort, auto = false) => {
+    try {
+      const localPort = await invokeLocal<number>("remote_forward_port", { remotePort, localPort: null });
+      set((state) => ({
+        forwarded: [...state.forwarded.filter((port) => port.remotePort !== remotePort), { remotePort, localPort, auto }].sort(
+          (a, b) => a.remotePort - b.remotePort,
+        ),
+      }));
+      return localPort;
+    } catch (error) {
+      useUiStore.getState().setLastError(String(error));
+      return null;
+    }
+  },
+
+  stopForwarding: async (remotePort) => {
+    await invokeLocal("remote_stop_forward", { remotePort }).catch(() => {});
+    ignoredPorts.add(remotePort);
+    set((state) => ({ forwarded: state.forwarded.filter((port) => port.remotePort !== remotePort) }));
+  },
+
+  promptForwardPort: async () => {
+    const answer = await useUiStore.getState().openPickOrText(
+      get().listening.map((port) => ({ label: String(port), detail: "listening on the remote" })),
+      `Forward a port from ${get().label ?? "the remote"} (type a number)`,
+      "Forward port %s",
+    );
+    const port = Number(typeof answer === "number" ? get().listening[answer] : answer);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      if (answer !== null) useUiStore.getState().setLastError("Enter a port number (1–65535)");
+      return;
+    }
+    ignoredPorts.delete(port);
+    const local = await get().forwardPort(port);
+    if (local) useUiStore.getState().showStatus(`Port ${port} is at localhost:${local}`);
+  },
+
+  connect: async (target, folder, options) => {
+    const ui = useUiStore.getState();
+    const before = { target: get().target, forwarded: get().forwarded };
     set({ status: "connecting", target, label: targetLabel(target), message: `Connecting to ${targetLabel(target)}…` });
     let info: RemoteInfo;
     try {
@@ -156,13 +289,26 @@ export const useRemoteStore = create<RemoteState>((set, get) => ({
     } catch (error) {
       // Back to however things were (local, or the previous remote).
       const stillRemote = useWorkspaceStore.getState().rootPath !== null && get().agent !== null;
-      set({ status: stillRemote ? "lost" : "local", message: null, ...(stillRemote ? {} : { target: null, label: null }) });
-      ui.setLastError(String(error));
+      set({ status: stillRemote ? "lost" : "local", message: stillRemote ? String(error) : null, ...(stillRemote ? {} : { target: null, label: null }) });
+      if (!options?.quiet) ui.setLastError(String(error));
       return false;
     }
     await switchSides(true);
-    set({ status: "connected", target, label: info.label, agent: info.agent, message: null });
-    if (folder) {
+    // Forwards belong to a connection: put back the ones that were
+    // forwarded before (a reconnect), start fresh for a new machine.
+    const sameMachine = before.target !== null && sameTarget(before.target, target);
+    const previous = sameMachine ? before.forwarded : [];
+    set({ status: "connected", target, label: info.label, agent: info.agent, message: null, listening: [], forwarded: [] });
+    baseline = null;
+    if (!sameMachine) ignoredPorts.clear();
+    for (const port of previous) void get().forwardPort(port.remotePort, port.auto);
+    void invoke("ports_watch").catch(() => {});
+    if (folder && folder === useWorkspaceStore.getState().rootPath && sameMachine) {
+      // A reconnect: the folder is still open — just pick up where it was.
+      await useWorkspaceStore.getState().refreshDirectory(folder);
+      void invoke("watch_workspace", { path: folder }).catch(() => {});
+      void restartLanguageServers();
+    } else if (folder) {
       await useWorkspaceStore.getState().openWorkspace(folder);
       // Still there? (openWorkspace reports its own errors.)
       if (useWorkspaceStore.getState().rootPath === folder) remember(target, folder);
@@ -185,10 +331,11 @@ export const useRemoteStore = create<RemoteState>((set, get) => ({
   },
 
   close: async () => {
+    cancelAutoReconnect();
     await switchSides(false);
     await invokeLocal("remote_disconnect").catch(() => {});
     writeJson(LAST_REMOTE_KEY, null);
-    set({ status: "local", target: null, label: null, message: null, agent: null });
+    set({ status: "local", target: null, label: null, message: null, agent: null, listening: [], forwarded: [], localFolder: null });
     useWorkspaceStore.getState().closeWorkspace();
   },
 
@@ -196,6 +343,7 @@ export const useRemoteStore = create<RemoteState>((set, get) => ({
     const { agent } = get();
     if (!agent) return;
     const ui = useUiStore.getState();
+    const paths = pathsFor(agent.os);
     let dir = useWorkspaceStore.getState().rootPath ?? agent.home;
     for (;;) {
       const entries = await readDirectory(dir).catch((error) => {
@@ -210,15 +358,18 @@ export const useRemoteStore = create<RemoteState>((set, get) => ({
       const folders = entries.filter((entry) => entry.isDirectory);
       const items = [
         { label: `Open ${tidy(dir, agent.home)}`, detail: "this folder" },
-        ...(dir !== "/" ? [{ label: "..", detail: "up a folder" }] : []),
+        ...(!paths.isRoot(dir) ? [{ label: "..", detail: "up a folder" }] : []),
         ...folders.map((entry) => ({ label: `${entry.name}/` })),
       ];
       const choice = await ui.openPickOrText(items, `Open a folder on ${get().label} — ${tidy(dir, agent.home)}`, "Go to %s");
       if (choice === null) return;
       if (typeof choice === "string") {
         // A typed path: absolute, ~/…, or relative to here.
-        dir = choice.startsWith("/") ? choice : choice.startsWith("~") ? `${agent.home}${choice.slice(1)}` : joinPath(dir, choice);
-        dir = dir.replace(/\/+$/, "") || "/";
+        dir = paths.isAbsolute(choice)
+          ? paths.trim(choice)
+          : choice.startsWith("~")
+            ? paths.join(agent.home, choice.slice(1).replace(/^[\\/]/, ""))
+            : paths.join(dir, choice);
         continue;
       }
       if (choice === 0) {
@@ -228,7 +379,7 @@ export const useRemoteStore = create<RemoteState>((set, get) => ({
         return;
       }
       const item = items[choice];
-      dir = item.label === ".." ? parentOf(dir) : joinPath(dir, item.label.replace(/\/$/, ""));
+      dir = item.label === ".." ? paths.parent(dir) : paths.join(dir, item.label.replace(/\/$/, ""));
     }
   },
 
@@ -309,6 +460,34 @@ export const useRemoteStore = create<RemoteState>((set, get) => ({
   },
 }));
 
+/**
+ * After a dropped connection (a network blip, a laptop waking up), try to
+ * reconnect by itself a few times before leaving it to the Reconnect
+ * button.
+ */
+const RECONNECT_DELAYS_MS = [1500, 5000, 15000];
+let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+
+function cancelAutoReconnect() {
+  clearTimeout(reconnectTimer);
+  reconnectTimer = undefined;
+}
+
+function autoReconnect(attempt = 0) {
+  cancelAutoReconnect();
+  if (attempt >= RECONNECT_DELAYS_MS.length) return;
+  reconnectTimer = setTimeout(async () => {
+    const store = useRemoteStore.getState();
+    if (store.status !== "lost" || !store.target) return;
+    const folder = useWorkspaceStore.getState().rootPath ?? undefined;
+    if (await store.connect(store.target, folder, { quiet: true })) {
+      useUiStore.getState().showStatus(`Reconnected to ${targetLabel(store.target)}`);
+    } else {
+      autoReconnect(attempt + 1);
+    }
+  }, RECONNECT_DELAYS_MS[attempt]);
+}
+
 // Connection progress and loss, from the backend.
 void listen<{ state: string; label: string; message?: string | null }>("remote:status", ({ payload }) => {
   const store = useRemoteStore.getState();
@@ -317,6 +496,34 @@ void listen<{ state: string; label: string; message?: string | null }>("remote:s
   } else if (payload.state === "disconnected" && store.status === "connected") {
     // Keep the workspace (and routing) so Reconnect can pick up where it was.
     useRemoteStore.setState({ status: "lost", message: payload.message ?? null });
-    useUiStore.getState().setLastError(`${payload.label}: ${payload.message ?? "the connection was lost"}`);
+    useUiStore.getState().showStatus(`Lost the connection to ${payload.label} — reconnecting…`);
+    autoReconnect();
   }
 }).catch(() => {});
+
+// Ports opening and closing on the remote. A port that opens while
+// connected (a dev server starting) is forwarded automatically.
+void listen<{ port: number }[]>("ports:changed", ({ payload }) => {
+  const store = useRemoteStore.getState();
+  if (store.status !== "connected") return;
+  const ports = payload.map((entry) => entry.port);
+  useRemoteStore.setState({ listening: ports });
+  if (!baseline) {
+    baseline = new Set(ports);
+    return;
+  }
+  if (!getSetting("remote.autoForwardPorts")) return;
+  for (const port of ports) {
+    const known = baseline.has(port) || ignoredPorts.has(port) || neverAuto(port) || store.forwarded.some((entry) => entry.remotePort === port);
+    if (known) continue;
+    baseline.add(port);
+    void store.forwardPort(port, true).then((local) => {
+      if (local) useUiStore.getState().showStatus(`Port ${port} on ${store.label} is forwarded to localhost:${local} — see Ports`);
+    });
+  }
+}).catch(() => {});
+
+/** Open a forwarded port in the browser. */
+export function openForwardedPort(port: ForwardedPort): void {
+  void openUrl(`http://localhost:${port.localPort}`).catch((error) => useUiStore.getState().setLastError(String(error)));
+}

@@ -1,0 +1,11 @@
+{
+  "id": "license-header",
+  "name": "License Header",
+  "version": "1.0.0",
+  "description": "Insert an SPDX license header (MIT, Apache-2.0, BSD-3-Clause, GPL-3.0-or-later, MPL-2.0) in the right comment style, or create a LICENSE file.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor", "workspace:read", "workspace:write"],
+  "minSableVersion": "0.3.6",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/license-header"
+}

@@ -15,14 +15,20 @@ pub mod events;
 mod lsp;
 mod watcher;
 
-#[cfg(feature = "desktop")]
 mod debug;
 #[cfg(feature = "desktop")]
 mod plugins;
 #[cfg(feature = "desktop")]
 mod remote;
+#[cfg(feature = "desktop")]
+mod vscode;
+#[cfg(feature = "desktop")]
+mod devcontainer;
 #[cfg(all(test, feature = "desktop"))]
 mod ui_bridge;
+
+#[cfg(feature = "desktop")]
+pub use remote::askpass_client;
 
 #[cfg(feature = "desktop")]
 use std::collections::HashMap;
@@ -66,6 +72,7 @@ pub fn run() {
             commands::history::history_deleted_files,
             commands::fs::read_file,
             commands::fs::read_file_base64,
+            commands::fs::write_file_base64,
             commands::fs::write_file,
             commands::fs::is_directory,
             commands::fs::path_exists,
@@ -177,6 +184,12 @@ pub fn run() {
             remote::remote_info,
             remote::remote_call,
             remote::remote_targets,
+            remote::remote_forward_port,
+            remote::remote_stop_forward,
+            remote::remote_forwards,
+            remote::remote_askpass_answer,
+            devcontainer::devcontainer_exists,
+            devcontainer::devcontainer_up,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

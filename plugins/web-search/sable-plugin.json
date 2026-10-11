@@ -1,0 +1,13 @@
+{
+  "id": "web-search",
+  "name": "Search the Web",
+  "version": "1.0.0",
+  "description": "Search Google, DuckDuckGo, Stack Overflow, MDN, docs.rs, PyPI or npm for the selection or the word at the cursor.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": [
+    "editor"
+  ],
+  "minSableVersion": "0.3.6",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/web-search"
+}

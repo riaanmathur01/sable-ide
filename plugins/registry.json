@@ -97,6 +97,420 @@
       ],
       "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/emoji-completions",
       "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/emoji-completions"
+    },
+    {
+      "id": "json-tools",
+      "name": "JSON Tools",
+      "version": "1.0.0",
+      "description": "Format, minify, sort keys and validate JSON in the selection or the whole file, with errors marked where they are.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "json",
+        "formatting"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/json-tools",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/json-tools"
+    },
+    {
+      "id": "encode-decode",
+      "name": "Encode / Decode",
+      "version": "1.0.0",
+      "description": "Base64, URL, HTML entity and JSON string encoding and decoding for the selection or the whole file.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "encoding",
+        "text"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/encode-decode",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/encode-decode"
+    },
+    {
+      "id": "hash-tools",
+      "name": "Hash",
+      "version": "1.0.0",
+      "description": "SHA-1, SHA-256, SHA-384 and SHA-512 hashes of the selection or the whole file: replace the text with its hash, or copy any of them.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "hash",
+        "crypto"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/hash-tools",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/hash-tools"
+    },
+    {
+      "id": "text-transforms",
+      "name": "Text Transforms",
+      "version": "1.0.0",
+      "description": "Reverse, ROT13, slugify, trim, join, number and word-wrap the selection or the whole file.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "text",
+        "editing"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/text-transforms",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/text-transforms"
+    },
+    {
+      "id": "whitespace-linter",
+      "name": "Whitespace Linter",
+      "version": "1.0.0",
+      "description": "Marks trailing whitespace, indentation that mixes tabs and spaces, and a missing final newline as you type, with a command to fix them.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "linter",
+        "whitespace"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/whitespace-linter",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/whitespace-linter"
+    },
+    {
+      "id": "number-tools",
+      "name": "Number Tools",
+      "version": "1.0.0",
+      "description": "Convert numbers between decimal, hex, binary and octal, increment or decrement them with a shortcut, add thousands separators, and see any number literal in every base on hover.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "numbers",
+        "conversion"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/number-tools",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/number-tools"
+    },
+    {
+      "id": "timestamp-tools",
+      "name": "Timestamps",
+      "version": "1.0.0",
+      "description": "Hover a Unix timestamp to see its date in UTC and your time zone, convert between timestamps and ISO dates, and insert the current time.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "time",
+        "dates"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/timestamp-tools",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/timestamp-tools"
+    },
+    {
+      "id": "color-tools",
+      "name": "Color Tools",
+      "version": "1.0.0",
+      "description": "Hover a CSS color to see it as hex, rgb() and hsl(), convert colors between those formats, and lighten or darken them.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "css",
+        "colors"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/color-tools",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/color-tools"
+    },
+    {
+      "id": "markdown-toc",
+      "name": "Markdown TOC",
+      "version": "1.0.0",
+      "description": "Insert a table of contents built from your Markdown headings, with GitHub-style links, and keep it up to date when you save.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "markdown",
+        "toc"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/markdown-toc",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/markdown-toc"
+    },
+    {
+      "id": "markdown-table",
+      "name": "Markdown Table",
+      "version": "1.0.0",
+      "description": "Format Markdown tables (aligned pipes, padded cells, :---: alignment), turn CSV into a table, and add rows and columns.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "markdown",
+        "tables"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/markdown-table",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/markdown-table"
+    },
+    {
+      "id": "markdown-lint",
+      "name": "Markdown Lint",
+      "version": "1.0.0",
+      "description": "Flags common Markdown problems as you type: skipped heading levels, trailing spaces, extra blank lines, images without alt text, mixed list markers and missing blank lines.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "markdown",
+        "linter"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/markdown-lint",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/markdown-lint"
+    },
+    {
+      "id": "csv-tools",
+      "name": "CSV Tools",
+      "version": "1.0.0",
+      "description": "Convert CSV to JSON and JSON to CSV, and align CSV columns for reading. Detects comma, semicolon and tab separators and handles quoted fields.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "csv",
+        "json"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/csv-tools",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/csv-tools"
+    },
+    {
+      "id": "sql-formatter",
+      "name": "SQL Formatter",
+      "version": "1.0.0",
+      "description": "Formats SQL: uppercase keywords, each clause on its own line, one select item per line, AND/OR indented. Works with Format Document.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "sql",
+        "formatter"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/sql-formatter",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/sql-formatter"
+    },
+    {
+      "id": "license-header",
+      "name": "License Header",
+      "version": "1.0.0",
+      "description": "Insert an SPDX license header (MIT, Apache-2.0, BSD-3-Clause, GPL-3.0-or-later, MPL-2.0) in the right comment style, or create a LICENSE file.",
+      "author": "Sable",
+      "permissions": [
+        "editor",
+        "workspace:read",
+        "workspace:write"
+      ],
+      "tags": [
+        "license",
+        "headers"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/license-header",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/license-header"
+    },
+    {
+      "id": "react-snippets",
+      "name": "React Snippets",
+      "version": "1.0.0",
+      "description": "Snippets for React components and hooks: rfc, rafce, useState, useEffect, useRef, useMemo, useCallback, useContext, createContext and more.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "react",
+        "snippets"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/react-snippets",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/react-snippets"
+    },
+    {
+      "id": "python-snippets",
+      "name": "Python Snippets",
+      "version": "1.0.0",
+      "description": "Snippets for common Python code: main guard, dataclass, class, def with docstring, try/except, with open, comprehensions, argparse, pytest, logging and NamedTuple.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "python",
+        "snippets"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/python-snippets",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/python-snippets"
+    },
+    {
+      "id": "clock",
+      "name": "Clock",
+      "version": "1.0.0",
+      "description": "The time in the status bar. Click it to switch between 12-hour and 24-hour time; hover for the full date.",
+      "author": "Sable",
+      "permissions": [],
+      "tags": [
+        "status-bar",
+        "time"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/clock",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/clock"
+    },
+    {
+      "id": "pomodoro",
+      "name": "Pomodoro",
+      "version": "1.0.0",
+      "description": "A focus timer in the status bar: 25-minute focus sessions and 5-minute breaks, with a count of today's completed sessions.",
+      "author": "Sable",
+      "permissions": [],
+      "tags": [
+        "productivity",
+        "timer"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/pomodoro",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/pomodoro"
+    },
+    {
+      "id": "selection-stats",
+      "name": "Selection Stats",
+      "version": "1.0.0",
+      "description": "Characters, words and lines of the selection, in the status bar.",
+      "author": "Sable",
+      "permissions": [],
+      "tags": [
+        "status-bar",
+        "text"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/selection-stats",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/selection-stats"
+    },
+    {
+      "id": "file-info",
+      "name": "File Info",
+      "version": "1.0.0",
+      "description": "The open file's size, line count and line endings in the status bar, with its longest line and indentation on hover.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "status-bar",
+        "files"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/file-info",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/file-info"
+    },
+    {
+      "id": "quote-toggler",
+      "name": "Quote & Bracket Toggler",
+      "version": "1.0.0",
+      "description": "Cycle the string at the cursor between single, double and backtick quotes, and wrap the selection in brackets, quotes or Markdown emphasis.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "editing",
+        "strings"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/quote-toggler",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/quote-toggler"
+    },
+    {
+      "id": "gitignore-generator",
+      "name": "Gitignore Generator",
+      "version": "1.0.0",
+      "description": "Add a .gitignore template (Node, Python, Rust, Go, Java, C/C++, macOS, Windows, Linux, VS Code, JetBrains) without duplicating lines already there.",
+      "author": "Sable",
+      "permissions": [
+        "workspace:read",
+        "workspace:write"
+      ],
+      "tags": [
+        "git",
+        "files"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/gitignore-generator",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/gitignore-generator"
+    },
+    {
+      "id": "bookmarks",
+      "name": "Bookmarks",
+      "version": "1.0.0",
+      "description": "Bookmark lines, jump between them in a file, and list every bookmark across your files.",
+      "author": "Sable",
+      "permissions": [
+        "editor",
+        "workspace:read"
+      ],
+      "tags": [
+        "navigation",
+        "productivity"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/bookmarks",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/bookmarks"
+    },
+    {
+      "id": "find-regex",
+      "name": "Regex Search",
+      "version": "1.0.0",
+      "description": "Search the open file with a regular expression and jump to any match from a list.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "search",
+        "navigation"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/find-regex",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/find-regex"
+    },
+    {
+      "id": "word-frequency",
+      "name": "Word Frequency",
+      "version": "1.0.0",
+      "description": "The 50 most frequent words in the file or selection, with counts. Choose one to copy it.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "text",
+        "writing"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/word-frequency",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/word-frequency"
+    },
+    {
+      "id": "web-search",
+      "name": "Search the Web",
+      "version": "1.0.0",
+      "description": "Search Google, DuckDuckGo, Stack Overflow, MDN, docs.rs, PyPI or npm for the selection or the word at the cursor.",
+      "author": "Sable",
+      "permissions": [
+        "editor"
+      ],
+      "tags": [
+        "search",
+        "docs"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/web-search",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/web-search"
     }
   ]
 }

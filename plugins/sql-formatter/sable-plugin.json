@@ -1,0 +1,11 @@
+{
+  "id": "sql-formatter",
+  "name": "SQL Formatter",
+  "version": "1.0.0",
+  "description": "Formats SQL: uppercase keywords, each clause on its own line, one select item per line, AND/OR indented. Works with Format Document.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.3",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/sql-formatter"
+}

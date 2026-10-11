@@ -17,6 +17,7 @@ export const MONO_FONT_STACK = '"JetBrains Mono", "SF Mono", Menlo, monospace';
 export interface Settings {
   "workbench.colorTheme": ThemeId;
   "workbench.viewSwitcher": "activityBar" | "sidebarHeader" | "menu";
+  "remote.autoForwardPorts": boolean;
   "plugins.marketplaceUrl": string;
   "editor.fontSize": number;
   "editor.fontFamily": string;
@@ -116,6 +117,7 @@ export const SETTINGS_SCHEMA: SettingSpec[] = [
   { key: "editor.rulers", section: "Editor", type: "string", placeholder: "e.g. 80, 120", label: "Rulers", description: "Comma-separated columns at which to draw vertical rulers.", default: "" },
   // --- Editor: appearance ---------------------------------------------------
   { key: "workbench.colorTheme", section: "Editor Appearance", type: "enum", options: [{ value: "sable-dark", label: "Sable Dark" }, { value: "jetbrains-darcula", label: "JetBrains Darcula" }, { value: "jetbrains-dark", label: "JetBrains Dark (New UI)" }, { value: "jetbrains-islands-dark", label: "JetBrains Islands Dark" }, { value: "catppuccin-latte", label: "Catppuccin Latte (light)" }, { value: "catppuccin-frappe", label: "Catppuccin Frappé" }, { value: "catppuccin-macchiato", label: "Catppuccin Macchiato" }, { value: "catppuccin-mocha", label: "Catppuccin Mocha" }], label: "Color Theme", description: "Colors for the whole app: editor syntax, panels, and terminal. The JetBrains themes use the exact colors of JetBrains' schemes, per language as in each JetBrains IDE; the Catppuccin flavours (Latte is light) use the official palette and match the JetBrains Catppuccin plugin.", default: "sable-dark" },
+  { key: "remote.autoForwardPorts", section: "Remote", type: "boolean", label: "Forward Ports Automatically", description: "In a remote window, when a program on the remote starts listening on a port (a dev server, say), make it reachable at localhost here. Ports already open when you connect, and ports below 1024, aren't forwarded by themselves; forward any port from the Ports panel.", default: true },
   { key: "workbench.viewSwitcher", section: "Editor Appearance", type: "enum", options: [{ value: "activityBar", label: "Activity bar (VS Code style)" }, { value: "sidebarHeader", label: "Icons in the sidebar header" }, { value: "menu", label: "Hamburger menu" }], label: "View Switcher", description: "How you switch between Explorer, Search, Source Control, History, Run and Debug and Plugins: a vertical bar of icons at the left edge (like VS Code), a row of icons at the top of the sidebar, or one ☰ menu button.", default: "activityBar" },
   { key: "editor.lineNumbers", section: "Editor Appearance", type: "enum", options: [{ value: "on", label: "On" }, { value: "relative", label: "Relative" }, { value: "off", label: "Off" }], label: "Line Numbers", description: "How line numbers are shown.", default: "on" },
   { key: "editor.inlayHints", section: "Editor Appearance", type: "boolean", label: "Inlay Hints", description: "Show argument names (and other hints from the language server) inline in the code, greyed out, like JetBrains IDEs. Hold ⌃⌥ to hide them temporarily.", default: true },

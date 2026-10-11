@@ -1,0 +1,11 @@
+{
+  "id": "selection-stats",
+  "name": "Selection Stats",
+  "version": "1.0.0",
+  "description": "Characters, words and lines of the selection, in the status bar.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": [],
+  "minSableVersion": "0.3.6",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/selection-stats"
+}

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { isRemoteActive } from "../../lib/backend";
+import { chooseAndUpload, downloadFromRemote } from "../../lib/transfer";
 import { ChevronDown, ChevronRight, Folder, FolderOpen } from "lucide-react";
 import { ask as confirmNative } from "@tauri-apps/plugin-dialog";
 import { useWorkspaceStore } from "../../store/workspaceStore";
@@ -347,6 +349,13 @@ export function FileTree() {
               },
             },
           ]),
+      // Copying between this computer and a remote workspace.
+      ...(isRemoteActive()
+        ? [
+            ...(entry.isDirectory ? [{ label: "Upload Files Here…", onSelect: () => void chooseAndUpload(entry.path) }] : []),
+            { label: "Download…", onSelect: () => void downloadFromRemote(entry) },
+          ]
+        : []),
       {
         label: "Delete",
         danger: true,

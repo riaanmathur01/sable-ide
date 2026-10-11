@@ -1,0 +1,13 @@
+{
+  "id": "word-frequency",
+  "name": "Word Frequency",
+  "version": "1.0.0",
+  "description": "The 50 most frequent words in the file or selection, with counts. Choose one to copy it.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": [
+    "editor"
+  ],
+  "minSableVersion": "0.3.6",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/word-frequency"
+}

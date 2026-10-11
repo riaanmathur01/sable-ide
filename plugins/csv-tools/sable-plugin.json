@@ -1,0 +1,11 @@
+{
+  "id": "csv-tools",
+  "name": "CSV Tools",
+  "version": "1.0.0",
+  "description": "Convert CSV to JSON and JSON to CSV, and align CSV columns for reading. Detects comma, semicolon and tab separators and handles quoted fields.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.3",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/csv-tools"
+}

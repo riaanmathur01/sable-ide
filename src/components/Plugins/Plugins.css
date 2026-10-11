@@ -884,3 +884,21 @@
     width: auto;
   }
 }
+
+/* Create → Convert a VS Code extension */
+
+.convert-vscode-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.convert-vscode-row .settings-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.convert-vscode code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { installPluginEditorEvents } from "../../lib/plugins/editorEvents";
 import Editor, { type OnMount } from "@monaco-editor/react";
 import { useTabsStore } from "../../store/tabsStore";
 import { useUiStore } from "../../store/uiStore";
@@ -297,6 +298,8 @@ export default function MonacoPane({ groupId }: { groupId: string }) {
       if (focused()) publishEditorInfo(editor);
     };
     editor.onDidChangeModel(publishIfFocused);
+    // Plugins: the file in front, selection and text changes.
+    editor.onDidDispose(installPluginEditorEvents(editor, focused));
     editor.onDidChangeModelLanguage(publishIfFocused);
     editor.onDidChangeModelOptions(publishIfFocused);
     publishIfFocused();

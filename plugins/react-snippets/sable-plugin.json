@@ -1,0 +1,11 @@
+{
+  "id": "react-snippets",
+  "name": "React Snippets",
+  "version": "1.0.0",
+  "description": "Snippets for React components and hooks: rfc, rafce, useState, useEffect, useRef, useMemo, useCallback, useContext, createContext and more.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.3",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/react-snippets"
+}

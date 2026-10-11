@@ -398,6 +398,51 @@ function PluginRow({ plugin }: { plugin: PluginInfo }) {
 
 // --- Create ---------------------------------------------------------------------------
 
+/** Turn a VS Code extension into a Sable plugin (src-tauri/src/vscode.rs). */
+function ConvertVsCode() {
+  const busy = usePluginStore((state) => state.busy);
+  const [reference, setReference] = useState("");
+  return (
+    <div className="plugins-section convert-vscode">
+      <h3>Convert a VS Code extension</h3>
+      <p className="plugins-note">
+        Sable runs VS Code extensions through a compatibility layer: commands, editing, settings, completions, hovers,
+        formatters and diagnostics work. Enter an extension's id (<code>publisher.name</code>) or its Open VSX or VS
+        Code Marketplace link, or choose a downloaded <code>.vsix</code>.
+      </p>
+      <form
+        className="convert-vscode-row"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (reference.trim()) void usePluginStore.getState().installFromUrl(reference.trim()).then((done) => done && setReference(""));
+        }}
+      >
+        <input
+          className="settings-input"
+          placeholder="e.g. Tyriar.sort-lines"
+          value={reference}
+          spellCheck={false}
+          onChange={(event) => setReference(event.target.value)}
+        />
+        <button type="submit" className="plugins-button primary" disabled={busy || !reference.trim()}>
+          <Download size={13} strokeWidth={1.5} /> Convert & Install
+        </button>
+        <button
+          type="button"
+          className="plugins-button"
+          disabled={busy}
+          onClick={async () => {
+            const file = await openNativeDialog({ title: "Choose a VS Code Extension", filters: [{ name: "VS Code extension", extensions: ["vsix"] }] });
+            if (typeof file === "string") await usePluginStore.getState().installFromFolder(file);
+          }}
+        >
+          <FolderOpen size={13} strokeWidth={1.5} /> Choose .vsix…
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function Create() {
   const busy = usePluginStore((state) => state.busy);
   const [name, setName] = useState("My Plugin");
@@ -484,6 +529,8 @@ function Create() {
           </button>
         </div>
       </form>
+
+      <ConvertVsCode />
 
       <div className="plugins-section">
         <h3>Working on a plugin already?</h3>

@@ -1,0 +1,11 @@
+{
+  "id": "markdown-toc",
+  "name": "Markdown TOC",
+  "version": "1.0.0",
+  "description": "Insert a table of contents built from your Markdown headings, with GitHub-style links, and keep it up to date when you save.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.6",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/markdown-toc"
+}

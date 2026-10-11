@@ -49,6 +49,9 @@ pub enum Target {
         name: String,
         #[serde(default)]
         engine: Option<String>,
+        /// Run as this user (a dev container's remoteUser).
+        #[serde(default)]
+        user: Option<String>,
     },
 }
 
@@ -69,16 +72,27 @@ impl Target {
         }
     }
 
-    /// A command that runs `script` with `sh` on the target.
-    fn command(&self, script: &str) -> Command {
+    /// A command that runs `script` on the target: with `sh`, or (a
+    /// Windows SSH host) with PowerShell.
+    fn command(&self, script: &str, windows: bool) -> Command {
         let mut command = match self {
             Target::Ssh { host } => {
                 let mut command = Command::new(ssh_program());
+                // Passwords, passphrases and codes are asked for by Sable
+                // (ssh runs it as its SSH_ASKPASS helper).
+                if let Some((address, executable)) = askpass_env() {
+                    command
+                        .env("SSH_ASKPASS", executable)
+                        .env("SSH_ASKPASS_REQUIRE", "force")
+                        .env("SABLE_ASKPASS", address)
+                        .env("DISPLAY", std::env::var("DISPLAY").unwrap_or_else(|_| ":0".into()));
+                }
+                // Share one login between the connection's steps (and
+                // reconnects soon after), so a password is asked once.
+                #[cfg(unix)]
+                command.args(["-o", "ControlMaster=auto", "-o", "ControlPath=/tmp/sable-ssh-%C", "-o", "ControlPersist=300"]);
                 command.args([
                     "-T",
-                    // No terminal to type a password into: keys and agents only.
-                    "-o",
-                    "BatchMode=yes",
                     "-o",
                     "ConnectTimeout=20",
                     "-o",
@@ -90,8 +104,14 @@ impl Target {
                     "-o",
                     "StrictHostKeyChecking=accept-new",
                     host,
-                    // The remote login shell may not be sh (fish, csh).
-                    &format!("sh -c {}", shell_quote(script)),
+                    // The remote login shell may not be sh (fish, csh) — or
+                    // be cmd/PowerShell on Windows, given an encoded script
+                    // so nothing needs quoting.
+                    &if windows {
+                        format!("powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {}", encode_powershell(script))
+                    } else {
+                        format!("sh -c {}", shell_quote(script))
+                    },
                 ]);
                 command
             }
@@ -100,11 +120,15 @@ impl Target {
                 command.args(["-d", distro, "-e", "sh", "-c", script]);
                 command
             }
-            Target::Container { name, engine } => {
+            Target::Container { name, engine, user } => {
                 let engine = engine.clone().unwrap_or_else(|| "docker".to_string());
                 let program = crate::lsp::resolve_binary(&engine).map(|path| path.into_os_string()).unwrap_or(engine.into());
                 let mut command = Command::new(program);
-                command.args(["exec", "-i", name, "sh", "-c", script]);
+                command.args(["exec", "-i"]);
+                if let Some(user) = user {
+                    command.args(["-u", user]);
+                }
+                command.args([name.as_str(), "sh", "-c", script]);
                 command
             }
         };
@@ -123,6 +147,47 @@ fn ssh_program() -> String {
 /// `text` as one single-quoted sh word.
 fn shell_quote(text: &str) -> String {
     format!("'{}'", text.replace('\'', r"'\''"))
+}
+
+/// A PowerShell script for -EncodedCommand (base64 of UTF-16LE).
+fn encode_powershell(script: &str) -> String {
+    use base64::Engine;
+    let bytes: Vec<u8> = script.encode_utf16().flat_map(u16::to_le_bytes).collect();
+    base64::engine::general_purpose::STANDARD.encode(bytes)
+}
+
+/// Windows SSH hosts seen this run (so the sh attempt is skipped).
+static WINDOWS_HOSTS: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+/// What cmd or PowerShell says when asked to run `sh`.
+fn looks_like_windows(error: &str) -> bool {
+    error.contains("is not recognized") || error.contains("CommandNotFoundException")
+}
+
+/// The Windows launch: Start-Process keeps the agent on ssh's own
+/// stdin/stdout (PowerShell would otherwise re-encode its output).
+fn windows_launch_script() -> String {
+    format!(
+        r#"$d = Join-Path $env:USERPROFILE '.sable-server\bin\{VERSION}'
+$a = Join-Path $d 'sable-agent.exe'
+if (Test-Path $a) {{ $p = Start-Process -FilePath $a -ArgumentList '--stdio' -NoNewWindow -Wait -PassThru; exit $p.ExitCode }}
+[Console]::Out.WriteLine("{NEED_AGENT}Windows $env:PROCESSOR_ARCHITECTURE gzip")"#
+    )
+}
+
+fn windows_install_script() -> String {
+    format!(
+        r#"$ErrorActionPreference = 'Stop'
+$d = Join-Path $env:USERPROFILE '.sable-server\bin\{VERSION}'
+New-Item -ItemType Directory -Force -Path $d | Out-Null
+$part = Join-Path $d 'sable-agent.part'
+$out = [IO.File]::Create($part)
+$gz = New-Object IO.Compression.GZipStream([Console]::OpenStandardInput(), [IO.Compression.CompressionMode]::Decompress)
+$gz.CopyTo($out)
+$out.Close()
+Move-Item -Force $part (Join-Path $d 'sable-agent.exe')
+[Console]::Out.WriteLine('{INSTALLED}')"#
+    )
 }
 
 /// Start the agent if it's installed; otherwise say what's needed.
@@ -149,11 +214,12 @@ fn platform(os: &str, arch: &str) -> Result<String, String> {
     let os = match os {
         "Linux" => "linux",
         "Darwin" => "macos",
-        other => return Err(format!("Sable's remote agent doesn't run on {other} yet (Linux and macOS do)")),
+        "Windows" => "windows",
+        other => return Err(format!("Sable's remote agent doesn't run on {other} yet (Linux, macOS and Windows do)")),
     };
     let arch = match arch {
-        "x86_64" | "amd64" => "x86_64",
-        "aarch64" | "arm64" => "aarch64",
+        "x86_64" | "amd64" | "AMD64" => "x86_64",
+        "aarch64" | "arm64" | "ARM64" => "aarch64",
         other => return Err(format!("Sable's remote agent doesn't run on {other} processors yet (x86_64 and ARM64 do)")),
     };
     Ok(format!("{os}-{arch}"))
@@ -238,7 +304,7 @@ fn explain(target: &Target, tail: &Tail, fallback: &str) -> String {
     let last = lines.iter().rev().find(|line| !line.trim().is_empty()).map(|line| line.trim().to_string());
     match target {
         Target::Ssh { host } if text.contains("Permission denied") => format!(
-            "SSH couldn't log in to {host} with a key. Sable connects with SSH keys (or your SSH agent), not passwords — set one up with `ssh-copy-id {host}` in a terminal."
+            "{host} refused the login (wrong password, or cancelled). To skip passwords, set up a key with `ssh-copy-id {host}` in a terminal."
         ),
         Target::Ssh { host } if text.contains("Could not resolve hostname") => {
             format!("Couldn't find the host {host}. Check the name, or add it to ~/.ssh/config.")
@@ -259,11 +325,12 @@ fn explain(target: &Target, tail: &Tail, fallback: &str) -> String {
 async fn first_marker(
     target: &Target,
     script: &str,
+    windows: bool,
     stdin_bytes: Option<Vec<u8>>,
     markers: &[&str],
 ) -> Result<(String, Child, BufReader<tokio::process::ChildStdout>, Tail), String> {
     let mut child = target
-        .command(script)
+        .command(script, windows)
         .spawn()
         .map_err(|error| match target {
             Target::Ssh { .. } => format!("Couldn't run ssh: {error}. Is OpenSSH installed?"),
@@ -361,11 +428,29 @@ pub async fn remote_connect(app: AppHandle, target: Target) -> Result<RemoteInfo
 /// kept in `cache`.
 pub async fn connect(events: Events, cache: &std::path::Path, target: Target) -> Result<RemoteInfo, String> {
     disconnect().await;
+    *ASKPASS_EVENTS.lock().unwrap() = Some(events.clone());
     let progress = |message: &str| status(&events, "connecting", &target, Some(message.to_string()));
     progress(&format!("Connecting to {}…", target.name()));
 
     let markers = [READY, NEED_AGENT];
-    let (mut line, mut child, mut reader, mut tail) = first_marker(&target, &launch_script(), None, &markers).await?;
+    let ssh_host = match &target {
+        Target::Ssh { host } => Some(host.clone()),
+        _ => None,
+    };
+    let mut windows = ssh_host.as_ref().is_some_and(|host| WINDOWS_HOSTS.lock().unwrap().contains(host));
+    let launch = |windows: bool| if windows { windows_launch_script() } else { launch_script() };
+    let first = match first_marker(&target, &launch(windows), windows, None, &markers).await {
+        // cmd/PowerShell answered: a Windows host.
+        Err(error) if !windows && ssh_host.is_some() && looks_like_windows(&error) => {
+            windows = true;
+            if let Some(host) = &ssh_host {
+                WINDOWS_HOSTS.lock().unwrap().push(host.clone());
+            }
+            first_marker(&target, &launch(true), true, None, &markers).await
+        }
+        other => other,
+    };
+    let (mut line, mut child, mut reader, mut tail) = first?;
     if let Some(rest) = line.strip_prefix(NEED_AGENT) {
         let parts: Vec<&str> = rest.split_whitespace().collect();
         let (os, arch, has_gzip) = match parts.as_slice() {
@@ -373,19 +458,28 @@ pub async fn connect(events: Events, cache: &std::path::Path, target: Target) ->
             _ => return Err(format!("Unexpected answer from {}: {rest}", target.name())),
         };
         let platform = platform(os, arch)?;
-        let _ = child.kill().await;
+        // It exits by itself (killing it could end a shared ssh login).
+        if tokio::time::timeout(Duration::from_secs(10), child.wait()).await.is_err() {
+            let _ = child.kill().await;
+        }
         let (mut bytes, mut gzipped) = agent_binary(cache, &platform, &progress).await?;
         if gzipped && !has_gzip {
             bytes = gunzip(&bytes)?;
             gzipped = false;
         }
+        // Windows unpacks with .NET's GZipStream: always send it gzipped.
+        if windows && !gzipped {
+            bytes = gzip(&bytes)?;
+            gzipped = true;
+        }
         progress(&format!("Installing Sable's agent on {}…", target.name()));
-        let (_, mut installer, _, _) = first_marker(&target, &install_script(gzipped), Some(bytes), &[INSTALLED])
+        let installer_script = if windows { windows_install_script() } else { install_script(gzipped) };
+        let (_, mut installer, _, _) = first_marker(&target, &installer_script, windows, Some(bytes), &[INSTALLED])
             .await
             .map_err(|error| format!("Couldn't install Sable's agent: {error}"))?;
         let _ = installer.wait().await;
         progress(&format!("Starting Sable on {}…", target.name()));
-        (line, child, reader, tail) = first_marker(&target, &launch_script(), None, &[READY]).await?;
+        (line, child, reader, tail) = first_marker(&target, &launch(windows), windows, None, &[READY]).await?;
     }
 
     let info: AgentInfo = serde_json::from_str(line.strip_prefix(READY).unwrap_or(""))
@@ -435,7 +529,11 @@ pub async fn connect(events: Events, cache: &std::path::Path, target: Target) ->
             }
             let Ok(message) = serde_json::from_str::<Value>(line.trim_end()) else { continue };
             if let Some(event) = message.get("event").and_then(Value::as_str) {
-                reader_events(event, message.get("payload").cloned().unwrap_or(Value::Null));
+                let payload = message.get("payload").cloned().unwrap_or(Value::Null);
+                // Forwarded-port traffic stays here; everything else is the window's.
+                if !tunnel_event(event, &payload) {
+                    reader_events(event, payload);
+                }
                 continue;
             }
             let Some(id) = message.get("id").and_then(Value::as_u64) else { continue };
@@ -466,6 +564,13 @@ pub async fn connect(events: Events, cache: &std::path::Path, target: Target) ->
     Ok(RemoteInfo { label: target.label(), target, agent: info })
 }
 
+fn gzip(bytes: &[u8]) -> Result<Vec<u8>, String> {
+    use std::io::Write;
+    let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+    encoder.write_all(bytes).map_err(|error| error.to_string())?;
+    encoder.finish().map_err(|error| error.to_string())
+}
+
 /// Unpack the agent here when the remote has no gzip.
 fn gunzip(bytes: &[u8]) -> Result<Vec<u8>, String> {
     let mut unpacked = Vec::new();
@@ -475,6 +580,7 @@ fn gunzip(bytes: &[u8]) -> Result<Vec<u8>, String> {
 }
 
 async fn disconnect() {
+    stop_all_forwards();
     let connection = CONNECTION.lock().unwrap().take();
     if let Some(connection) = connection {
         // Closing stdin ends the agent (and its servers and terminals).
@@ -522,6 +628,284 @@ pub async fn remote_call(cmd: String, args: Value) -> Result<Value, String> {
     receiver
         .await
         .unwrap_or_else(|_| Err(format!("Lost the connection to {}", connection.target.name())))
+}
+
+// --- Passwords: Sable as ssh's SSH_ASKPASS helper ------------------------------------------
+//
+// ssh runs this app's own executable to ask for a password, passphrase or
+// one-time code (SABLE_ASKPASS tells it where to ask). That process
+// connects to a local socket here, with a per-launch token; the window
+// shows the prompt; the answer goes back the same way.
+
+struct Askpass {
+    address: String,
+    token: String,
+}
+
+static ASKPASS: std::sync::OnceLock<Option<Askpass>> = std::sync::OnceLock::new();
+static ASKPASS_EVENTS: Mutex<Option<Events>> = Mutex::new(None);
+static ASKPASS_PENDING: Mutex<Option<HashMap<u64, oneshot::Sender<Option<String>>>>> = Mutex::new(None);
+static ASKPASS_IDS: AtomicU64 = AtomicU64::new(1);
+/// How long a prompt waits for an answer.
+const ASKPASS_TIMEOUT: Duration = Duration::from_secs(300);
+
+/// A token no other local process can guess.
+fn random_token() -> String {
+    use std::hash::{BuildHasher, Hasher};
+    let mut token = String::new();
+    for round in 0..4u64 {
+        let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+        hasher.write_u64(round);
+        hasher.write_u128(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|time| time.as_nanos()).unwrap_or(0));
+        hasher.write_u32(std::process::id());
+        token.push_str(&format!("{:016x}", hasher.finish()));
+    }
+    token
+}
+
+/// Start the askpass listener (once); `(SABLE_ASKPASS value, executable)`.
+fn askpass_env() -> Option<(String, std::path::PathBuf)> {
+    let askpass = ASKPASS.get_or_init(|| {
+        let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).ok()?;
+        let address = format!("127.0.0.1:{} {}", listener.local_addr().ok()?.port(), random_token());
+        let token = address.split(' ').nth(1)?.to_string();
+        listener.set_nonblocking(true).ok()?;
+        let listener = tokio::net::TcpListener::from_std(listener).ok()?;
+        let expected = token.clone();
+        tokio::spawn(async move {
+            while let Ok((stream, _)) = listener.accept().await {
+                tokio::spawn(answer_askpass(stream, expected.clone()));
+            }
+        });
+        Some(Askpass { address, token })
+    });
+    let askpass = askpass.as_ref()?;
+    let _ = &askpass.token;
+    Some((askpass.address.clone(), std::env::current_exe().ok()?))
+}
+
+async fn answer_askpass(stream: tokio::net::TcpStream, token: String) {
+    let (reader, mut writer) = stream.into_split();
+    let mut line = String::new();
+    if BufReader::new(reader).read_line(&mut line).await.is_err() {
+        return;
+    }
+    let Ok(request) = serde_json::from_str::<Value>(&line) else { return };
+    if request.get("token").and_then(Value::as_str) != Some(token.as_str()) {
+        return;
+    }
+    let prompt = request.get("prompt").and_then(Value::as_str).unwrap_or("Password:").to_string();
+    let id = ASKPASS_IDS.fetch_add(1, Ordering::SeqCst);
+    let (sender, receiver) = oneshot::channel();
+    ASKPASS_PENDING.lock().unwrap().get_or_insert_with(HashMap::new).insert(id, sender);
+    let events = ASKPASS_EVENTS.lock().unwrap().clone();
+    let answer = match events {
+        Some(events) => {
+            emit(&events, "remote:askpass", json!({ "id": id, "prompt": prompt.trim() }));
+            tokio::time::timeout(ASKPASS_TIMEOUT, receiver).await.ok().and_then(Result::ok).flatten()
+        }
+        None => None,
+    };
+    ASKPASS_PENDING.lock().unwrap().get_or_insert_with(HashMap::new).remove(&id);
+    let reply = match answer {
+        Some(answer) => json!({ "answer": answer }),
+        None => json!({ "cancel": true }),
+    };
+    let _ = writer.write_all(format!("{reply}\n").as_bytes()).await;
+}
+
+/// The window's answer to an askpass prompt (None: cancelled).
+#[tauri::command]
+pub fn remote_askpass_answer(id: u64, answer: Option<String>) {
+    if let Some(sender) = ASKPASS_PENDING.lock().unwrap().get_or_insert_with(HashMap::new).remove(&id) {
+        let _ = sender.send(answer);
+    }
+}
+
+/// The helper side (this executable, run by ssh): ask the app, print the
+/// answer for ssh, and exit 0 — or 1 if it was cancelled.
+pub fn askpass_client(address: &str, prompt: &str) -> i32 {
+    use std::io::{BufRead, Write};
+    let Some((socket, token)) = address.split_once(' ') else { return 1 };
+    let Ok(mut stream) = std::net::TcpStream::connect(socket) else { return 1 };
+    let request = json!({ "token": token, "prompt": prompt });
+    if writeln!(stream, "{request}").is_err() {
+        return 1;
+    }
+    let mut line = String::new();
+    if std::io::BufReader::new(&stream).read_line(&mut line).is_err() {
+        return 1;
+    }
+    let reply: Value = serde_json::from_str(&line).unwrap_or(Value::Null);
+    match reply.get("answer").and_then(Value::as_str) {
+        Some(answer) => {
+            println!("{answer}");
+            0
+        }
+        None => 1,
+    }
+}
+
+// --- Forwarded ports --------------------------------------------------------------------
+//
+// A port on the remote, reachable at localhost:<local port> here: Sable
+// listens locally and relays each connection through the agent (which
+// connects to the port on its side). It works the same for SSH, WSL and
+// containers, with no extra ssh connections.
+
+struct Forward {
+    local_port: u16,
+    listener: tokio::task::JoinHandle<()>,
+}
+
+static FORWARDS: Mutex<Option<HashMap<u16, Forward>>> = Mutex::new(None);
+/// Open tunnels: id → where the remote's bytes go (None: it closed).
+static TUNNELS: Mutex<Option<HashMap<u64, mpsc::UnboundedSender<Option<Vec<u8>>>>>> = Mutex::new(None);
+static TUNNEL_IDS: AtomicU64 = AtomicU64::new(1);
+
+/// A `tunnel:*` event from the agent; true if it was one.
+fn tunnel_event(event: &str, payload: &Value) -> bool {
+    use base64::Engine;
+    let Some(kind) = event.strip_prefix("tunnel:") else { return false };
+    let Some(id) = payload.get("id").and_then(Value::as_u64) else { return true };
+    let mut tunnels = TUNNELS.lock().unwrap();
+    let tunnels = tunnels.get_or_insert_with(HashMap::new);
+    match kind {
+        "data" => {
+            let bytes = payload
+                .get("data")
+                .and_then(Value::as_str)
+                .and_then(|data| base64::engine::general_purpose::STANDARD.decode(data).ok())
+                .unwrap_or_default();
+            if let Some(sender) = tunnels.get(&id) {
+                let _ = sender.send(Some(bytes));
+            }
+        }
+        _ => {
+            if let Some(sender) = tunnels.remove(&id) {
+                let _ = sender.send(None);
+            }
+        }
+    }
+    true
+}
+
+/// Send to the agent without waiting for (or wanting) a reply.
+fn send_unanswered(cmd: &str, args: Value) {
+    if let Some(connection) = current() {
+        let _ = connection.writer.send(json!({ "cmd": cmd, "args": args }).to_string());
+    }
+}
+
+/// Relay one local connection to `remote_port` on the remote.
+async fn relay(stream: tokio::net::TcpStream, remote_port: u16) {
+    use base64::Engine;
+    use tokio::io::AsyncReadExt;
+    let id = TUNNEL_IDS.fetch_add(1, Ordering::SeqCst);
+    let (sender, mut incoming) = mpsc::unbounded_channel::<Option<Vec<u8>>>();
+    TUNNELS.lock().unwrap().get_or_insert_with(HashMap::new).insert(id, sender);
+    if remote_call("tunnel_open".into(), json!({ "id": id, "port": remote_port })).await.is_err() {
+        TUNNELS.lock().unwrap().get_or_insert_with(HashMap::new).remove(&id);
+        return;
+    }
+    let _ = stream.set_nodelay(true);
+    let (mut reader, mut writer) = stream.into_split();
+    // Remote → here.
+    let to_local = tokio::spawn(async move {
+        while let Some(Some(bytes)) = incoming.recv().await {
+            if writer.write_all(&bytes).await.is_err() {
+                break;
+            }
+        }
+        let _ = writer.shutdown().await;
+    });
+    // Here → remote.
+    let mut buffer = vec![0u8; 64 * 1024];
+    loop {
+        match reader.read(&mut buffer).await {
+            Ok(0) | Err(_) => break,
+            Ok(count) => send_unanswered(
+                "tunnel_write",
+                json!({ "id": id, "data": base64::engine::general_purpose::STANDARD.encode(&buffer[..count]) }),
+            ),
+        }
+    }
+    let _ = remote_call("tunnel_close".into(), json!({ "id": id })).await;
+    let _ = to_local.await;
+    TUNNELS.lock().unwrap().get_or_insert_with(HashMap::new).remove(&id);
+}
+
+fn stop_all_forwards() {
+    if let Some(forwards) = FORWARDS.lock().unwrap().take() {
+        for forward in forwards.into_values() {
+            forward.listener.abort();
+        }
+    }
+    if let Some(tunnels) = TUNNELS.lock().unwrap().take() {
+        for sender in tunnels.into_values() {
+            let _ = sender.send(None);
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ForwardedPort {
+    pub remote_port: u16,
+    pub local_port: u16,
+}
+
+/// Forward `remote_port` to localhost (the same port number if it's free
+/// here, else `local_port` or any free one). Returns the local port.
+#[tauri::command]
+pub async fn remote_forward_port(remote_port: u16, local_port: Option<u16>) -> Result<u16, String> {
+    current().ok_or("Not connected to a remote")?;
+    if let Some(forward) = FORWARDS.lock().unwrap().get_or_insert_with(HashMap::new).get(&remote_port) {
+        return Ok(forward.local_port);
+    }
+    let mut listener = None;
+    for candidate in [local_port.unwrap_or(remote_port), 0] {
+        if let Ok(bound) = tokio::net::TcpListener::bind(("127.0.0.1", candidate)).await {
+            listener = Some(bound);
+            break;
+        }
+    }
+    let listener = listener.ok_or_else(|| format!("Couldn't listen on a local port for {remote_port}"))?;
+    let local = listener.local_addr().map_err(|error| error.to_string())?.port();
+    let task = tokio::spawn(async move {
+        loop {
+            let Ok((stream, _)) = listener.accept().await else { break };
+            tokio::spawn(relay(stream, remote_port));
+        }
+    });
+    FORWARDS
+        .lock()
+        .unwrap()
+        .get_or_insert_with(HashMap::new)
+        .insert(remote_port, Forward { local_port: local, listener: task });
+    Ok(local)
+}
+
+/// Stop forwarding `remote_port`.
+#[tauri::command]
+pub fn remote_stop_forward(remote_port: u16) {
+    if let Some(forward) = FORWARDS.lock().unwrap().get_or_insert_with(HashMap::new).remove(&remote_port) {
+        forward.listener.abort();
+    }
+}
+
+/// The ports being forwarded.
+#[tauri::command]
+pub fn remote_forwards() -> Vec<ForwardedPort> {
+    let mut list: Vec<ForwardedPort> = FORWARDS
+        .lock()
+        .unwrap()
+        .get_or_insert_with(HashMap::new)
+        .iter()
+        .map(|(&remote_port, forward)| ForwardedPort { remote_port, local_port: forward.local_port })
+        .collect();
+    list.sort_by_key(|forward| forward.remote_port);
+    list
 }
 
 // --- What there is to connect to ----------------------------------------------------
@@ -808,6 +1192,55 @@ mod tests {
         remote_call("search_workspace".into(), json!({ "root": project, "query": "needle", "searchId": 5, "options": null })).await.unwrap();
         assert!(wait_for(&seen, |name, payload| name == "search:done" && payload["searchId"] == 5 && payload["total"] == 1).await);
 
+        // Debugging runs there too (here: no session yet).
+        assert!(remote_call("java_debug_installed".into(), json!({})).await.unwrap().is_boolean());
+        let no_session = remote_call("debug_request".into(), json!({ "seq": 1, "command": "threads", "arguments": {} })).await.unwrap_err();
+        assert!(no_session.contains("No debug session"), "{no_session}");
+
+        // Forwarding a port: an echo server stands in for a dev server.
+        let echo = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
+        let echo_port = echo.local_addr().unwrap().port();
+        tokio::spawn(async move {
+            while let Ok((mut stream, _)) = echo.accept().await {
+                tokio::spawn(async move {
+                    use tokio::io::AsyncReadExt;
+                    let mut buffer = [0u8; 4096];
+                    while let Ok(count) = stream.read(&mut buffer).await {
+                        if count == 0 || stream.write_all(&buffer[..count]).await.is_err() {
+                            break;
+                        }
+                    }
+                });
+            }
+        });
+        remote_call("ports_watch".into(), json!({})).await.unwrap();
+        assert!(
+            wait_for(&seen, |name, payload| name == "ports:changed"
+                && payload.as_array().is_some_and(|ports| ports.iter().any(|port| port["port"] == echo_port)))
+            .await,
+            "the agent didn't report the listening port"
+        );
+        let local = remote_forward_port(echo_port, None).await.unwrap();
+        assert_ne!(local, echo_port, "the remote's port is taken here (same machine), so another is used");
+        {
+            use tokio::io::AsyncReadExt;
+            let mut client = tokio::net::TcpStream::connect(("127.0.0.1", local)).await.unwrap();
+            let big: Vec<u8> = (0..200_000u32).map(|n| (n % 251) as u8).collect();
+            client.write_all(b"hello through the tunnel").await.unwrap();
+            let mut reply = vec![0u8; 24];
+            client.read_exact(&mut reply).await.unwrap();
+            assert_eq!(&reply, b"hello through the tunnel");
+            // A large write arrives whole and in order.
+            client.write_all(&big).await.unwrap();
+            let mut echoed = vec![0u8; big.len()];
+            client.read_exact(&mut echoed).await.unwrap();
+            assert!(echoed == big, "large transfer corrupted");
+        }
+        assert_eq!(remote_forwards().len(), 1);
+        remote_stop_forward(echo_port);
+        assert!(remote_forwards().is_empty());
+        assert!(!seen.lock().unwrap().iter().any(|(name, _)| name.starts_with("tunnel:")), "tunnel traffic leaked to the window");
+
         // Reconnecting uses the installed agent.
         seen.lock().unwrap().clear();
         connect(events.clone(), &base.join("cache"), target.clone()).await.unwrap();
@@ -824,11 +1257,46 @@ mod tests {
         let _ = std::fs::remove_dir_all(&base);
     }
 
+    /// Sable as ssh's askpass helper: the window's answer reaches the
+    /// helper process, a cancel or a wrong token gets nothing.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn askpass_round_trip() {
+        let (address, _) = askpass_env().expect("askpass listener");
+        let prompts: Arc<Mutex<Vec<String>>> = Arc::default();
+        let seen = prompts.clone();
+        let events: Events = Arc::new(move |name, payload| {
+            if name != "remote:askpass" {
+                return;
+            }
+            let prompt = payload["prompt"].as_str().unwrap_or("").to_string();
+            seen.lock().unwrap().push(prompt.clone());
+            let id = payload["id"].as_u64().unwrap();
+            // Answer passwords, cancel anything else.
+            remote_askpass_answer(id, prompt.contains("password").then(|| "hunter2".to_string()));
+        });
+        *ASKPASS_EVENTS.lock().unwrap() = Some(events);
+        let ask = |address: String, prompt: &'static str| tokio::task::spawn_blocking(move || askpass_client(&address, prompt));
+        assert_eq!(ask(address.clone(), "me@box's password: ").await.unwrap(), 0);
+        assert_eq!(ask(address.clone(), "Verification code: ").await.unwrap(), 1);
+        let forged = format!("{} wrong-token", address.split(' ').next().unwrap());
+        assert_eq!(ask(forged, "me@box's password: ").await.unwrap(), 1);
+        assert_eq!(*prompts.lock().unwrap(), vec!["me@box's password:".to_string(), "Verification code:".to_string()]);
+    }
+
     #[test]
     fn platforms_and_quoting() {
         assert_eq!(platform("Linux", "x86_64").unwrap(), "linux-x86_64");
         assert_eq!(platform("Linux", "arm64").unwrap(), "linux-aarch64");
         assert_eq!(platform("Darwin", "arm64").unwrap(), "macos-aarch64");
+        assert_eq!(platform("Windows", "AMD64").unwrap(), "windows-x86_64");
+        assert!(looks_like_windows("Couldn't connect to box: 'sh' is not recognized as an internal or external command,"));
+        assert!(looks_like_windows("sh : The term 'sh' is not recognized as the name of a cmdlet, function, script file"));
+        assert!(!looks_like_windows("Couldn't connect to box: Connection refused"));
+        // -EncodedCommand is base64 of UTF-16LE.
+        assert_eq!(encode_powershell("dir"), "ZABpAHIA");
+        let launch = windows_launch_script();
+        assert!(launch.contains(&format!(r".sable-server\bin\{VERSION}")) && launch.contains("Start-Process") && launch.contains(NEED_AGENT));
+        assert!(windows_install_script().contains("GZipStream") && windows_install_script().contains(INSTALLED));
         assert!(platform("FreeBSD", "amd64").is_err());
         assert_eq!(shell_quote("it's"), r"'it'\''s'");
     }

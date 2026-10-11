@@ -11,6 +11,7 @@ import { resetLanguageServers } from "../lib/lsp/lspClient";
 import { useAgentStore } from "./agentStore";
 import { useProblemsStore } from "./problemsStore";
 import { useBreakpointsStore } from "./breakpointsStore";
+import { invokeLocal, isRemoteActive } from "../lib/backend";
 
 /**
  * Workspace state: the open folder and a lazily-loaded directory tree.
@@ -93,6 +94,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       useGitStore.getState().refresh();
       // Discover Python interpreters (workspace venv + system).
       void useInterpreterStore.getState().discover();
+      // A local folder with a dev container: say it can be opened in it.
+      if (!isRemoteActive()) {
+        void invokeLocal<boolean>("devcontainer_exists", { folder: path })
+          .then((exists) => {
+            if (exists) useUiStore.getState().showStatus("This folder has a dev container — “Remote: Reopen Folder in Container” opens it inside");
+          })
+          .catch(() => {});
+      }
       // A running shell is still in the old folder — restart it so it
       // picks up the new workspace as its cwd. (If none is running, the
       // next time the terminal opens it already uses the new root.)

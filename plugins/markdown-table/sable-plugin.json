@@ -1,0 +1,11 @@
+{
+  "id": "markdown-table",
+  "name": "Markdown Table",
+  "version": "1.0.0",
+  "description": "Format Markdown tables (aligned pipes, padded cells, :---: alignment), turn CSV into a table, and add rows and columns.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.6",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/markdown-table"
+}

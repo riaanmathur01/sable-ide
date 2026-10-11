@@ -37,6 +37,22 @@ opens `main.js`. It reloads every time you save a file in its folder, and
 | `permissions` | What the plugin may do (below). Shown to users before they install it. |
 | `minSableVersion` | Optional: the oldest Sable it works with. |
 | `description`, `author`, `homepage` | Optional, shown in Settings → Plugins. |
+| `keybindings` | Optional keyboard shortcuts for your commands (below). |
+
+### Keyboard shortcuts
+
+```json
+"keybindings": [
+  { "command": "convert", "key": "ctrl+alt+c", "mac": "cmd+alt+c" }
+]
+```
+
+`command` is an id you pass to `sable.commands.register`. Keys use VS
+Code's notation: `ctrl`, `shift`, `alt`, `cmd` (or `ctrlcmd` for ⌘ on a
+Mac and Ctrl elsewhere), and a key — a letter, digit, `f1`–`f19`,
+`up`/`down`/`left`/`right`, `enter`, `tab`, `escape`, or punctuation.
+`mac` is used on a Mac instead of `key`. Sable's own shortcuts win if
+they clash; chords (`ctrl+k ctrl+c`) aren't supported.
 
 ### Permissions
 
@@ -114,10 +130,13 @@ open folder. Lines and columns are 1-based, like the editor.
 
 ### `sable.window`
 - `showMessage(text)`, `showError(text)`: status-bar messages.
+- `showWarning(text)`: a status-bar warning.
 - `showQuickPick(items, { placeholder? })` asks the user to choose from
   a list, shown like the command palette and filterable as they type.
   Items are strings or `{ label, description?, detail? }`. It resolves to
   the chosen item as you passed it, or `null` if dismissed.
+- `showInputBox({ prompt?, placeholder?, value? })` asks for a line of
+  text; resolves to it, or `null` if dismissed.
 
 ### `sable.statusBar`
 - `set(text, { tooltip?, command? })`: your status-bar item. Clicking it
@@ -131,6 +150,21 @@ open folder. Lines and columns are 1-based, like the editor.
 - `replaceSelection(text)`: replace the selection, or insert at the
   cursor. Undoable.
 - `setText(text)`: replace the whole file. Undoable.
+- `applyEdits([{ range: { start, end }, text }])`: several edits as one
+  undo step. Ranges refer to the text before any of the edits.
+- `setSelection({ start, end })`: select a range (or place the cursor)
+  and scroll to it.
+- `executeAction(id)`: run an editor action — Monaco's ids are VS Code's
+  (`editor.action.formatDocument`, `editor.action.commentLine`, …).
+- `open(path, { line? })` (`workspace:read`): open a file of the folder.
+
+### `sable.env`
+- `clipboard.readText()`, `clipboard.writeText(text)`.
+- `openExternal(url)`: open an http(s) or mailto link in the browser.
+
+### `sable.storage`
+Values kept for your plugin between runs (JSON, 1 MB in all).
+- `get(key)` (or `null`), `set(key, value)` (`null` removes it), `keys()`.
 
 ### `sable.workspace`
 - `root`: the open folder, or `null`. It stays current when the folder
@@ -144,6 +178,12 @@ open folder. Lines and columns are 1-based, like the editor.
 ### `sable.events`
 - `onDidSave(listener)`, `onDidOpen(listener)`: the listener gets
   `{ path }`. Returns a `Disposable`.
+- `onDidChange(listener)`: a file's text changed (after typing pauses);
+  gets `{ path }`.
+- `onDidChangeActiveEditor(listener)`: a different file is in front;
+  gets `{ path }` (`null` for none).
+- `onDidChangeSelection(listener)`: the selection or cursor moved
+  (settled); gets `{ path, selection }`.
 
 ### `sable.languages` (needs `editor`)
 Language ids are Monaco's (`python`, `typescript`, `rust`, `plaintext`, …);
@@ -157,6 +197,10 @@ Language ids are Monaco's (`python`, `typescript`, `rust`, `plaintext`, …);
   by default it replaces the word being typed. The editor asks once (at a
   trigger character or the start of a word) and narrows the list itself
   as the user types on, so return every candidate, not just the best few.
+- `registerHover(language, request => markdown | null)` shows a tooltip
+  when the pointer rests on text. The request is `{ path, language, text,
+  line, column, lineText, word }`; return Markdown (or
+  `{ contents, range? }`), or `null` for no tooltip.
 - `registerRenameSuggestions(language, ({ path, language, name, line }) => names)`
   lists names under the rename box (F2, or ⇧F6) as soon as it opens; the
   user picks one with ↓ and Enter, or keeps typing. `language` can be `"*"`
@@ -177,6 +221,50 @@ Language ids are Monaco's (`python`, `typescript`, `rust`, `plaintext`, …);
 ### Other
 - `sable.manifest`: your manifest.
 - `sable.version`: Sable's version.
+
+## Converting a VS Code extension
+
+Many VS Code extensions run in Sable unchanged. **Settings → Plugins →
+Create → Convert a VS Code extension** (or **Plugins: Convert VS Code
+Extension…** in the command palette) takes:
+
+- an extension id, `publisher.name` (e.g. `Tyriar.sort-lines`), or its
+  [Open VSX](https://open-vsx.org) or VS Code Marketplace link — Sable
+  downloads it from Open VSX, the open registry VS Code-compatible
+  editors use;
+- or a `.vsix` file you downloaded (the Marketplace page's *Download
+  Extension* link), via **Choose .vsix…**.
+
+Sable reads the extension's `package.json` — name, version, commands
+(with their titles), keybindings and settings defaults — and writes a
+Sable plugin around its code with a compatibility layer
+(`src-tauri/src/vscode_shim.js`) that answers `require("vscode")`. It
+installs like any plugin (you see its permissions first), and **Update**
+fetches the latest version again.
+
+**What works:** commands (`registerCommand`, `registerTextEditorCommand`,
+`executeCommand` for its own commands and `editor.action.*`), the active
+editor and its document (`getText`, `lineAt`, `offsetAt`, `positionAt`,
+`getWordRangeAtPosition`, …), `editor.edit` and `WorkspaceEdit`,
+selections, messages with buttons, `showQuickPick`, `showInputBox`,
+status-bar items, output channels (to the plugin log),
+`workspace.getConfiguration` (defaults from `package.json`; `update`
+remembers values), `workspace.fs.readFile/writeFile`, `findFiles`,
+`openTextDocument`, document events, completion, hover, formatting and
+diagnostics providers, the clipboard, `openExternal`, `globalState`,
+`workspaceState` and `secrets`.
+
+**What doesn't:** tree views, webviews, decorations, custom editors,
+terminals created by the extension, debug adapters, and anything that
+needs Node (`fs`, `child_process`, `http`, native modules). These are
+accepted and ignored — the extension still loads, and the plugin's log
+notes what it skipped. Extensions with a `browser` entry (made for VS
+Code for the Web) are the best fit: Sable runs that entry when there is
+one. Themes, grammars and snippet-only extensions have no code to run and
+aren't converted yet.
+
+To check what a converted extension is doing, open it in **Settings →
+Plugins → Installed** and look at its log.
 
 ## Sharing a plugin
 

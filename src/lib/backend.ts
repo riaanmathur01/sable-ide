@@ -18,6 +18,7 @@ export const REMOTE_COMMANDS = new Set([
   "read_file",
   "read_file_base64",
   "write_file",
+  "write_file_base64",
   "is_directory",
   "path_exists",
   "real_path",
@@ -40,6 +41,10 @@ export const REMOTE_COMMANDS = new Set([
   "resize_terminal",
   "kill_terminal",
   "run_shell",
+  "ports_list",
+  "ports_watch",
+  "tunnel_open",
+  "tunnel_close",
   "start_language_server",
   "lsp_notify",
   "lsp_request",
@@ -56,6 +61,20 @@ export const REMOTE_COMMANDS = new Set([
   "install_rope",
   "discover_python_interpreters",
   "create_python_venv",
+  "start_debug",
+  "start_attach",
+  "start_java_debug",
+  "debug_request",
+  "debug_stop",
+  "debug_terminal_started",
+  "install_debugpy",
+  "install_js_debug",
+  "install_java_debug",
+  "java_debug_installed",
+  "list_processes",
+  "jvm_debug_listen",
+  "jvm_debug_accept",
+  "jvm_debug_cancel",
   "git_status",
   "git_stage",
   "git_unstage",
@@ -98,6 +117,7 @@ const PATH_ARGUMENT: Record<string, string> = {
   read_file: "path",
   read_file_base64: "path",
   write_file: "path",
+  write_file_base64: "path",
   is_directory: "path",
   path_exists: "path",
   real_path: "path",
@@ -109,9 +129,6 @@ const PATH_ARGUMENT: Record<string, string> = {
   history_list: "path",
   history_read: "path",
 };
-
-/** Debugging runs on this computer only, for now. */
-const LOCAL_ONLY_IN_REMOTE = new Set(["start_debug", "start_java_debug", "start_attach", "list_processes", "jvm_debug_listen"]);
 
 let remote = false;
 let localRoots: string[] = [];
@@ -157,9 +174,6 @@ export function runsRemotely(cmd: string, args?: InvokeArgs): boolean {
 
 /** `invoke`, routed to the remote agent when a remote workspace is open. */
 export function invoke<T>(cmd: string, args?: InvokeArgs): Promise<T> {
-  if (remote && LOCAL_ONLY_IN_REMOTE.has(cmd)) {
-    return Promise.reject(new Error("Debugging isn't available in remote windows yet — Run works, and runs on the remote"));
-  }
   if (runsRemotely(cmd, args)) {
     return invokeTauri<T>("remote_call", { cmd, args: args ?? {} });
   }

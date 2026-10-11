@@ -1,0 +1,11 @@
+{
+  "id": "whitespace-linter",
+  "name": "Whitespace Linter",
+  "version": "1.0.0",
+  "description": "Marks trailing whitespace, indentation that mixes tabs and spaces, and a missing final newline as you type, with a command to fix them.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.6",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/whitespace-linter"
+}

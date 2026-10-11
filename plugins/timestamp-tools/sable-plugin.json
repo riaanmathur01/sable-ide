@@ -1,0 +1,11 @@
+{
+  "id": "timestamp-tools",
+  "name": "Timestamps",
+  "version": "1.0.0",
+  "description": "Hover a Unix timestamp to see its date in UTC and your time zone, convert between timestamps and ISO dates, and insert the current time.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.6",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/timestamp-tools"
+}

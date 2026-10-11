@@ -16,7 +16,7 @@
 
 use crate::commands::{format, fs, git, history, interpreter, refactor, search, shell, terminal};
 use crate::events::Events;
-use crate::{lsp, watcher};
+use crate::{debug, lsp, watcher};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -48,13 +48,148 @@ pub struct AgentInfo {
     pub tmp: String,
 }
 
-/// Long-lived state: terminals, the file watcher, searches, servers.
+/// Long-lived state: terminals, the file watcher, searches, servers,
+/// port tunnels.
 #[derive(Default)]
 pub struct AgentState {
     terminals: terminal::TerminalState,
     watcher: watcher::WatcherState,
     search: search::SearchState,
     lsp: lsp::LspManager,
+    debug: debug::DebugManager,
+    tunnels: std::sync::Mutex<std::collections::HashMap<u64, mpsc::UnboundedSender<Vec<u8>>>>,
+    watching_ports: std::sync::atomic::AtomicBool,
+}
+
+// --- Ports: what's listening here, and tunnels to it --------------------------------------
+
+/// A TCP port something listens on (on this machine's loopback or all
+/// interfaces — the ones a browser on the other end would want).
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ListeningPort {
+    pub port: u16,
+}
+
+/// Listening ports from /proc/net/tcp{,6} (Linux) or lsof (macOS).
+pub fn listening_ports() -> Vec<ListeningPort> {
+    let mut ports = std::collections::BTreeSet::new();
+    for file in ["/proc/net/tcp", "/proc/net/tcp6"] {
+        let Ok(text) = std::fs::read_to_string(file) else { continue };
+        for line in text.lines().skip(1) {
+            let fields: Vec<&str> = line.split_whitespace().collect();
+            // local_address is "ADDR:PORT" in hex; state 0A is LISTEN.
+            if fields.len() < 4 || fields[3] != "0A" {
+                continue;
+            }
+            let Some((address, port)) = fields[1].split_once(':') else { continue };
+            let reachable = matches!(
+                address,
+                "0100007F" | "00000000" | "00000000000000000000000000000000" | "00000000000000000000000001000000"
+            );
+            if let (true, Ok(port)) = (reachable, u16::from_str_radix(port, 16)) {
+                ports.insert(port);
+            }
+        }
+    }
+    if ports.is_empty() && cfg!(windows) {
+        // "  TCP    127.0.0.1:3000    0.0.0.0:0    LISTENING"
+        if let Ok(output) = std::process::Command::new("netstat").args(["-an", "-p", "tcp"]).output() {
+            for line in String::from_utf8_lossy(&output.stdout).lines() {
+                let fields: Vec<&str> = line.split_whitespace().collect();
+                if fields.len() >= 4 && fields[3] == "LISTENING" {
+                    let local = fields[1];
+                    let reachable = local.starts_with("127.0.0.1:") || local.starts_with("0.0.0.0:");
+                    if let (true, Some(port)) = (reachable, local.rsplit(':').next().and_then(|port| port.parse().ok())) {
+                        ports.insert(port);
+                    }
+                }
+            }
+        }
+    }
+    if ports.is_empty() && cfg!(target_os = "macos") {
+        if let Ok(output) = std::process::Command::new("lsof").args(["-nP", "-iTCP", "-sTCP:LISTEN", "-Fn"]).output() {
+            for line in String::from_utf8_lossy(&output.stdout).lines() {
+                let Some(name) = line.strip_prefix('n') else { continue };
+                let local = name.starts_with("*:") || name.starts_with("127.0.0.1:") || name.starts_with("[::1]:") || name.starts_with("[::]:");
+                if let (true, Some(port)) = (local, name.rsplit(':').next().and_then(|port| port.parse().ok())) {
+                    ports.insert(port);
+                }
+            }
+        }
+    }
+    ports.into_iter().map(|port| ListeningPort { port }).collect()
+}
+
+/// Tell the app whenever the set of listening ports changes.
+fn watch_ports(state: &AgentState, events: &Events) {
+    if state.watching_ports.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return;
+    }
+    let events = events.clone();
+    tokio::spawn(async move {
+        let mut last: Option<Vec<ListeningPort>> = None;
+        loop {
+            let ports = tokio::task::spawn_blocking(listening_ports).await.unwrap_or_default();
+            if last.as_ref() != Some(&ports) {
+                crate::events::emit(&events, "ports:changed", &ports);
+                last = Some(ports);
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        }
+    });
+}
+
+/// Connect tunnel `id` to `port` here; its bytes go back as
+/// `tunnel:data` events (base64), and `tunnel:close` when it ends.
+async fn open_tunnel(state: &AgentState, events: &Events, id: u64, port: u16) -> Result<(), String> {
+    use base64::Engine;
+    use tokio::io::AsyncReadExt;
+    let stream = match tokio::net::TcpStream::connect(("127.0.0.1", port)).await {
+        Ok(stream) => stream,
+        Err(_) => tokio::net::TcpStream::connect(("::1", port))
+            .await
+            .map_err(|error| format!("Nothing answers on port {port}: {error}"))?,
+    };
+    let _ = stream.set_nodelay(true);
+    let (mut reader, mut writer) = stream.into_split();
+    let (sender, mut incoming) = mpsc::unbounded_channel::<Vec<u8>>();
+    state.tunnels.lock().unwrap().insert(id, sender);
+    tokio::spawn(async move {
+        while let Some(bytes) = incoming.recv().await {
+            if bytes.is_empty() || writer.write_all(&bytes).await.is_err() {
+                break;
+            }
+        }
+        let _ = writer.shutdown().await;
+    });
+    let events = events.clone();
+    tokio::spawn(async move {
+        let mut buffer = vec![0u8; 64 * 1024];
+        loop {
+            match reader.read(&mut buffer).await {
+                Ok(0) | Err(_) => break,
+                Ok(count) => {
+                    let data = base64::engine::general_purpose::STANDARD.encode(&buffer[..count]);
+                    crate::events::emit(&events, "tunnel:data", json!({ "id": id, "data": data }));
+                }
+            }
+        }
+        crate::events::emit(&events, "tunnel:close", json!({ "id": id }));
+    });
+    Ok(())
+}
+
+/// Bytes from the app for tunnel `id` (handled in order, not as a task).
+fn write_tunnel(state: &AgentState, args: &Value) {
+    use base64::Engine;
+    let Some(id) = args.get("id").and_then(Value::as_u64) else { return };
+    let data = args.get("data").and_then(Value::as_str).unwrap_or("");
+    let bytes = base64::engine::general_purpose::STANDARD.decode(data).unwrap_or_default();
+    let tunnels = state.tunnels.lock().unwrap();
+    if let Some(sender) = tunnels.get(&id) {
+        // Empty means "the app closed it".
+        let _ = sender.send(bytes);
+    }
 }
 
 fn arg<T: DeserializeOwned>(args: &Value, key: &str) -> Result<T, String> {
@@ -75,6 +210,7 @@ pub async fn dispatch(state: &AgentState, events: &Events, command: &str, args: 
             "read_file" => ok(fs::read_file(arg(args, "path")?)),
             "read_file_base64" => ok(fs::read_file_base64(arg(args, "path")?)),
             "write_file" => ok(fs::write_file(arg(args, "path")?, arg(args, "contents")?)),
+            "write_file_base64" => ok(fs::write_file_base64(arg(args, "path")?, arg(args, "data")?)),
             "is_directory" => ok(fs::is_directory(arg(args, "path")?)),
             "path_exists" => ok(Ok(fs::path_exists(arg(args, "path")?))),
             "real_path" => ok(fs::real_path(arg(args, "path")?)),
@@ -132,6 +268,19 @@ pub async fn dispatch(state: &AgentState, events: &Events, command: &str, args: 
                 ok(terminal::resize(&state.terminals, arg(args, "id")?, arg(args, "cols")?, arg(args, "rows")?))
             }
             "kill_terminal" => ok(terminal::kill(&state.terminals, arg(args, "id")?)),
+            "ports_list" => ok(Ok(listening_ports())),
+            "ports_watch" => {
+                watch_ports(state, events);
+                ok(Ok(()))
+            }
+            "tunnel_open" => ok(open_tunnel(state, events, arg(args, "id")?, arg(args, "port")?).await),
+            "tunnel_close" => {
+                let id: u64 = arg(args, "id")?;
+                if let Some(sender) = state.tunnels.lock().unwrap().remove(&id) {
+                    let _ = sender.send(Vec::new());
+                }
+                ok(Ok(()))
+            }
             "run_shell" => {
                 ok(shell::run_shell(arg(args, "command")?, arg(args, "cwd")?, arg(args, "timeoutSecs")?).await)
             }
@@ -171,6 +320,43 @@ pub async fn dispatch(state: &AgentState, events: &Events, command: &str, args: 
             "install_rope" => ok(refactor::install_rope(arg(args, "python")?).await),
             "discover_python_interpreters" => ok(Ok(interpreter::discover_python_interpreters(arg(args, "root")?))),
             "create_python_venv" => ok(interpreter::create_python_venv(arg(args, "base")?, arg(args, "targetDir")?)),
+
+            // --- Debugging ---------------------------------------------------------------
+            "start_debug" => ok(debug::launch(
+                debug_events(events),
+                &state.debug,
+                arg(args, "program")?,
+                arg(args, "cwd")?,
+                arg(args, "python")?,
+                arg(args, "breakpoints")?,
+                arg(args, "options")?,
+            )
+            .await),
+            "start_attach" => ok(debug::attach(debug_events(events), &state.debug, arg(args, "target")?, arg(args, "breakpoints")?).await),
+            "start_java_debug" => ok(debug::launch_java(
+                debug_events(events),
+                &state.debug,
+                arg(args, "port")?,
+                arg(args, "launch")?,
+                arg(args, "breakpoints")?,
+            )
+            .await),
+            "debug_request" => ok(debug::send_request(&state.debug, arg(args, "seq")?, arg(args, "command")?, arg(args, "arguments")?).await),
+            "debug_stop" => ok(debug::stop(&state.debug).await),
+            "debug_terminal_started" => {
+                ok(debug::terminal_started(&state.debug, arg(args, "id")?, arg(args, "processId")?, arg(args, "error")?).await)
+            }
+            "install_debugpy" => ok(debug::install_debugpy(arg(args, "python")?).await),
+            "install_js_debug" => ok(debug::install_js_debug().await),
+            "install_java_debug" => ok(debug::install_java_debug().await),
+            "java_debug_installed" => ok(Ok(debug::java_debug_installed())),
+            "list_processes" => ok(debug::list_processes().await),
+            "jvm_debug_listen" => ok(debug::jvm_debug_listen().await),
+            "jvm_debug_accept" => ok(debug::jvm_debug_accept(arg(args, "port")?, arg(args, "timeoutSecs")?).await),
+            "jvm_debug_cancel" => {
+                debug::jvm_debug_cancel(arg(args, "port")?);
+                ok(Ok(()))
+            }
 
             // --- Git -------------------------------------------------------------------
             "git_status" => ok(git::git_status(arg(args, "path")?)),
@@ -223,6 +409,10 @@ pub async fn dispatch(state: &AgentState, events: &Events, command: &str, args: 
     }
 }
 
+fn debug_events(events: &Events) -> Arc<dyn debug::DebugEvents> {
+    Arc::new(debug::SinkEvents(events.clone()))
+}
+
 /// Why `dispatch` couldn't run a command.
 enum Fail {
     /// Not a remote command.
@@ -238,10 +428,16 @@ impl From<String> for Fail {
 }
 
 /// This machine, for the ready line.
+/// The user's home folder (USERPROFILE on Windows).
+fn home_dir() -> Option<PathBuf> {
+    std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")).map(PathBuf::from)
+}
+
 pub fn info() -> AgentInfo {
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
-    let hostname = std::fs::read_to_string("/etc/hostname")
+    let home = home_dir().map(|home| home.to_string_lossy().into_owned()).unwrap_or_else(|| "/".to_string());
+    let hostname = std::env::var("COMPUTERNAME")
         .ok()
+        .or_else(|| std::fs::read_to_string("/etc/hostname").ok())
         .map(|name| name.trim().to_string())
         .filter(|name| !name.is_empty())
         .or_else(|| {
@@ -265,13 +461,25 @@ pub fn info() -> AgentInfo {
 /// The agent's data folder (local history, installed tools), beside the
 /// agent binaries: ~/.sable-server/data.
 fn data_dir() -> PathBuf {
-    let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/tmp"));
-    home.join(".sable-server").join("data")
+    home_dir().unwrap_or_else(std::env::temp_dir).join(".sable-server").join("data")
 }
 
 /// Serve on stdin/stdout until stdin closes (the app disconnected).
+/// Remove agents of other Sable versions (~/.sable-server/bin/<version>).
+/// A running one keeps working: Unix only unlinks the file.
+fn remove_old_agents() {
+    let Some(bin) = data_dir().parent().map(|server| server.join("bin")) else { return };
+    let Ok(entries) = std::fs::read_dir(&bin) else { return };
+    for entry in entries.flatten() {
+        if entry.file_name() != VERSION && entry.path().is_dir() {
+            let _ = std::fs::remove_dir_all(entry.path());
+        }
+    }
+}
+
 pub async fn serve_stdio() {
     let data = data_dir();
+    tokio::task::spawn_blocking(remove_old_agents);
     lsp::set_tools_dir(data.join("tools"));
     history::set_history_dir(data.join("history"));
 
@@ -302,6 +510,11 @@ pub async fn serve_stdio() {
         let id = request.get("id").cloned().unwrap_or(Value::Null);
         let command = request.get("cmd").and_then(Value::as_str).unwrap_or("").to_string();
         let args = request.get("args").cloned().unwrap_or(Value::Null);
+        // Tunnel bytes keep their order: handled here, with no reply.
+        if command == "tunnel_write" {
+            write_tunnel(&state, &args);
+            continue;
+        }
         let state = state.clone();
         let events = events.clone();
         let out_tx = out_tx.clone();
@@ -317,7 +530,8 @@ pub async fn serve_stdio() {
         });
     }
 
-    // The app went away: stop servers and terminals with us.
+    // The app went away: stop servers, debuggers and terminals with us.
+    let _ = debug::stop(&state.debug).await;
     let _ = lsp::stop_all(&state.lsp).await;
     drop(out_tx);
     drop(events);

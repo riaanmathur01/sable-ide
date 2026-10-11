@@ -11,6 +11,7 @@ import { RefactorPicker } from "./components/ContextMenu/RefactorPicker";
 import { BreakpointEditor } from "./components/Debug/BreakpointEditor";
 import { AttachDialog } from "./components/Debug/AttachDialog";
 import { RebaseDialog } from "./components/Sidebar/RebaseDialog";
+import { AskpassDialog } from "./components/Remote/AskpassDialog";
 import { checkForUpdatesQuietly } from "./lib/updates";
 import { useTasksStore } from "./store/tasksStore";
 import { usePluginStore } from "./store/pluginStore";
@@ -32,6 +33,7 @@ import { useGitStore } from "./store/gitStore";
 import { isDirectory, type SearchMatch } from "./lib/ipc";
 import { initLocalRoots, isRemoteActive } from "./lib/backend";
 import { lastRemote, useRemoteStore } from "./store/remoteStore";
+import { uploadToRemote } from "./lib/transfer";
 import { useGlobalKeybindings } from "./lib/useGlobalKeybindings";
 import { initLspListeners } from "./lib/lsp/lspClient";
 import { initDebugListeners } from "./lib/debug/debugClient";
@@ -55,6 +57,14 @@ function App() {
   );
   const [isDropTarget, setIsDropTarget] = useState(false);
   const viewSwitcher = useSetting("workbench.viewSwitcher");
+  // Only the activity bar lives outside the sidebar; the other switchers
+  // are in its header, so a sidebar hidden from the activity bar would
+  // take them with it. Show it whenever one of those is chosen.
+  useEffect(() => {
+    if (viewSwitcher !== "activityBar" && !useUiStore.getState().sidebarVisible) {
+      useUiStore.getState().toggleSidebar();
+    }
+  }, [viewSwitcher]);
 
   useGlobalKeybindings();
 
@@ -162,8 +172,11 @@ function App() {
         setIsDropTarget(false);
         const droppedPath = event.payload.paths[0];
         if (!droppedPath) return;
+        // A remote window: dropped files are uploaded to the remote folder.
         if (isRemoteActive()) {
-          setLastError(`This window is connected to ${useRemoteStore.getState().label} — close the remote connection to open folders on this computer`);
+          const root = useWorkspaceStore.getState().rootPath;
+          if (root) void uploadToRemote(event.payload.paths, root);
+          else setLastError(`Open a folder on ${useRemoteStore.getState().label} first, then drop files to upload them`);
           return;
         }
         isDirectory(droppedPath)
@@ -232,6 +245,7 @@ function App() {
       <BreakpointEditor />
       <AttachDialog />
       <RebaseDialog />
+      <AskpassDialog />
     </div>
   );
 }

@@ -191,12 +191,19 @@ may ask once too (More info → Run anyway).
   writes a working plugin to start from, which reloads every time you
   save it. Each plugin runs sandboxed in its own worker with only the
   permissions it declares (`editor`, `workspace:read`, `workspace:write`,
-  `shell`, `network`), and you see them before installing. Guide and API
-  reference: [docs/plugins.md](docs/plugins.md).
-- **Remote development** — open a folder on an SSH host, in WSL, or in a
-  running Docker/Podman container, and edit, search, run, test, and use
-  git and the terminal there as if it were local (debugging is local-only
-  for now). Click the
+  `shell`, `network`), and you see them before installing. The
+  Marketplace has over 30 plugins (JSON and CSV tools, Markdown TOC, tables
+  and lint, color, number and timestamp hovers, bookmarks, snippets, a
+  clock, a pomodoro timer…). **VS Code extensions convert** in one step:
+  give Sable an extension id or a `.vsix`, and it runs it through a
+  compatibility layer for VS Code's API. Guide and API reference:
+  [docs/plugins.md](docs/plugins.md).
+- **Remote development** — open a folder on an SSH host (Linux, macOS or
+  Windows), in WSL, or in a running Docker/Podman container — or reopen a
+  folder in its dev container — and edit, search, run, debug, test, and
+  use git and the terminal there as if it were local. Ports the remote
+  opens are forwarded to localhost by themselves; passwords and one-time
+  codes are asked for in Sable; files drag in and download out. Click the
   remote button at the left of the status bar (or **Remote: Connect to
   SSH Host…** in the command palette). Sable uses your own `ssh`
   (`~/.ssh/config`, keys and agents) and copies a small agent to the

@@ -1,0 +1,13 @@
+{
+  "id": "find-regex",
+  "name": "Regex Search",
+  "version": "1.0.0",
+  "description": "Search the open file with a regular expression and jump to any match from a list.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": [
+    "editor"
+  ],
+  "minSableVersion": "0.3.6",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/find-regex"
+}

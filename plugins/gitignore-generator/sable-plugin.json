@@ -1,0 +1,14 @@
+{
+  "id": "gitignore-generator",
+  "name": "Gitignore Generator",
+  "version": "1.0.0",
+  "description": "Add a .gitignore template (Node, Python, Rust, Go, Java, C/C++, macOS, Windows, Linux, VS Code, JetBrains) without duplicating lines already there.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": [
+    "workspace:read",
+    "workspace:write"
+  ],
+  "minSableVersion": "0.3.6",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/gitignore-generator"
+}

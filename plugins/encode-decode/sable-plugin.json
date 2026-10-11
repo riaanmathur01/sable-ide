@@ -1,0 +1,11 @@
+{
+  "id": "encode-decode",
+  "name": "Encode / Decode",
+  "version": "1.0.0",
+  "description": "Base64, URL, HTML entity and JSON string encoding and decoding for the selection or the whole file.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.3",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/encode-decode"
+}

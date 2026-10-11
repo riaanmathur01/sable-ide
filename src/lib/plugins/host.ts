@@ -7,7 +7,9 @@ import { readCurrentText, writeFileContents } from "../fileContents";
 import { confinedPath, ensureParentDirectories } from "../ai/tools";
 import { useUiStore } from "../../store/uiStore";
 import { useWorkspaceStore } from "../../store/workspaceStore";
-import { onPluginEvent, type PluginEventName } from "./events";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { onPluginEvent, type PluginEventName, type PluginEventPayload } from "./events";
+import { useTabsStore } from "../../store/tabsStore";
 import { WORKER_SOURCE } from "./workerBootstrap";
 import type { HostMessage, PluginInfo, PluginLogLine, PluginPermission, PluginState, WorkerMessage } from "./types";
 
@@ -68,7 +70,26 @@ interface CompletionResult {
 }
 
 const ACTIVATE_TIMEOUT_MS = 15_000;
-const CALLBACK_TIMEOUT_MS: Record<string, number> = { formatter: 10_000, completions: 3_000, command: 120_000, event: 10_000 };
+const CALLBACK_TIMEOUT_MS: Record<string, number> = { formatter: 10_000, completions: 3_000, hover: 3_000, command: 120_000, event: 10_000 };
+
+/** A plugin's stored values, at most (JSON characters). */
+const MAX_STORAGE_CHARS = 1_000_000;
+
+/** A range as plugins give it: 1-based lines and columns. */
+interface PluginRange {
+  start: { line: number; column: number };
+  end: { line: number; column: number };
+}
+
+function toMonacoRange(range: PluginRange): MonacoTypes.IRange {
+  const number = (value: unknown, fallback: number) => Math.max(1, Math.floor(Number(value) || fallback));
+  return {
+    startLineNumber: number(range?.start?.line, 1),
+    startColumn: number(range?.start?.column, 1),
+    endLineNumber: number(range?.end?.line, number(range?.start?.line, 1)),
+    endColumn: number(range?.end?.column, number(range?.start?.column, 1)),
+  };
+}
 
 /** Rename suggestions shown per plugin, at most. */
 const MAX_RENAME_SUGGESTIONS = 20;
@@ -314,6 +335,17 @@ export class PluginRuntime {
         );
         return useUiStore.getState().openPick(choices, placeholder ? String(placeholder) : `${this.name}: choose…`);
       }
+      case "window.showWarning":
+        useUiStore.getState().showStatus(`⚠ ${this.name}: ${String(args[0])}`);
+        return null;
+      case "window.showInputBox": {
+        const options = (args[0] ?? {}) as { prompt?: unknown; placeholder?: unknown; value?: unknown };
+        const prompt = [options.prompt, options.placeholder].filter((part) => typeof part === "string" && part).join(" — ");
+        const answer = await useUiStore
+          .getState()
+          .openPickOrText([], prompt || `${this.name}: type…`, "%s", typeof options.value === "string" ? options.value : undefined);
+        return typeof answer === "string" ? answer : null;
+      }
       case "statusBar.set": {
         const [text, options] = args as [string, { tooltip?: string; command?: string } | undefined];
         this.listener.statusChanged({ text, tooltip: options?.tooltip, command: options?.command });
@@ -358,6 +390,76 @@ export class PluginRuntime {
         model.pushStackElement();
         model.pushEditOperations([], [{ range: model.getFullModelRange(), text: String(args[0]) }], () => null);
         model.pushStackElement();
+        return null;
+      }
+
+      case "editor.applyEdits": {
+        this.require("editor");
+        const editor = getEditor();
+        const model = editor?.getModel();
+        if (!editor || !model) throw new Error("No file is open");
+        const edits = (Array.isArray(args[0]) ? args[0] : []) as { range: PluginRange; text: unknown }[];
+        editor.pushUndoStop();
+        editor.executeEdits(
+          this.markerOwner(),
+          edits.map((item) => ({ range: toMonacoRange(item.range), text: String(item.text ?? ""), forceMoveMarkers: true })),
+        );
+        editor.pushUndoStop();
+        return null;
+      }
+      case "editor.setSelection": {
+        this.require("editor");
+        const editor = getEditor();
+        if (!editor) throw new Error("No file is open");
+        const range = toMonacoRange(args[0] as PluginRange);
+        editor.setSelection(range);
+        editor.revealRangeInCenterIfOutsideViewport(range);
+        return null;
+      }
+      case "editor.executeAction": {
+        // Monaco's actions share VS Code's ids (editor.action.formatDocument, …).
+        this.require("editor");
+        const action = getEditor()?.getAction(String(args[0]));
+        if (!action) throw new Error(`No editor action ${String(args[0])}`);
+        await action.run();
+        return null;
+      }
+      case "editor.open": {
+        this.require("workspace:read");
+        const path = await confinedPath(this.root(), String(args[0]));
+        await useTabsStore.getState().openFile(path);
+        const line = Number(args[1]);
+        if (line > 0) {
+          const editor = getEditor();
+          editor?.setPosition({ lineNumber: line, column: 1 });
+          editor?.revealLineInCenter(line);
+        }
+        return null;
+      }
+
+      // --- Environment, storage ------------------------------------------------------
+      case "env.writeClipboard":
+        await navigator.clipboard.writeText(String(args[0]));
+        return null;
+      case "env.readClipboard":
+        return navigator.clipboard.readText();
+      case "env.openExternal": {
+        const url = String(args[0]);
+        if (!/^(https?:|mailto:)/i.test(url)) throw new Error("Only http(s) and mailto links can be opened");
+        await openUrl(url);
+        return null;
+      }
+      case "storage.get":
+        return this.readStorage()[String(args[0])] ?? null;
+      case "storage.keys":
+        return Object.keys(this.readStorage());
+      case "storage.set": {
+        const values = this.readStorage();
+        if (args[1] === undefined || args[1] === null) delete values[String(args[0])];
+        else values[String(args[0])] = args[1];
+        const text = JSON.stringify(values);
+        if (text.length > MAX_STORAGE_CHARS) throw new Error("The plugin's storage is full (1 MB)");
+        localStorage.setItem(this.storageKey(), text);
         return null;
       }
 
@@ -467,6 +569,50 @@ export class PluginRuntime {
                 };
               } catch {
                 return { suggestions: [] };
+              }
+            },
+          }),
+        );
+        return null;
+      }
+      case "languages.registerHover": {
+        this.require("editor");
+        const [handler, language] = args as [number, string];
+        await this.register(handler, (monaco) =>
+          monaco.languages.registerHoverProvider(language, {
+            provideHover: async (model, position) => {
+              if (model.uri.scheme !== "file") return null;
+              const word = model.getWordAtPosition(position);
+              try {
+                const result = (await this.callback(
+                  handler,
+                  [
+                    {
+                      path: pathFromUri(model.uri),
+                      language: model.getLanguageId(),
+                      text: model.getValue(),
+                      line: position.lineNumber,
+                      column: position.column,
+                      lineText: model.getLineContent(position.lineNumber),
+                      word: word?.word ?? "",
+                    },
+                  ],
+                  "hover",
+                )) as string | { contents: string; range?: PluginRange } | null;
+                if (!result) return null;
+                const contents = typeof result === "string" ? result : String(result.contents ?? "");
+                if (!contents.trim()) return null;
+                return {
+                  contents: [{ value: contents }],
+                  range:
+                    typeof result === "object" && result.range
+                      ? toMonacoRange(result.range)
+                      : word
+                        ? { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber, startColumn: word.startColumn, endColumn: word.endColumn }
+                        : undefined,
+                };
+              } catch {
+                return null;
               }
             },
           }),
@@ -591,7 +737,19 @@ export class PluginRuntime {
     });
   }
 
-  private dispatchEvent(name: PluginEventName, payload: { path: string }) {
+  private storageKey(): string {
+    return `sable.plugin.${this.id}`;
+  }
+
+  private readStorage(): Record<string, unknown> {
+    try {
+      return JSON.parse(localStorage.getItem(this.storageKey()) ?? "{}") ?? {};
+    } catch {
+      return {};
+    }
+  }
+
+  private dispatchEvent(name: PluginEventName, payload: PluginEventPayload) {
     for (const [handler, event] of this.subscriptions) {
       if (event !== name) continue;
       this.callback(handler, [payload], "event").catch((error) =>

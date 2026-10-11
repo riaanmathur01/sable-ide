@@ -1,13 +1,15 @@
 /**
  * Editor events plugins can listen to. A dependency-free bus, so the
- * stores that raise events (tabsStore) needn't import the plugin host.
+ * stores and editors that raise events needn't import the plugin host.
  */
-export type PluginEventName = "didSave" | "didOpen";
+export type PluginEventName = "didSave" | "didOpen" | "didChange" | "didChangeActiveEditor" | "didChangeSelection";
 
-type Listener = (name: PluginEventName, payload: { path: string }) => void;
+export type PluginEventPayload = { path: string | null } & Record<string, unknown>;
+
+type Listener = (name: PluginEventName, payload: PluginEventPayload) => void;
 const listeners = new Set<Listener>();
 
-export function emitPluginEvent(name: PluginEventName, payload: { path: string }): void {
+export function emitPluginEvent(name: PluginEventName, payload: PluginEventPayload): void {
   for (const listener of listeners) listener(name, payload);
 }
 

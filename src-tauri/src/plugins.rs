@@ -59,6 +59,18 @@ pub struct Manifest {
     pub min_sable_version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub homepage: Option<String>,
+    /// Keyboard shortcuts for the plugin's commands.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub keybindings: Vec<Keybinding>,
+}
+
+/// `{"command": "convert", "key": "ctrl+alt+c", "mac": "cmd+alt+c"}`
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct Keybinding {
+    pub command: String,
+    pub key: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mac: Option<String>,
 }
 
 fn default_main() -> String {
@@ -356,8 +368,28 @@ fn staging_dir() -> Result<PathBuf, String> {
 #[tauri::command]
 pub async fn plugin_inspect(source: PluginSource) -> Result<Inspected, String> {
     let folder = match source {
+        // A .vsix file: a VS Code extension to convert.
+        PluginSource::Folder { path } if path.to_lowercase().ends_with(".vsix") => {
+            let bytes = std::fs::read(&path).map_err(|error| format!("Couldn't read {path}: {error}"))?;
+            unpack_staged(bytes.into(), None).await?
+        }
+        // An unpacked VS Code extension's folder.
+        PluginSource::Folder { path } if !Path::new(&path).join(MANIFEST_FILE).exists() && crate::vscode::extension_root(Path::new(&path)).is_some() => {
+            let root = crate::vscode::extension_root(Path::new(&path)).unwrap_or_default();
+            let into = new_staging_folder()?;
+            tokio::task::spawn_blocking(move || crate::vscode::convert(&root, &into).map(|_| into))
+                .await
+                .map_err(|error| error.to_string())??
+        }
         PluginSource::Folder { path } => PathBuf::from(path),
         PluginSource::Url { url } => {
+            // A VS Code extension by id or link, from Open VSX.
+            let url = match crate::vscode::open_vsx_reference(&url) {
+                Some((publisher, name)) if !url.trim().starts_with("https://github.com/") => {
+                    crate::vscode::open_vsx_download(&publisher, &name).await?
+                }
+                _ => url,
+            };
             let Download { url, subpath } = download_for(&url);
             if !url.starts_with("https://") && !url.starts_with("http://") {
                 return Err("Enter a GitHub repository or a link to a .zip / .tar.gz".into());
@@ -373,14 +405,7 @@ pub async fn plugin_inspect(source: PluginSource) -> Result<Inspected, String> {
             if bytes.len() > MAX_DOWNLOAD_BYTES {
                 return Err("The download is too large for a plugin (over 50 MB)".into());
             }
-            let stamp = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|time| time.as_nanos())
-                .unwrap_or(0);
-            let into = staging_dir()?.join(format!("{stamp}"));
-            tokio::task::spawn_blocking(move || unpack(&bytes, &into, subpath.as_deref()))
-                .await
-                .map_err(|error| error.to_string())??
+            unpack_staged(bytes.to_vec(), subpath).await?
         }
     };
     let manifest = read_manifest(&folder)?;
@@ -390,6 +415,37 @@ pub async fn plugin_inspect(source: PluginSource) -> Result<Inspected, String> {
         .and_then(|entry| read_manifest(&entry.path).ok())
         .map(|installed| installed.version);
     Ok(Inspected { manifest, path: folder.to_string_lossy().into_owned(), installed_version })
+}
+
+fn new_staging_folder() -> Result<PathBuf, String> {
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|time| time.as_nanos())
+        .unwrap_or(0);
+    Ok(staging_dir()?.join(format!("{stamp}")))
+}
+
+/// Unpack a download into a new staging folder: a Sable plugin as is, a
+/// VS Code extension (.vsix) converted into one.
+async fn unpack_staged(bytes: Vec<u8>, subpath: Option<String>) -> Result<PathBuf, String> {
+    let into = new_staging_folder()?;
+    tokio::task::spawn_blocking(move || match unpack(&bytes, &into, subpath.as_deref()) {
+        Ok(folder) => Ok(folder),
+        Err(error) => {
+            let roots = std::iter::once(into.clone()).chain(
+                std::fs::read_dir(&into).into_iter().flatten().flatten().map(|entry| entry.path()).filter(|path| path.is_dir()),
+            );
+            match roots.filter_map(|folder| crate::vscode::extension_root(&folder)).next() {
+                Some(root) => {
+                    let plugin = into.join("sable-plugin");
+                    crate::vscode::convert(&root, &plugin).map(|_| plugin)
+                }
+                None => Err(error),
+            }
+        }
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 fn copy_dir(from: &Path, to: &Path) -> std::io::Result<()> {

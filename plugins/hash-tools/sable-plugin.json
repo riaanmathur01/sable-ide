@@ -1,0 +1,11 @@
+{
+  "id": "hash-tools",
+  "name": "Hash",
+  "version": "1.0.0",
+  "description": "SHA-1, SHA-256, SHA-384 and SHA-512 hashes of the selection or the whole file: replace the text with its hash, or copy any of them.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.6",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/hash-tools"
+}

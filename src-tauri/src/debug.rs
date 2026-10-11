@@ -44,6 +44,7 @@ use std::process::Stdio;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+#[cfg(feature = "desktop")]
 use tauri::{AppHandle, Emitter, State};
 use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, BufReader};
 use tokio::net::TcpStream;
@@ -57,9 +58,19 @@ pub trait DebugEvents: Send + Sync + 'static {
     fn emit(&self, event: &str, payload: Value);
 }
 
+#[cfg(feature = "desktop")]
 impl DebugEvents for AppHandle {
     fn emit(&self, event: &str, payload: Value) {
         let _ = Emitter::emit(self, event, payload);
+    }
+}
+
+/// Events for the remote agent (or anything using an `Events` sink).
+pub struct SinkEvents(pub crate::events::Events);
+
+impl DebugEvents for SinkEvents {
+    fn emit(&self, event: &str, payload: Value) {
+        (self.0)(event, payload);
     }
 }
 
@@ -627,18 +638,23 @@ impl DebugEvents for NoEvents {
 }
 
 /// Attach the debugger to a running program.
-#[tauri::command]
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn start_attach(
     app: AppHandle,
     manager: State<'_, DebugManager>,
     target: AttachTarget,
     breakpoints: Breakpoints,
 ) -> Result<(), String> {
+    attach(Arc::new(app), &manager, target, breakpoints).await
+}
+
+pub async fn attach(events: Arc<dyn DebugEvents>, manager: &DebugManager, target: AttachTarget, breakpoints: Breakpoints) -> Result<(), String> {
     if let Some(old) = manager.0.lock().await.take() {
         old.shutdown().await;
     }
     let plan = attach_plan(&target).await?;
-    let session = start_session(Arc::new(app.clone()), plan, breakpoints).await?;
+    let session = start_session(events, plan, breakpoints).await?;
     *manager.0.lock().await = Some(session);
     Ok(())
 }
@@ -652,7 +668,7 @@ pub struct ProcessInfo {
 }
 
 /// The user's running processes, newest first (for the Attach picker).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn list_processes() -> Result<Vec<ProcessInfo>, String> {
     #[cfg(unix)]
     {
@@ -1160,10 +1176,24 @@ impl DebugSession {
 /// Start debugging `program`. `python` is the interpreter for Python
 /// programs. Build output and adapter traffic arrive as `debug:message`
 /// events.
-#[tauri::command]
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
+#[allow(clippy::too_many_arguments)]
 pub async fn start_debug(
     app: AppHandle,
     manager: State<'_, DebugManager>,
+    program: String,
+    cwd: String,
+    python: Option<String>,
+    breakpoints: Breakpoints,
+    options: Option<RunOptions>,
+) -> Result<(), String> {
+    launch(Arc::new(app), &manager, program, cwd, python, breakpoints, options).await
+}
+
+pub async fn launch(
+    events: Arc<dyn DebugEvents>,
+    manager: &DebugManager,
     program: String,
     cwd: String,
     python: Option<String>,
@@ -1174,8 +1204,8 @@ pub async fn start_debug(
     if let Some(old) = manager.0.lock().await.take() {
         old.shutdown().await;
     }
-    let plan = prepare_launch(&app, &program, &cwd, python.as_deref(), &options.unwrap_or_default()).await?;
-    let session = start_session(Arc::new(app.clone()), plan, breakpoints).await?;
+    let plan = prepare_launch(events.as_ref(), &program, &cwd, python.as_deref(), &options.unwrap_or_default()).await?;
+    let session = start_session(events, plan, breakpoints).await?;
     *manager.0.lock().await = Some(session);
     Ok(())
 }
@@ -1183,7 +1213,8 @@ pub async fn start_debug(
 /// Start debugging Java: jdtls (with the java-debug plugin) is already
 /// listening on `port`; `launch` is the resolved launch configuration
 /// (main class, project, classpath).
-#[tauri::command]
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn start_java_debug(
     app: AppHandle,
     manager: State<'_, DebugManager>,
@@ -1191,22 +1222,31 @@ pub async fn start_java_debug(
     launch: Value,
     breakpoints: Breakpoints,
 ) -> Result<(), String> {
+    launch_java(Arc::new(app), &manager, port, launch, breakpoints).await
+}
+
+pub async fn launch_java(events: Arc<dyn DebugEvents>, manager: &DebugManager, port: u16, launch: Value, breakpoints: Breakpoints) -> Result<(), String> {
     if let Some(old) = manager.0.lock().await.take() {
         old.shutdown().await;
     }
-    let session = start_session(Arc::new(app.clone()), java_plan(port, launch), breakpoints).await?;
+    let session = start_session(events, java_plan(port, launch), breakpoints).await?;
     *manager.0.lock().await = Some(session);
     Ok(())
 }
 
 /// The frontend started a runInTerminal program (or couldn't).
-#[tauri::command]
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn debug_terminal_started(
     manager: State<'_, DebugManager>,
     id: u64,
     process_id: Option<u32>,
     error: Option<String>,
 ) -> Result<(), String> {
+    terminal_started(&manager, id, process_id, error).await
+}
+
+pub async fn terminal_started(manager: &DebugManager, id: u64, process_id: Option<u32>, error: Option<String>) -> Result<(), String> {
     if let Some(session) = manager.0.lock().await.as_ref() {
         session.complete_terminal(id, process_id, error);
     }
@@ -1217,21 +1257,26 @@ pub async fn debug_terminal_started(
 /// frontend supplies the `seq` so it can correlate the response by
 /// `request_seq`; frontend seqs start high enough never to collide with
 /// the handshake seqs above.
-#[tauri::command]
-pub async fn debug_request(
-    manager: State<'_, DebugManager>,
-    seq: i64,
-    command: String,
-    arguments: Value,
-) -> Result<(), String> {
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
+pub async fn debug_request(manager: State<'_, DebugManager>, seq: i64, command: String, arguments: Value) -> Result<(), String> {
+    send_request(&manager, seq, command, arguments).await
+}
+
+pub async fn send_request(manager: &DebugManager, seq: i64, command: String, arguments: Value) -> Result<(), String> {
     let guard = manager.0.lock().await;
     let session = guard.as_ref().ok_or_else(|| "No debug session".to_string())?;
     session.send(seq, &command, arguments)
 }
 
 /// Stop debugging: disconnect + terminate the debuggee, then the adapter.
-#[tauri::command]
+#[cfg(feature = "desktop")]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn debug_stop(manager: State<'_, DebugManager>) -> Result<(), String> {
+    stop(&manager).await
+}
+
+pub async fn stop(manager: &DebugManager) -> Result<(), String> {
     let session = manager.0.lock().await.take();
     if let Some(session) = session {
         session.shutdown().await;
@@ -1241,7 +1286,7 @@ pub async fn debug_stop(manager: State<'_, DebugManager>) -> Result<(), String> 
 
 /// Download js-debug (VS Code's JavaScript debugger) into Sable's tools
 /// folder. Release assets are versioned; this pins a known-good one.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn install_js_debug() -> Result<(), String> {
     const URL: &str = "https://github.com/microsoft/vscode-js-debug/releases/download/v1.140.0/js-debug-dap-v1.140.0.tar.gz";
     let tools = tools_dir().ok_or_else(|| "Tools folder unavailable".to_string())?;
@@ -1287,7 +1332,7 @@ static JVM_LISTENERS: std::sync::LazyLock<Mutex<HashMap<u16, tokio::net::TcpList
 
 /// Start waiting for a JVM; returns the port for its
 /// `-agentlib:jdwp=transport=dt_socket,server=n,address=localhost:<port>`.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn jvm_debug_listen() -> Result<u16, String> {
     let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
         .await
@@ -1298,7 +1343,7 @@ pub async fn jvm_debug_listen() -> Result<u16, String> {
 }
 
 /// Wait for the JVM to connect; returns the port java-debug attaches to.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn jvm_debug_accept(port: u16, timeout_secs: u64) -> Result<u16, String> {
     let listener = JVM_LISTENERS
         .lock()
@@ -1324,20 +1369,20 @@ pub async fn jvm_debug_accept(port: u16, timeout_secs: u64) -> Result<u16, Strin
 }
 
 /// Stop waiting (the build ended, or debugging was cancelled).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn jvm_debug_cancel(port: u16) {
     JVM_LISTENERS.lock().unwrap().remove(&port);
 }
 
 /// Whether the java-debug plugin is installed (jdtls loads it at start).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub fn java_debug_installed() -> bool {
     crate::lsp::java_debug_bundle().is_some()
 }
 
 /// Download the java-debug plugin (Microsoft's, as used by VS Code) into
 /// Sable's tools folder. jdtls must restart to load it.
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn install_java_debug() -> Result<(), String> {
     const URL: &str = "https://repo1.maven.org/maven2/com/microsoft/java/com.microsoft.java.debug.plugin/0.53.1/com.microsoft.java.debug.plugin-0.53.1.jar";
     let dir = tools_dir()
@@ -1363,7 +1408,7 @@ pub async fn install_java_debug() -> Result<(), String> {
 /// Install debugpy into an interpreter (the Debug view's one-click fix).
 /// Returns pip's output; fails with a clear message for interpreters that
 /// refuse package installs (Homebrew/system Pythons, PEP 668).
-#[tauri::command]
+#[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn install_debugpy(python: String) -> Result<String, String> {
     let output = Command::new(&python)
         .args(["-m", "pip", "install", "--disable-pip-version-check", "debugpy"])

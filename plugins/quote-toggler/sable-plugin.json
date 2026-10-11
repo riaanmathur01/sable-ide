@@ -1,0 +1,20 @@
+{
+  "id": "quote-toggler",
+  "name": "Quote & Bracket Toggler",
+  "version": "1.0.0",
+  "description": "Cycle the string at the cursor between single, double and backtick quotes, and wrap the selection in brackets, quotes or Markdown emphasis.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": [
+    "editor"
+  ],
+  "minSableVersion": "0.3.6",
+  "keybindings": [
+    {
+      "command": "toggle",
+      "key": "ctrl+alt+'",
+      "mac": "cmd+alt+'"
+    }
+  ],
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/quote-toggler"
+}

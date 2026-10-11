@@ -1,0 +1,11 @@
+{
+  "id": "python-snippets",
+  "name": "Python Snippets",
+  "version": "1.0.0",
+  "description": "Snippets for common Python code: main guard, dataclass, class, def with docstring, try/except, with open, comprehensions, argparse, pytest, logging and NamedTuple.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": ["editor"],
+  "minSableVersion": "0.3.3",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/python-snippets"
+}

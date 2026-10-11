@@ -1,0 +1,116 @@
+.ports-panel {
+  height: 100%;
+  overflow: auto;
+  padding: 6px 12px;
+  font-size: 12.5px;
+}
+
+.ports-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+}
+
+.ports-toolbar code {
+  font-family: var(--font-mono);
+}
+
+.ports-button,
+.ports-forward {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ports-button:hover,
+.ports-forward:hover {
+  border-color: var(--accent);
+}
+
+.ports-empty {
+  padding: 18px 0;
+  color: var(--text-muted);
+}
+
+.ports-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ports-table th {
+  padding: 4px 8px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.ports-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  font-family: var(--font-mono);
+}
+
+.ports-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  opacity: 0.5;
+}
+
+.ports-dot.on {
+  background: var(--git-added, #4caf50);
+  opacity: 1;
+}
+
+.ports-link {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.ports-link:hover {
+  text-decoration: underline;
+}
+
+.ports-muted {
+  color: var(--text-muted);
+  font-family: var(--font-ui) !important;
+}
+
+.ports-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ports-actions button:not(.ports-forward) {
+  padding: 2px 4px;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.ports-actions button:not(.ports-forward):hover {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
