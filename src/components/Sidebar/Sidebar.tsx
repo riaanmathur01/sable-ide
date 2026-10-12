@@ -11,7 +11,8 @@ import { SearchPanel } from "./SearchPanel";
 import { SourceControlPanel } from "./SourceControlPanel";
 import { HistoryPanel } from "./HistoryPanel";
 import { DebugPanel } from "../Debug/DebugPanel";
-import { PAGES, VIEWS, openPage, showView } from "../ActivityBar/views";
+import { PluginViewsPanel } from "../Plugins/PluginViewsPanel";
+import { PAGES, PLUGIN_VIEWS, VIEWS, openPage, showView, useViews } from "../ActivityBar/views";
 import { ViewMenu } from "../ActivityBar/ViewMenu";
 import { useSetting } from "../../store/settingsStore";
 import { useRemoteStore } from "../../store/remoteStore";
@@ -25,6 +26,7 @@ type PendingCreate = "file" | "folder" | null;
  * Switcher setting, the view icons or the ☰ view menu.
  */
 export function Sidebar() {
+  const views = useViews();
   const rootPath = useWorkspaceStore((state) => state.rootPath);
   const rootName = useWorkspaceStore((state) => state.rootName);
   const remoteLabel = useRemoteStore((state) => (state.status === "local" ? null : state.label));
@@ -71,12 +73,12 @@ export function Sidebar() {
       <div className="sidebar-header">
         {switcher === "menu" && <ViewMenu />}
         <span className="sidebar-title">
-          {sidebarView === "files" ? (rootName ?? "Explorer") : (VIEWS.find((view) => view.id === sidebarView)?.label ?? "")}
+          {sidebarView === "files" ? (rootName ?? "Explorer") : ([...VIEWS, PLUGIN_VIEWS].find((view) => view.id === sidebarView)?.label ?? "")}
         </span>
         <span className="sidebar-actions">
           {switcher === "sidebarHeader" && (
             <>
-              {VIEWS.map(({ id, label, icon: Icon, shortcut }) => (
+              {views.map(({ id, label, icon: Icon, shortcut }) => (
                 <button
                   key={id}
                   className={sidebarView === id ? "icon-button active" : "icon-button"}
@@ -125,6 +127,7 @@ export function Sidebar() {
       {sidebarView === "git" && <SourceControlPanel />}
       {sidebarView === "history" && <HistoryPanel />}
       {sidebarView === "debug" && <DebugPanel />}
+      {sidebarView === "pluginViews" && <PluginViewsPanel />}
 
       {sidebarView === "files" && pendingCreate && (
         <input

@@ -18,7 +18,7 @@ import {
   type AiProvider,
 } from "../../lib/ipc";
 import { BUNDLED_MONO_FAMILY } from "../../lib/fonts";
-import { KEYBINDINGS } from "../../lib/useGlobalKeybindings";
+import { ShortcutsEditor } from "./ShortcutsEditor";
 import { pythonServerHasSemanticTokens } from "../../lib/ipc";
 import { setUpPythonSemanticHighlighting } from "../../lib/lsp/lspClient";
 import { PluginsPage } from "../Plugins/PluginsPage";
@@ -137,14 +137,8 @@ export default function SettingsView() {
             // Shown on their own page, except in search results.
             if (OWN_PAGE.has(section) && !searching) return null;
             if (section === "Keyboard Shortcuts") {
-              if (searching && !"keyboard shortcuts keybindings".includes(query.toLowerCase())) {
-                const hits = KEYBINDINGS.filter((binding) =>
-                  binding.action.toLowerCase().includes(query.toLowerCase()),
-                );
-                if (hits.length === 0) return null;
-                return <ShortcutsSection key={section} bindings={hits} />;
-              }
-              return <ShortcutsSection key={section} bindings={KEYBINDINGS} />;
+              const all = !searching || "keyboard shortcuts keybindings".includes(query.toLowerCase());
+              return <ShortcutsEditor key={section} query={all ? "" : query} />;
             }
             const specs = visibleSpecs.filter((spec) => spec.section === section);
             const showKeys =
@@ -174,11 +168,9 @@ export default function SettingsView() {
               </section>
             );
           })}
-          {searching &&
-            visibleSpecs.length === 0 &&
-            !KEYBINDINGS.some((binding) =>
-              binding.action.toLowerCase().includes(query.toLowerCase()),
-            ) && <div className="settings-empty">No settings match “{query}”.</div>}
+          {searching && visibleSpecs.length === 0 && (
+            <div className="settings-empty">No settings match “{query}” (shortcuts are listed above if any match).</div>
+          )}
         </div>
       </div>
     </div>
@@ -571,22 +563,3 @@ function ApiKeyRow({
   );
 }
 
-function ShortcutsSection({
-  bindings,
-}: {
-  bindings: { keys: string; action: string }[];
-}) {
-  return (
-    <section id="settings-section-Keyboard Shortcuts" className="settings-section">
-      <h2>Keyboard Shortcuts</h2>
-      <div className="settings-shortcuts">
-        {bindings.map((binding) => (
-          <div key={binding.keys + binding.action} className="settings-shortcut">
-            <span>{binding.action}</span>
-            <kbd>{binding.keys}</kbd>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}

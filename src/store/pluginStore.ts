@@ -119,6 +119,7 @@ interface PluginState_ {
 }
 
 const runtimes = new Map<string, PluginRuntime>();
+let loading: Promise<void> | null = null;
 
 function describePermissions(permissions: PluginPermission[]): string {
   return permissions.length
@@ -288,14 +289,17 @@ export const usePluginStore = create<PluginState_>((set, get) => {
       }
     },
 
-    load: async () => {
-      try {
-        const plugins = await refreshList();
-        await Promise.all(plugins.filter((plugin) => plugin.enabled).map(startPlugin));
-      } catch (error) {
-        report(error);
-      }
-    },
+    // Once: a second start of the same plugin (React runs startup effects
+    // twice in development) would stop the first mid-activation.
+    load: () =>
+      (loading ??= (async () => {
+        try {
+          const plugins = await refreshList();
+          await Promise.all(plugins.filter((plugin) => plugin.enabled).map(startPlugin));
+        } catch (error) {
+          report(error);
+        }
+      })()),
 
     installFromFolder: (path, link = false) =>
       guarded(async () => {

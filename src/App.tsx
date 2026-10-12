@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { Sidebar } from "./components/Sidebar/Sidebar";
-import { EditorArea } from "./components/Editor/EditorArea";
+import { EditorArea, warmEditor } from "./components/Editor/EditorArea";
 import { TerminalPanel } from "./components/Terminal/TerminalPanel";
 import { StatusBar } from "./components/StatusBar/StatusBar";
 import { CommandPalette } from "./components/CommandPalette/CommandPalette";
@@ -35,6 +35,15 @@ import { initLocalRoots, isRemoteActive } from "./lib/backend";
 import { lastRemote, useRemoteStore } from "./store/remoteStore";
 import { uploadToRemote } from "./lib/transfer";
 import { useGlobalKeybindings } from "./lib/useGlobalKeybindings";
+import { useShortcutStore } from "./lib/shortcuts";
+
+/** Resolves when the folder from last time is open again (or there's none). */
+let markWorkspaceRestored: () => void = () => {};
+const workspaceRestored = Promise.race([
+  new Promise<void>((resolve) => (markWorkspaceRestored = resolve)),
+  // Never hold plugins back for long (a slow remote reconnect).
+  new Promise<void>((resolve) => setTimeout(resolve, 8000)),
+]);
 import { initLspListeners } from "./lib/lsp/lspClient";
 import { initDebugListeners } from "./lib/debug/debugClient";
 import "./App.css";
@@ -82,7 +91,11 @@ function App() {
       .load()
       .then(() => {
         checkForUpdatesQuietly();
-        void usePluginStore.getState().load();
+        // Plugins start once the last folder is open again (extensions,
+        // as in VS Code, see the workspace when they activate).
+        void workspaceRestored.then(() => usePluginStore.getState().load());
+        // keybindings.json lives beside settings.json.
+        void useShortcutStore.getState().load();
       });
   }, []);
 
@@ -100,6 +113,13 @@ function App() {
     void (async () => {
       // Sable's own files stay local even in a remote window.
       await initLocalRoots();
+      try {
+        await restoreLastWorkspace();
+      } finally {
+        markWorkspaceRestored();
+      }
+    })();
+    async function restoreLastWorkspace() {
       if (!last) return;
       if (remote && remote.folder === last) {
         // A remote folder: reconnect to it, as VS Code does.
@@ -115,8 +135,17 @@ function App() {
       if (lastTerminalVisible()) {
         useUiStore.getState().setTerminalVisible(true);
       }
-    })();
+    }
   }, [openWorkspace]);
+
+  // Load the editor while idle after startup, so the first file opened
+  // doesn't wait for Monaco (3.7 MB) or React's Suspense reveal delay.
+  useEffect(() => {
+    const warm = () => warmEditor();
+    const idle = (window as { requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number }).requestIdleCallback;
+    if (idle) idle(warm, { timeout: 2500 });
+    else setTimeout(warm, 1200);
+  }, []);
 
   // The Rust watcher reports which directories changed on disk (already
   // debounced); refresh whichever of them the tree has loaded.

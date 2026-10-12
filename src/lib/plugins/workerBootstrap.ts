@@ -83,6 +83,13 @@ function bootstrap() {
       }
     } else if (message.type === "root") {
       if (api) api.workspace.root = message.root;
+      for (const listener of rootListeners) {
+        try {
+          listener(message.root);
+        } catch (error) {
+          console.error(error);
+        }
+      }
     } else if (message.type === "deactivate") {
       try {
         await plugin?.deactivate?.();
@@ -97,6 +104,7 @@ function bootstrap() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let api: any = null;
+  const rootListeners = new Set<(root: string | null) => void>();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async function init(message: any) {
@@ -115,9 +123,9 @@ function bootstrap() {
       manifest,
       version: sableVersion,
       commands: {
-        register(id: string, title: string, run: () => unknown) {
+        register(id: string, title: string, run: () => unknown, options: { hidden?: boolean } = {}) {
           const handlerId = handler(run);
-          void call("commands.register", handlerId, String(id), String(title));
+          void call("commands.register", handlerId, String(id), String(title), { hidden: Boolean(options.hidden) });
           return disposable("commands.unregister", handlerId);
         },
         execute: (id: string) => call("commands.execute", String(id)),
@@ -146,6 +154,9 @@ function bootstrap() {
         replaceSelection: (text: string) => call("editor.replaceSelection", String(text)),
         setText: (text: string) => call("editor.setText", String(text)),
         applyEdits: (edits: unknown[]) => call("editor.applyEdits", edits),
+        createDecorationType: (key: string, options: unknown) => call("editor.createDecorationType", String(key), options ?? {}),
+        setDecorations: (path: string | null, key: string, items: unknown[]) => call("editor.setDecorations", path, String(key), items ?? []),
+        disposeDecorationType: (key: string) => call("editor.disposeDecorationType", String(key)),
         setSelection: (range: unknown) => call("editor.setSelection", range),
         executeAction: (id: string) => call("editor.executeAction", String(id)),
         open: (path: string, options: { line?: number } = {}) => call("editor.open", String(path), options.line ?? 0),
@@ -157,6 +168,28 @@ function bootstrap() {
         },
         openExternal: (url: string) => call("env.openExternal", String(url)),
       },
+      terminal: {
+        create: (options: unknown = {}) => call("terminal.create", options),
+        sendText: (id: string, text: string, addNewLine = true) => call("terminal.sendText", String(id), String(text), addNewLine),
+        show: (id: string) => call("terminal.show", String(id)),
+        dispose: (id: string) => call("terminal.dispose", String(id)),
+      },
+      webview: {
+        /** listener gets { type: "message", message } and { type: "dispose" }. */
+        create: (id: string, options: unknown, listener: (event: unknown) => unknown) =>
+          call("webview.create", handler(listener), String(id), options ?? {}),
+        setHtml: (id: string, html: string) => call("webview.setHtml", String(id), String(html)),
+        setTitle: (id: string, title: string) => call("webview.setTitle", String(id), String(title)),
+        postMessage: (id: string, message: unknown) => call("webview.postMessage", String(id), message),
+        reveal: (id: string) => call("webview.reveal", String(id)),
+        dispose: (id: string) => call("webview.dispose", String(id)),
+      },
+      views: {
+        /** handler gets { op: "children", viewId, nodeId } or { op: "resolve", viewId }. */
+        declare: (views: unknown[], requests: (request: unknown) => unknown) => call("views.declare", handler(requests), views),
+        refresh: (id: string) => call("views.refresh", String(id)),
+        reveal: (id: string) => call("views.reveal", String(id)),
+      },
       storage: {
         get: (key: string) => call("storage.get", String(key)),
         set: (key: string, value: unknown) => call("storage.set", String(key), value ?? null),
@@ -167,6 +200,15 @@ function bootstrap() {
         readFile: (path: string) => call("workspace.readFile", String(path)),
         writeFile: (path: string, text: string) => call("workspace.writeFile", String(path), String(text)),
         listFiles: () => call("workspace.listFiles"),
+        /** The open folder changed (root: the new one, or null). */
+        onDidChangeRoot: (listener: (root: string | null) => void) => {
+          rootListeners.add(listener);
+          return { dispose: async () => void rootListeners.delete(listener) };
+        },
+        listDirectory: (path: string) => call("workspace.listDirectory", String(path)),
+        createDirectory: (path: string) => call("workspace.createDirectory", String(path)),
+        delete: (path: string) => call("workspace.delete", String(path)),
+        rename: (from: string, to: string) => call("workspace.rename", String(from), String(to)),
       },
       events: {
         onDidSave: (listener: (event: { path: string }) => unknown) => subscribe("didSave", listener),
@@ -174,6 +216,7 @@ function bootstrap() {
         onDidChange: (listener: (event: unknown) => unknown) => subscribe("didChange", listener),
         onDidChangeActiveEditor: (listener: (event: unknown) => unknown) => subscribe("didChangeActiveEditor", listener),
         onDidChangeSelection: (listener: (event: unknown) => unknown) => subscribe("didChangeSelection", listener),
+        onDidChangeDiagnostics: (listener: (event: unknown) => unknown) => subscribe("didChangeDiagnostics", listener),
       },
       languages: {
         registerFormatter(language: string, format: (document: unknown) => unknown) {
@@ -200,6 +243,17 @@ function bootstrap() {
           void call("languages.registerRenameSuggestions", id, String(language));
           return disposable("languages.unregister", id);
         },
+        /** kind: definition, references, documentSymbol, codeAction, codeLens, signatureHelp, rename,
+         *  documentHighlight, documentLink, foldingRange, inlayHint, color, … (0-based positions). */
+        registerProvider(kind: string, language: string, provide: (request: unknown) => unknown) {
+          const id = handler(provide);
+          void call("languages.registerProvider", id, String(kind), String(language));
+          return disposable("languages.unregister", id);
+        },
+        refreshCodeLenses: () => call("languages.refreshCodeLenses"),
+        /** Languages and TextMate grammars this plugin adds (VS Code's contributes.languages/grammars). */
+        contribute: (languages: unknown[], grammars: unknown[] = []) => call("languages.contribute", languages, grammars),
+        getDiagnostics: (path?: string) => call("languages.getDiagnostics", path ?? null),
         setDiagnostics: (path: string, diagnostics: unknown[]) => call("languages.setDiagnostics", String(path), diagnostics),
         clearDiagnostics: (path?: string) => call("languages.clearDiagnostics", path ?? null),
       },

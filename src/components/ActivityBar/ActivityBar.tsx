@@ -1,6 +1,6 @@
 import { useUiStore } from "../../store/uiStore";
 import { useGitStore } from "../../store/gitStore";
-import { PAGES, VIEWS, openPage, showView, useActivePage } from "./views";
+import { PAGES, openPage, showView, useActivePage, useViews } from "./views";
 import "./ActivityBar.css";
 
 /**
@@ -9,6 +9,7 @@ import "./ActivityBar.css";
  * sidebar; the bar itself stays.
  */
 export function ActivityBar() {
+  const views = useViews();
   const sidebarVisible = useUiStore((state) => state.sidebarVisible);
   const sidebarView = useUiStore((state) => state.sidebarView);
   const changeCount = useGitStore((state) => Object.keys(state.statusByPath).length);
@@ -17,7 +18,7 @@ export function ActivityBar() {
   return (
     <nav className="activity-bar" aria-label="Views">
       <div className="activity-bar-group">
-        {VIEWS.map(({ id, label, icon: Icon, shortcut }) => {
+        {views.map(({ id, label, icon: Icon, shortcut }) => {
           const active = sidebarVisible && sidebarView === id;
           return (
             <button

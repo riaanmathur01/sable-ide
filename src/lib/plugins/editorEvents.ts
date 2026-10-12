@@ -2,6 +2,23 @@ import type * as MonacoTypes from "monaco-editor";
 import { pathFromUri } from "../editorRegistry";
 import { emitPluginEvent } from "./events";
 
+/** Problems changing anywhere (any source), debounced: once Monaco loads. */
+let markersWatched = false;
+export function watchDiagnosticsForPlugins(monaco: typeof MonacoTypes): void {
+  if (markersWatched) return;
+  markersWatched = true;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let paths = new Set<string>();
+  monaco.editor.onDidChangeMarkers((uris) => {
+    for (const uri of uris) if (uri.scheme === "file") paths.add(pathFromUri(uri));
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      emitPluginEvent("didChangeDiagnostics", { path: null, paths: [...paths] });
+      paths = new Set();
+    }, 150);
+  });
+}
+
 /** Typing and cursor moves reach plugins at most this often. */
 const SELECTION_DELAY_MS = 120;
 const CHANGE_DELAY_MS = 300;
@@ -50,7 +67,12 @@ export function installPluginEditorEvents(
       }, CHANGE_DELAY_MS);
     }),
   ];
+  // The editor's first file (set at creation, so no model-change event).
+  const initial = setTimeout(() => {
+    if (focused() && path()) emitPluginEvent("didChangeActiveEditor", { path: path() });
+  }, 0);
   return () => {
+    clearTimeout(initial);
     clearTimeout(selectionTimer);
     clearTimeout(changeTimer);
     for (const disposable of disposables) disposable.dispose();

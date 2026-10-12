@@ -56,18 +56,41 @@ pub fn parse_jsonc(text: &str) -> Result<Value, String> {
             }
             index += 2;
             continue;
-        } else if c == ',' {
-            // Drop a comma that only has whitespace before } or ].
-            let next = chars[index + 1..].iter().find(|next| !next.is_whitespace());
-            if !matches!(next, Some('}') | Some(']')) {
-                out.push(c);
-            }
         } else {
             out.push(c);
         }
         index += 1;
     }
-    serde_json::from_str(&out).map_err(|error| format!("devcontainer.json is invalid: {error}"))
+    // Then commas before } or ] (comments are gone, so a trailing comma
+    // followed by a comment is caught too).
+    let chars: Vec<char> = out.chars().collect();
+    let mut cleaned = String::with_capacity(out.len());
+    let mut in_string = false;
+    let mut index = 0;
+    while index < chars.len() {
+        let c = chars[index];
+        if in_string {
+            cleaned.push(c);
+            if c == '\\' && index + 1 < chars.len() {
+                cleaned.push(chars[index + 1]);
+                index += 1;
+            } else if c == '"' {
+                in_string = false;
+            }
+        } else if c == '"' {
+            in_string = true;
+            cleaned.push(c);
+        } else if c == ',' {
+            let next = chars[index + 1..].iter().find(|next| !next.is_whitespace());
+            if !matches!(next, Some('}') | Some(']')) {
+                cleaned.push(c);
+            }
+        } else {
+            cleaned.push(c);
+        }
+        index += 1;
+    }
+    serde_json::from_str(&cleaned).map_err(|error| format!("devcontainer.json is invalid: {error}"))
 }
 
 /// What to run, decided from the config.
@@ -300,12 +323,15 @@ mod tests {
               "image": "mcr.microsoft.com/devcontainers/rust:1", /* block */
               "url": "http://x//y",
               "list": [1, 2,],
+              "after": [3, // a comment after a trailing comma
+              ],
             }"#,
         )
         .unwrap();
         assert_eq!(value["image"], "mcr.microsoft.com/devcontainers/rust:1");
         assert_eq!(value["url"], "http://x//y");
         assert_eq!(value["list"], json!([1, 2]));
+        assert_eq!(value["after"], json!([3]));
     }
 
     #[test]

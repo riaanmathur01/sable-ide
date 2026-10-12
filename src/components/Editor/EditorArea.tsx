@@ -1,4 +1,5 @@
-import { Fragment, Suspense, lazy, useRef, useState } from "react";
+import { Fragment, Suspense, useRef, useState } from "react";
+import { preloadable } from "../../lib/preloadable";
 import { TabBar } from "./TabBar";
 import { useTabsStore, type EditorGroup } from "../../store/tabsStore";
 import { DebugToolbar } from "../Debug/DebugToolbar";
@@ -8,13 +9,20 @@ import "./EditorArea.css";
 // Monaco (and its workers) live in their own chunks, fetched the first
 // time a file opens — the app shell cold-starts without any of it.
 // (Cmd/Ctrl+S and the rest live in lib/useGlobalKeybindings.)
-const MonacoPane = lazy(() => import("./MonacoPane"));
-const DiffView = lazy(() => import("./DiffView"));
-const MergeView = lazy(() => import("./MergeView"));
-const LocalHistoryView = lazy(() => import("./LocalHistoryView"));
-const MarkdownPreview = lazy(() => import("./MarkdownPreview"));
-const SettingsView = lazy(() => import("../Settings/SettingsView"));
-const PluginDetailsView = lazy(() => import("../Plugins/PluginDetailsView"));
+const MonacoPane = preloadable(() => import("./MonacoPane"));
+
+/** Load the editor ahead of the first file (App calls this when idle). */
+export function warmEditor(): void {
+  void MonacoPane.preload().catch(() => {});
+  void SettingsView.preload().catch(() => {});
+}
+const DiffView = preloadable(() => import("./DiffView"));
+const MergeView = preloadable(() => import("./MergeView"));
+const LocalHistoryView = preloadable(() => import("./LocalHistoryView"));
+const MarkdownPreview = preloadable(() => import("./MarkdownPreview"));
+const SettingsView = preloadable(() => import("../Settings/SettingsView"));
+const PluginDetailsView = preloadable(() => import("../Plugins/PluginDetailsView"));
+const PluginWebviewTab = preloadable(() => import("../Plugins/PluginWebviewTab"));
 
 const MIN_GROUP_WIDTH = 220;
 
@@ -129,7 +137,8 @@ function EditorGroupView({
   const historyActive = activeTab?.kind === "history";
   const previewActive = activeTab?.kind === "preview";
   const pluginActive = activeTab?.kind === "plugin";
-  const fileActive = !diffActive && !settingsActive && !mergeActive && !historyActive && !previewActive && !pluginActive;
+  const webviewActive = activeTab?.kind === "webview";
+  const fileActive = !diffActive && !settingsActive && !mergeActive && !historyActive && !previewActive && !pluginActive && !webviewActive;
   const hasFileTab = group.tabs.some((tab) => tab.kind === "file");
 
   return (
@@ -168,6 +177,13 @@ function EditorGroupView({
           <div className="editor-layer">
             <Suspense fallback={null}>
               <LocalHistoryView key={activeTab.path} filePath={activeTab.historyFile} />
+            </Suspense>
+          </div>
+        )}
+        {webviewActive && activeTab.webviewId && (
+          <div className="editor-layer">
+            <Suspense fallback={null}>
+              <PluginWebviewTab key={activeTab.path} id={activeTab.webviewId} />
             </Suspense>
           </div>
         )}

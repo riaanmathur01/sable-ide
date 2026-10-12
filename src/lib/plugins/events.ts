@@ -2,7 +2,13 @@
  * Editor events plugins can listen to. A dependency-free bus, so the
  * stores and editors that raise events needn't import the plugin host.
  */
-export type PluginEventName = "didSave" | "didOpen" | "didChange" | "didChangeActiveEditor" | "didChangeSelection";
+export type PluginEventName =
+  | "didSave"
+  | "didOpen"
+  | "didChange"
+  | "didChangeActiveEditor"
+  | "didChangeSelection"
+  | "didChangeDiagnostics";
 
 export type PluginEventPayload = { path: string | null } & Record<string, unknown>;
 

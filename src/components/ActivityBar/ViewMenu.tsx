@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Menu } from "lucide-react";
 import { useUiStore } from "../../store/uiStore";
 import { useGitStore } from "../../store/gitStore";
-import { PAGES, VIEWS, openPage, showView, useActivePage } from "./views";
+import { PAGES, openPage, showView, useActivePage, useViews } from "./views";
 import "./ActivityBar.css";
 
 /** The hamburger View Switcher: one ☰ button listing every view. */
 export function ViewMenu() {
+  const views = useViews();
   const [open, setOpen] = useState(false);
   const anchor = useRef<HTMLDivElement>(null);
   const sidebarView = useUiStore((state) => state.sidebarView);
@@ -45,7 +46,7 @@ export function ViewMenu() {
       </button>
       {open && (
         <div className="view-menu" role="menu">
-          {VIEWS.map(({ id, label, icon: Icon, shortcut }) => (
+          {views.map(({ id, label, icon: Icon, shortcut }) => (
             <button
               key={id}
               role="menuitem"

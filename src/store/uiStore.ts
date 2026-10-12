@@ -9,7 +9,7 @@ interface CursorPosition {
   column: number;
 }
 
-export type SidebarView = "files" | "search" | "git" | "history" | "debug";
+export type SidebarView = "files" | "search" | "git" | "history" | "debug" | "pluginViews";
 /** The Settings tab's pages, and the Plugins page's tabs. */
 export type SettingsPage = "settings" | "plugins";
 export type PluginsTab = "marketplace" | "installed" | "create";

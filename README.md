@@ -37,6 +37,12 @@ may ask once too (More info → Run anyway).
   zoom, Back/Forward through the places you've been (⌘[ / ⌘], ⌃- / ⌃⇧-,
   mouse side buttons), and session restore. JetBrains Mono is bundled; the font picker
   lists every monospace font installed on your machine.
+- **Vim mode** — normal, insert, visual and visual-line modes, motions,
+  operators, counts, registers, marks, macros, `/` search, `.` repeat, and
+  `:w`, `:q`, `:wq`, `:s` and other ex commands, with a mode line under
+  the editor. Turn it on in Settings → Editor → Vim Mode, or with
+  “View: Toggle Vim Mode”. On Windows and Linux, the Ctrl keys Vim uses
+  (Ctrl+R, Ctrl+O, Ctrl+V, Ctrl+D, …) go to Vim while it's on.
 - **Highlighting** — the same TextMate grammars VS Code uses (via
   [Shiki](https://shiki.style)), plus semantic highlighting from the
   language servers (parameters, `self`, fields, mutable bindings,
@@ -191,12 +197,17 @@ may ask once too (More info → Run anyway).
   writes a working plugin to start from, which reloads every time you
   save it. Each plugin runs sandboxed in its own worker with only the
   permissions it declares (`editor`, `workspace:read`, `workspace:write`,
-  `shell`, `network`), and you see them before installing. The
+  `shell`, `network`, `node`), and you see them before installing. The
   Marketplace has over 30 plugins (JSON and CSV tools, Markdown TOC, tables
   and lint, color, number and timestamp hovers, bookmarks, snippets, a
-  clock, a pomodoro timer…). **VS Code extensions convert** in one step:
-  give Sable an extension id or a `.vsix`, and it runs it through a
-  compatibility layer for VS Code's API. Guide and API reference:
+  clock, a pomodoro timer…). **VS Code extensions run** too: give Sable
+  an extension id or a `.vsix`, and it runs the extension in Node.js
+  (as VS Code does) through a compatibility layer for VS Code's API,
+  covering language features (go to definition, references, symbols,
+  code actions, code lenses, inlay hints, …), decorations, webviews, tree
+  views, terminals and the languages and grammars an extension adds.
+  Better Comments, Bookmarks, Error Lens, REST Client and Code Runner
+  work unchanged. Guide and API reference:
   [docs/plugins.md](docs/plugins.md).
 - **Remote development** — open a folder on an SSH host (Linux, macOS or
   Windows), in WSL, or in a running Docker/Podman container — or reopen a
@@ -214,6 +225,13 @@ may ask once too (More info → Run anyway).
   Editor Appearance → View Switcher.
 - **Settings** — a searchable settings page (⌘,) backed by a plain
   `settings.json`.
+- **Rebindable shortcuts** — Settings → Keyboard Shortcuts lists every
+  command (Sable's, the editor's and plugins'). Click a shortcut and press
+  the new keys to change it, remove it, or reset it; clashes are flagged.
+  Changes go to `keybindings.json` beside `settings.json`, in VS Code's
+  format (`{ "key": "cmd+k", "command": "…" }`, `-command` to unbind),
+  so VS Code bindings can be pasted in. “Preferences: Open Keyboard
+  Shortcuts (JSON)” opens it.
 
 ## Prerequisites
 
@@ -345,8 +363,8 @@ controlled-tree model fights the lazy-loading-from-Rust design.
 
 ## Keyboard shortcuts
 
-The full list is in **Settings → Keyboard Shortcuts** (⌘,). The
-essentials:
+The full list is in **Settings → Keyboard Shortcuts** (⌘,), where each
+one can be changed. The defaults:
 
 | Shortcut | Action |
 | -------- | ------ |

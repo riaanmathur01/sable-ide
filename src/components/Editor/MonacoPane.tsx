@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { installPluginEditorEvents } from "../../lib/plugins/editorEvents";
+import { installPluginEditorEvents, watchDiagnosticsForPlugins } from "../../lib/plugins/editorEvents";
 import Editor, { type OnMount } from "@monaco-editor/react";
 import { useTabsStore } from "../../store/tabsStore";
 import { useUiStore } from "../../store/uiStore";
@@ -21,6 +21,7 @@ import type * as MonacoTypes from "monaco-editor";
 import type { BlameLine } from "../../lib/ipc";
 import { installKeyRepeatAcceleration } from "../../lib/keyRepeatAcceleration";
 import { installRecentTracking } from "../../lib/recentTracking";
+import { attachVim, setVimEnabled } from "../../lib/vim";
 import "./MonacoPane.css";
 
 const NO_BREAKPOINTS: number[] = [];
@@ -80,6 +81,25 @@ export default function MonacoPane({ groupId }: { groupId: string }) {
   const colorTheme = useColorTheme();
   const [blameLines, setBlameLines] = useState<BlameLine[]>([]);
   const [editorReady, setEditorReady] = useState(false);
+  // Vim mode: monaco-vim on this editor, its mode line under it.
+  const vimMode = useSettingsStore((state) => state.values["editor.vim"]);
+  const vimStatusRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    setVimEnabled(vimMode);
+    const editor = editorRef.current;
+    const status = vimStatusRef.current;
+    if (!vimMode || !editorReady || !editor || !status) return;
+    let detach: (() => void) | null = null;
+    let cancelled = false;
+    void attachVim(editor, status).then((stop) => {
+      if (cancelled) stop();
+      else detach = stop;
+    });
+    return () => {
+      cancelled = true;
+      detach?.();
+    };
+  }, [vimMode, editorReady]);
 
   const options = useMemo(() => editorOptionsFromSettings(settings), [settings]);
 
@@ -300,13 +320,14 @@ export default function MonacoPane({ groupId }: { groupId: string }) {
     editor.onDidChangeModel(publishIfFocused);
     // Plugins: the file in front, selection and text changes.
     editor.onDidDispose(installPluginEditorEvents(editor, focused));
+    watchDiagnosticsForPlugins(monaco);
     editor.onDidChangeModelLanguage(publishIfFocused);
     editor.onDidChangeModelOptions(publishIfFocused);
     publishIfFocused();
   };
 
   return (
-    <div className="monaco-pane">
+    <div className={vimMode ? "monaco-pane vim" : "monaco-pane"}>
       {showBlame && (
         <BlameGutter lines={blameLines} filePath={activePath} editor={editorRef.current} />
       )}
@@ -332,6 +353,7 @@ export default function MonacoPane({ groupId }: { groupId: string }) {
           options={options}
         />
       </div>
+      {vimMode && <div className="vim-status" ref={vimStatusRef} />}
     </div>
   );
 }

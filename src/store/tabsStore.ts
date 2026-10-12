@@ -11,11 +11,28 @@ import {
   getModelValue,
   isModelDirty,
   markSaved,
+  pathFromUri,
   setActiveEditorGroup,
 } from "../lib/editorRegistry";
 import { useUiStore, type PluginsTab, type SettingsPage } from "./uiStore";
 import { getSetting, useSettingsStore } from "./settingsStore";
 import { emitPluginEvent } from "../lib/plugins/events";
+import { usePluginViewsStore } from "./pluginViewsStore";
+
+/** Run `then` when the editor is showing `path` (or after a second). */
+function emitWhenShown(path: string, then: () => void) {
+  const started = Date.now();
+  const check = () => {
+    const model = getEditor()?.getModel();
+    const shown = model && model.uri.scheme === "file" && pathFromUri(model.uri) === path;
+    if (shown || Date.now() - started > 1000) then();
+    else setTimeout(check, 16);
+  };
+  check();
+}
+
+/** Webview tabs closed by their plugin (no dispose notice back to it). */
+const closingQuietly = new Set<string>();
 
 /** Synthetic key of the (singleton) Settings tab. */
 export const SETTINGS_TAB_KEY = "sable:settings";
@@ -36,7 +53,7 @@ export interface EditorTab {
   path: string;
   name: string;
   isDirty: boolean;
-  kind: "file" | "diff" | "settings" | "merge" | "history" | "preview" | "plugin";
+  kind: "file" | "diff" | "settings" | "merge" | "history" | "preview" | "plugin" | "webview";
   /** Present on diff tabs: what to compare. */
   diff?: DiffSource;
   /** Present on merge tabs: the conflicted file. */
@@ -47,6 +64,8 @@ export interface EditorTab {
   previewFile?: string;
   /** On plugin tabs: the plugin whose details page this is. */
   pluginId?: string;
+  /** On webview tabs: the plugin webview shown (store/pluginViewsStore). */
+  webviewId?: string;
 }
 
 /**
@@ -127,6 +146,11 @@ interface TabsState {
   /** Open a Markdown file's rendered preview — beside it (the next
    *  editor group) or in its place. */
   openPreview: (filePath: string, side: boolean) => void;
+  /** Open (or focus) a plugin's webview panel. */
+  openWebview: (webviewId: string, title: string) => void;
+  renameWebview: (webviewId: string, title: string) => void;
+  /** Close a webview's tab (the plugin disposed it). */
+  closeWebview: (webviewId: string) => void;
   /** Open (or focus) a plugin's details page (like VS Code's). */
   openPluginDetails: (pluginId: string, name: string) => void;
   /** Open (or focus) a file's local history (null: deleted files). */
@@ -356,7 +380,8 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     persistSession(get());
     // Start a language server (if any) and tell it this doc is open.
     if (contents !== null) void openDocument(path, contents);
-    emitPluginEvent("didOpen", { path });
+    // Once the editor shows it: plugins look at the active editor.
+    emitWhenShown(path, () => emitPluginEvent("didOpen", { path }));
   },
 
   openDiff: (source) => {
@@ -435,6 +460,44 @@ export const useTabsStore = create<TabsState>((set, get) => ({
         side ? activeGroupId : targetId,
       ),
     );
+  },
+
+  openWebview: (webviewId, title) => {
+    const key = `webview:${webviewId}`;
+    const existing = get().groups.find((group) => group.tabs.some((tab) => tab.path === key));
+    if (existing) {
+      get().setActive(key, existing.id);
+      return;
+    }
+    const groupId = get().activeGroupId;
+    set((state) =>
+      withGroups(
+        updateGroup(state.groups, groupId, (group) => ({
+          ...group,
+          tabs: [...group.tabs, { path: key, name: title, isDirty: false, kind: "webview", webviewId }],
+          activePath: key,
+        })),
+        groupId,
+      ),
+    );
+  },
+
+  renameWebview: (webviewId, title) =>
+    set((state) => ({
+      groups: state.groups.map((group) => ({
+        ...group,
+        tabs: group.tabs.map((tab) => (tab.webviewId === webviewId ? { ...tab, name: title } : tab)),
+      })),
+    })),
+
+  closeWebview: (webviewId) => {
+    const key = `webview:${webviewId}`;
+    for (const group of get().groups) {
+      if (group.tabs.some((tab) => tab.path === key)) {
+        closingQuietly.add(key);
+        void get().closeTab(key, group.id).finally(() => closingQuietly.delete(key));
+      }
+    }
   },
 
   openPluginDetails: (pluginId, name) => {
@@ -829,6 +892,12 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     const group = get().groups.find((candidate) => candidate.id === targetId);
     const closingTab = group?.tabs.find((tab) => tab.path === path);
     if (!group || !closingTab) return;
+    // A plugin's webview closed by the user: tell the plugin.
+    if (closingTab.kind === "webview" && closingTab.webviewId && !closingQuietly.has(path)) {
+      const webview = usePluginViewsStore.getState().webviews[closingTab.webviewId];
+      webview?.onDispose?.();
+      usePluginViewsStore.getState().removeWebview(closingTab.webviewId);
+    }
 
     const openElsewhere = get().groups.some(
       (other) => other.id !== targetId && other.tabs.some((tab) => tab.path === path),

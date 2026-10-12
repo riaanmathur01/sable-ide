@@ -68,6 +68,15 @@ fn localize(value: &str, nls: &Value) -> String {
     }
 }
 
+fn localize_all(value: &mut Value, nls: &Value) {
+    match value {
+        Value::String(text) if text.starts_with('%') && text.ends_with('%') && text.len() > 2 => *text = localize(text, nls),
+        Value::Array(items) => items.iter_mut().for_each(|item| localize_all(item, nls)),
+        Value::Object(map) => map.values_mut().for_each(|item| localize_all(item, nls)),
+        _ => {}
+    }
+}
+
 /// The extension's settings and their defaults ("myExt.option" → value).
 fn configuration_defaults(package: &Value) -> BTreeMap<String, Value> {
     let mut defaults = BTreeMap::new();
@@ -84,6 +93,53 @@ fn configuration_defaults(package: &Value) -> BTreeMap<String, Value> {
         }
     }
     defaults
+}
+
+/// Languages the extension adds (with their language-configuration.json),
+/// and TextMate grammars (JSON ones) for them.
+fn contributed_languages(root: &Path, package: &Value, nls: &Value) -> (Vec<Value>, Vec<Value>) {
+    let read_json = |relative: &str| -> Option<Value> {
+        let path = root.join(relative.trim_start_matches("./"));
+        let text = std::fs::read_to_string(path).ok()?;
+        crate::devcontainer::parse_jsonc(&text).ok()
+    };
+    let languages = match package.pointer("/contributes/languages") {
+        Some(Value::Array(list)) => list
+            .iter()
+            .filter_map(|language| {
+                let id = language.get("id")?.as_str()?;
+                let aliases: Vec<String> = language
+                    .get("aliases")
+                    .and_then(Value::as_array)
+                    .map(|aliases| aliases.iter().filter_map(Value::as_str).map(|alias| localize(alias, nls)).collect())
+                    .unwrap_or_default();
+                Some(json!({
+                    "id": id,
+                    "extensions": language.get("extensions").cloned().unwrap_or(json!([])),
+                    "filenames": language.get("filenames").cloned().unwrap_or(json!([])),
+                    "aliases": aliases,
+                    "configuration": language.get("configuration").and_then(Value::as_str).and_then(read_json),
+                }))
+            })
+            .collect(),
+        _ => Vec::new(),
+    };
+    let grammars = match package.pointer("/contributes/grammars") {
+        Some(Value::Array(list)) => list
+            .iter()
+            .filter_map(|grammar| {
+                let language = grammar.get("language")?.as_str()?;
+                let path = grammar.get("path")?.as_str()?;
+                // JSON grammars only (plist/YAML ones aren't read yet).
+                if !path.ends_with(".json") {
+                    return None;
+                }
+                Some(json!({ "language": language, "grammar": read_json(path)? }))
+            })
+            .collect(),
+        _ => Vec::new(),
+    };
+    (languages, grammars)
 }
 
 /// The module file for `main`/`browser` ("./out/extension" → "out/extension.js").
@@ -129,6 +185,32 @@ fn collect_modules(root: &Path) -> Result<Vec<String>, String> {
     Ok(found)
 }
 
+/// The extension's files, for Node (at most 300 MB).
+fn copy_extension(from: &Path, to: &Path) -> Result<(), String> {
+    const MAX_BYTES: u64 = 300 * 1024 * 1024;
+    fn walk(from: &Path, to: &Path, total: &mut u64) -> Result<(), String> {
+        std::fs::create_dir_all(to).map_err(|error| error.to_string())?;
+        for entry in std::fs::read_dir(from).map_err(|error| error.to_string())?.flatten() {
+            let name = entry.file_name();
+            if name == ".git" {
+                continue;
+            }
+            let kind = entry.file_type().map_err(|error| error.to_string())?;
+            if kind.is_dir() {
+                walk(&entry.path(), &to.join(&name), total)?;
+            } else if kind.is_file() {
+                *total += entry.metadata().map(|metadata| metadata.len()).unwrap_or(0);
+                if *total > MAX_BYTES {
+                    return Err("The extension is too large to install (over 300 MB)".into());
+                }
+                std::fs::copy(entry.path(), to.join(&name)).map_err(|error| error.to_string())?;
+            }
+        }
+        Ok(())
+    }
+    walk(from, to, &mut 0)
+}
+
 /// Whether a module is an ES module (import/export at the top level),
 /// which the CommonJS loader can't run.
 fn is_es_module(source: &str) -> bool {
@@ -142,7 +224,7 @@ fn is_es_module(source: &str) -> bool {
 
 /// Convert the extension at `root` into a Sable plugin in `out`.
 pub fn convert(root: &Path, out: &Path) -> Result<Manifest, String> {
-    let package: Value = serde_json::from_str(
+    let mut package: Value = serde_json::from_str(
         &std::fs::read_to_string(root.join("package.json")).map_err(|error| format!("The extension has no package.json: {error}"))?,
     )
     .map_err(|error| format!("The extension's package.json is invalid: {error}"))?;
@@ -150,6 +232,8 @@ pub fn convert(root: &Path, out: &Path) -> Result<Manifest, String> {
         .ok()
         .and_then(|text| serde_json::from_str(&text).ok())
         .unwrap_or(Value::Null);
+    // "%key%" strings anywhere (view names, setting descriptions…) → words.
+    localize_all(&mut package, &nls);
     let text = |key: &str| package.get(key).and_then(Value::as_str).map(|value| localize(value, &nls)).unwrap_or_default();
 
     let publisher = text("publisher");
@@ -168,6 +252,13 @@ pub fn convert(root: &Path, out: &Path) -> Result<Manifest, String> {
             format!("{display_name} has no code to run (it only adds themes, grammars or snippets, which Sable doesn't import yet)")
         })?;
     let entry = entry_module(root, entry_field).ok_or_else(|| format!("{display_name}'s code ({entry_field}) isn't in the package"))?;
+    // `main` is what VS Code on the desktop runs, in Node: Sable does the
+    // same when Node.js is installed (the extension folder kept as is,
+    // dependencies and all). The sandbox runs the `browser` build if there
+    // is one (made for VS Code for the Web), else `main` as far as it can.
+    let node_entry = package.get("main").and_then(Value::as_str).and_then(|main| entry_module(root, main));
+
+    let (languages, grammars) = contributed_languages(root, &package, &nls);
 
     // Commands shown in the palette, by id → title.
     let mut commands = serde_json::Map::new();
@@ -201,7 +292,13 @@ pub fn convert(root: &Path, out: &Path) -> Result<Manifest, String> {
     };
 
     // The modules, each wrapped as a CommonJS function.
-    let modules = collect_modules(root)?;
+    // (Too big for the sandbox is fine when Node runs it.)
+    let modules = match collect_modules(root) {
+        Ok(modules) => modules,
+        Err(_) if node_entry.is_some() => Vec::new(),
+        Err(error) => return Err(error),
+    };
+    let sandbox_fits = !modules.is_empty() || node_entry.is_none();
     let mut uses_network = false;
     let mut bundle = String::with_capacity(SHIM.len() + 1024 * 1024);
     bundle.push_str("// Converted from a VS Code extension by Sable (see README.md).\n");
@@ -239,21 +336,30 @@ pub fn convert(root: &Path, out: &Path) -> Result<Manifest, String> {
         "entry": entry,
         "commands": commands,
         "configuration": configuration_defaults(&package),
-        "packageJSON": {
-            "name": name,
-            "publisher": publisher,
-            "displayName": display_name,
-            "version": text("version"),
-            "contributes": package.get("contributes").cloned().unwrap_or(Value::Null),
-        },
+        "languages": languages,
+        "grammars": grammars,
+        // All of it: extensions read their own fields (repository, version…).
+        "packageJSON": package,
     });
     bundle.push_str(&format!("const __extension = {};\n\n", serde_json::to_string(&extension).map_err(|error| error.to_string())?));
-    bundle.push_str("/** @param {any} sable */\nexport async function activate(sable) {\n  await __sableVscode.activate(sable, __modules, __extension);\n}\n\n");
+    if sandbox_fits {
+        bundle.push_str("/** @param {any} sable */\nexport async function activate(sable) {\n  await __sableVscode.activate(sable, __modules, __extension);\n}\n\n");
+    } else {
+        bundle.push_str("export async function activate() {\n  throw new Error(\"This extension needs Node.js: install it (nodejs.org) and reload the plugin.\");\n}\n\n");
+    }
     bundle.push_str("export async function deactivate() {\n  await __sableVscode.deactivate();\n}\n");
 
     let mut permissions = vec!["editor".to_string(), "workspace:read".to_string(), "workspace:write".to_string()];
-    if uses_network {
-        permissions.push("network".to_string());
+    if node_entry.is_some() {
+        // Node extensions have the run of the computer, as in VS Code.
+        permissions.insert(0, "node".to_string());
+    } else {
+        if uses_network {
+            permissions.push("network".to_string());
+        }
+        if modules.iter().any(|module| std::fs::read_to_string(root.join(module)).is_ok_and(|source| source.contains("createTerminal"))) {
+            permissions.push("shell".to_string());
+        }
     }
     let description = text("description");
     let repository = match package.get("repository") {
@@ -274,10 +380,19 @@ pub fn convert(root: &Path, out: &Path) -> Result<Manifest, String> {
         min_sable_version: Some(env!("CARGO_PKG_VERSION").to_string()),
         homepage: repository,
         keybindings,
+        runtime: node_entry.as_ref().map(|_| "node".to_string()),
     };
 
     std::fs::create_dir_all(out).map_err(|error| error.to_string())?;
     std::fs::write(out.join("main.js"), bundle).map_err(|error| error.to_string())?;
+    if let Some(node_entry) = &node_entry {
+        // The extension as shipped, for the Node host (src/plugin_node.rs).
+        copy_extension(root, &out.join("extension"))?;
+        let mut node_extension = extension.clone();
+        node_extension["nodeEntry"] = json!(format!("extension/{node_entry}"));
+        std::fs::write(out.join("extension.json"), serde_json::to_string(&node_extension).map_err(|error| error.to_string())?)
+            .map_err(|error| error.to_string())?;
+    }
     std::fs::write(
         out.join(crate::plugins::MANIFEST_FILE),
         serde_json::to_string_pretty(&manifest).map_err(|error| error.to_string())?,

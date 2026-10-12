@@ -1,6 +1,7 @@
 import type * as MonacoTypes from "monaco-editor";
 import { invoke } from "../backend";
 import { getVersion } from "@tauri-apps/api/app";
+import { listen } from "@tauri-apps/api/event";
 import { listWorkspaceFiles, runShell } from "../ipc";
 import { getEditor, pathFromUri, whenMonaco } from "../editorRegistry";
 import { readCurrentText, writeFileContents } from "../fileContents";
@@ -11,6 +12,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { onPluginEvent, type PluginEventName, type PluginEventPayload } from "./events";
 import { useTabsStore } from "../../store/tabsStore";
 import { WORKER_SOURCE } from "./workerBootstrap";
+import { cleanupPlugin, handleExtended, type RuntimeAccess } from "./hostExtras";
 import type { HostMessage, PluginInfo, PluginLogLine, PluginPermission, PluginState, WorkerMessage } from "./types";
 
 /**
@@ -29,6 +31,8 @@ export interface PluginCommand {
   handler: number;
   id: string;
   title: string;
+  /** Internal (not shown in the command palette). */
+  hidden?: boolean;
 }
 
 export interface PluginStatusItem {
@@ -104,7 +108,8 @@ function resolvePath(path: string): string {
 
 export class PluginRuntime {
   readonly commands = new Map<number, PluginCommand>();
-  private worker: Worker | null = null;
+  /** The sandboxed worker, or (Node plugins) the Node process's pipe. */
+  private worker: Pick<Worker, "postMessage" | "terminate"> | null = null;
   private nextId = 1;
   private pending = new Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void }>();
   private activation: { resolve: () => void; reject: (error: Error) => void } | null = null;
@@ -139,15 +144,25 @@ export class PluginRuntime {
     this.listener.state("starting");
     try {
       const source = await invoke<string>("plugin_read_main", { id: this.id });
-      const workerUrl = URL.createObjectURL(new Blob([WORKER_SOURCE], { type: "text/javascript" }));
-      const worker = new Worker(workerUrl, { type: "module", name: `plugin:${this.id}` });
-      URL.revokeObjectURL(workerUrl);
-      this.worker = worker;
-      worker.onmessage = (event: MessageEvent<WorkerMessage>) => void this.receive(event.data);
-      worker.onerror = (event) => {
-        event.preventDefault();
-        this.log("error", event.message || "The plugin crashed");
-      };
+      // VS Code extensions made for Node run in a Node process when Node.js
+      // is installed (full access, as in VS Code); otherwise, and for every
+      // other plugin, in the sandboxed worker.
+      const wantsNode = this.info.manifest.runtime === "node";
+      const node = wantsNode && (await invoke<boolean>("plugin_node_available").catch(() => false));
+      if (node) {
+        await this.startNode();
+      } else {
+        if (wantsNode) this.log("warn", "Node.js isn't installed, so this extension runs in Sable's sandbox, where Node's features (files, processes, its npm packages) aren't available. Install Node.js and reload it.");
+        const workerUrl = URL.createObjectURL(new Blob([WORKER_SOURCE], { type: "text/javascript" }));
+        const worker = new Worker(workerUrl, { type: "module", name: `plugin:${this.id}` });
+        URL.revokeObjectURL(workerUrl);
+        this.worker = worker;
+        worker.onmessage = (event: MessageEvent<WorkerMessage>) => void this.receive(event.data);
+        worker.onerror = (event) => {
+          event.preventDefault();
+          this.log("error", event.message || "The plugin crashed");
+        };
+      }
       this.cleanups.push(onPluginEvent((name, payload) => this.dispatchEvent(name, payload)));
       this.cleanups.push(
         useWorkspaceStore.subscribe((state, previous) => {
@@ -179,6 +194,33 @@ export class PluginRuntime {
     }
   }
 
+  /** Run the plugin in a Node process (src-tauri/src/plugin_node.rs): the
+   *  same bootstrap and protocol as the worker, over its stdin/stdout. */
+  private async startNode() {
+    const id = this.id;
+    // Only this start's process: a previous one's last events (its exit
+    // after a reload) carry an older instance.
+    let instance: number | null = null;
+    const unlisten = await listen<{ id: string; instance: number; message: WorkerMessage | { type: "exit" } }>("plugin:node", ({ payload }) => {
+      if (payload.id !== id || payload.instance !== instance) return;
+      if (payload.message.type === "exit") {
+        if (this.worker) {
+          this.log("error", "The plugin's Node process exited");
+          this.activation?.reject(new Error("The plugin's Node process exited"));
+        }
+        return;
+      }
+      void this.receive(payload.message as WorkerMessage);
+    });
+    this.cleanups.push(unlisten);
+    instance = await invoke<number>("plugin_node_start", { id });
+    this.worker = {
+      postMessage: (message: unknown) => void invoke("plugin_node_send", { id, message: JSON.stringify(message) }).catch(() => {}),
+      terminate: () => void invoke("plugin_node_stop", { id }).catch(() => {}),
+    };
+    this.worker.postMessage({ type: "bootstrap", source: WORKER_SOURCE });
+  }
+
   /** Run deactivate() (briefly), stop the worker, undo its registrations. */
   async stop(): Promise<void> {
     const worker = this.worker;
@@ -208,6 +250,7 @@ export class PluginRuntime {
       });
     }
     this.diagnostics.clear();
+    cleanupPlugin(this.id);
     this.listener.state("stopped");
   }
 
@@ -283,6 +326,8 @@ export class PluginRuntime {
   }
 
   private require(permission: PluginPermission) {
+    // "node": full access, as VS Code extensions have.
+    if (this.info.manifest.permissions.includes("node")) return;
     if (!this.info.manifest.permissions.includes(permission)) {
       throw new Error(`${this.name} doesn't have the "${permission}" permission (add it to sable-plugin.json's "permissions")`);
     }
@@ -299,8 +344,8 @@ export class PluginRuntime {
     switch (method) {
       // --- Commands, messages, status bar ------------------------------------
       case "commands.register": {
-        const [handler, id, title] = args as [number, string, string];
-        this.commands.set(handler, { handler, id, title });
+        const [handler, id, title, options] = args as [number, string, string, { hidden?: boolean } | undefined];
+        this.commands.set(handler, { handler, id, title, hidden: Boolean(options?.hidden) });
         this.listener.commandsChanged();
         return null;
       }
@@ -683,7 +728,37 @@ export class PluginRuntime {
         return { stdout: output.stdout, stderr: output.stderr, exitCode: output.exitCode, timedOut: output.timedOut };
       }
     }
+    const extended = await handleExtended(this.access, method, args);
+    if (extended.handled) return extended.value;
     throw new Error(`Unknown API call ${method}`);
+  }
+
+  /** What hostExtras may do with this runtime. */
+  private access: RuntimeAccess = ((runtime: PluginRuntime) => ({
+    // Getters: field initializers can run before constructor parameters are assigned.
+    get id() {
+      return runtime.info.manifest.id;
+    },
+    get name() {
+      return runtime.info.manifest.name;
+    },
+    require: (permission: PluginPermission) => runtime.require(permission),
+    callback: (handler: number, args: unknown[], kind: string) => runtime.callback(handler, args, kind as keyof typeof CALLBACK_TIMEOUT_MS),
+    register: (handler: number, make: (monaco: Monaco) => MonacoTypes.IDisposable) => runtime.register(handler, make),
+    root: () => runtime.root(),
+    onStop: (cleanup: () => void) => void runtime.cleanups.push(cleanup),
+    executeCommand: (id: string, args: unknown[]) => runtime.executeCommand(id, args),
+  }))(this);
+
+  /** Run a command of the plugin's by id, with arguments (code lenses,
+   *  code actions, tree items). VS Code extensions route their internal
+   *  commands through their hidden "__vscode.execute". */
+  async executeCommand(id: string, args: unknown[]): Promise<unknown> {
+    const command = [...this.commands.values()].find((candidate) => candidate.id === id);
+    if (command) return this.callback(command.handler, args, "command");
+    const router = [...this.commands.values()].find((candidate) => candidate.id === "__vscode.execute");
+    if (router) return this.callback(router.handler, [id, ...args], "command");
+    throw new Error(`No command ${id}`);
   }
 
   /** Register with Monaco once it's loaded (unless disposed meanwhile). */

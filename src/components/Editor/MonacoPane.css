@@ -1,7 +1,40 @@
 .monaco-pane {
+  position: relative;
   display: flex;
   height: 100%;
   width: 100%;
+}
+
+/* Vim mode: the mode line (and : command line) under the editor. */
+.monaco-pane.vim > * {
+  height: calc(100% - 22px);
+}
+
+.monaco-pane.vim > .vim-status {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 10px;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.vim-status input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  outline: none;
 }
 
 .monaco-pane-editor {

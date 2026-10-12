@@ -28,6 +28,7 @@ export interface Settings {
   "editor.insertSpaces": boolean;
   "editor.detectIndentation": boolean;
   "editor.wordWrap": "off" | "on";
+  "editor.vim": boolean;
   "editor.minimap": boolean;
   "editor.inlayHints": boolean;
   "editor.lineNumbers": "on" | "relative" | "off";
@@ -113,6 +114,7 @@ export const SETTINGS_SCHEMA: SettingSpec[] = [
   { key: "editor.tabSize", section: "Editor", type: "number", min: 1, max: 8, label: "Tab Size", description: "Spaces per indentation level.", default: 2 },
   { key: "editor.insertSpaces", section: "Editor", type: "boolean", label: "Insert Spaces", description: "Pressing Tab inserts spaces instead of a tab character.", default: true },
   { key: "editor.detectIndentation", section: "Editor", type: "boolean", label: "Detect Indentation", description: "Match each file's existing indentation instead of the settings above.", default: true },
+  { key: "editor.vim", section: "Editor", type: "boolean", label: "Vim Mode", description: "Edit with Vim's keys: normal, insert and visual modes, motions, operators, registers, macros, and :w / :q. The mode shows under the editor. On Windows and Linux, Vim's Ctrl keys (Ctrl+R, Ctrl+O, Ctrl+D…) go to Vim while the editor has focus.", default: false },
   { key: "editor.wordWrap", section: "Editor", type: "enum", options: [{ value: "off", label: "Off" }, { value: "on", label: "Wrap at viewport" }], label: "Word Wrap", description: "Wrap long lines. ⌥Z toggles it.", default: "off" },
   { key: "editor.rulers", section: "Editor", type: "string", placeholder: "e.g. 80, 120", label: "Rulers", description: "Comma-separated columns at which to draw vertical rulers.", default: "" },
   // --- Editor: appearance ---------------------------------------------------

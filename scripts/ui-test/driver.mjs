@@ -27,7 +27,7 @@ export const extraStandins = {};
 /** Every command the page invoked, in order. */
 export const calls = [];
 
-export async function openSable(workspace, { width = 1500, height = 950 } = {}) {
+export async function openSable(workspace, { width = 1500, height = 950, init, cache = true, pollEvents = false } = {}) {
   const browser = await puppeteer.launch({
     executablePath: CHROME,
     headless: true,
@@ -58,6 +58,8 @@ export async function openSable(workspace, { width = 1500, height = 950 } = {}) 
     return result;
   });
   await page.evaluateOnNewDocument((workspace) => {
+    // The app's own window only (not plugin webview frames).
+    if (window !== window.top) return;
     localStorage.setItem("sable.lastFolder", workspace);
     const callbacks = new Map();
     const listeners = new Map();
@@ -91,7 +93,25 @@ export async function openSable(workspace, { width = 1500, height = 950 } = {}) 
       },
     };
   }, workspace);
+  // Measurements: run `init` before the app's own code; cache off for cold loads.
+  if (init) await page.evaluateOnNewDocument(init);
+  if (!cache) await page.setCacheEnabled(false);
   await page.goto("http://localhost:1530/", { waitUntil: "networkidle0" });
+  // Backend events the bridge collected (Node plugins), delivered to the page.
+  if (pollEvents) {
+    const poll = async () => {
+      if (page.isClosed()) return;
+      try {
+        const response = await fetch("http://127.0.0.1:1531/invoke", { method: "POST", body: JSON.stringify({ cmd: "__events", args: {} }) });
+        const { ok: events } = await response.json();
+        for (const { event, payload } of events ?? []) await page.evaluate((event, payload) => window.__sableEmit(event, payload), event, payload);
+      } catch {
+        /* page closing */
+      }
+      setTimeout(poll, 40);
+    };
+    void poll();
+  }
   return { browser, page, errors };
 }
 

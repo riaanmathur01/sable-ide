@@ -1,4 +1,5 @@
-import { Bug, Files, GitBranch, History, Puzzle, Search, Settings, type LucideIcon } from "lucide-react";
+import { Bug, Files, GitBranch, History, LayoutPanelLeft, Puzzle, Search, Settings, type LucideIcon } from "lucide-react";
+import { usePluginViewsStore } from "../../store/pluginViewsStore";
 import type { SidebarView } from "../../store/uiStore";
 import { useUiStore } from "../../store/uiStore";
 import { SETTINGS_TAB_KEY, useTabsStore } from "../../store/tabsStore";
@@ -21,6 +22,15 @@ export const VIEWS: ViewItem[] = [
   { id: "history", label: "History", icon: History },
   { id: "debug", label: "Run and Debug", icon: Bug, shortcut: "⇧⌘D" },
 ];
+
+/** Views plugins contribute (tree views, webview views), in one place. */
+export const PLUGIN_VIEWS: ViewItem = { id: "pluginViews", label: "Plugin Views", icon: LayoutPanelLeft };
+
+/** The views to offer: the built-in ones, plus Plugin Views when a plugin has any. */
+export function useViews(): ViewItem[] {
+  const hasPluginViews = usePluginViewsStore((state) => state.views.length > 0);
+  return hasPluginViews ? [...VIEWS, PLUGIN_VIEWS] : VIEWS;
+}
 
 /** Pages of the Settings tab that sit beside the views. */
 export const PAGES = {

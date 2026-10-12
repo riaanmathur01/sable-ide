@@ -12,11 +12,12 @@ import { useTabsStore } from "../../store/tabsStore";
 import { useWorkspaceStore } from "../../store/workspaceStore";
 import { useGitStore } from "../../store/gitStore";
 import { useTerminalStore } from "../../store/terminalStore";
-import { listWorkspaceFiles } from "../../lib/ipc";
+import { listWorkspaceFiles, pathExists, writeFile } from "../../lib/ipc";
 import { fuzzyScore } from "../../lib/fuzzy";
 import { runActiveFile } from "../../lib/runFile";
 import { openFolderDialog } from "../../lib/openFolder";
 import { useRemoteStore } from "../../store/remoteStore";
+import { keybindingsPath, setPaletteRunner } from "../../lib/shortcuts";
 import { useDebugStore } from "../../store/debugStore";
 import { useAgentStore } from "../../store/agentStore";
 import { useBreakpointsStore } from "../../store/breakpointsStore";
@@ -388,6 +389,19 @@ function toggleSetting(key: SettingKey) {
 }
 
 /** The static action list for command mode (plus git actions if a repo). */
+// Keyboard shortcuts can run any palette entry by its id.
+setPaletteRunner((id) => {
+  const item = buildCommands().find((candidate) => candidate.id === id);
+  if (!item) return false;
+  item.run();
+  return true;
+});
+
+/** Every palette command (for the keyboard-shortcut editor). */
+export function paletteCommands(): { id: string; label: string }[] {
+  return buildCommands().map(({ id, label }) => ({ id, label }));
+}
+
 function buildCommands(): PaletteItem[] {
   const ui = useUiStore.getState();
   const tabs = useTabsStore.getState();
@@ -924,6 +938,7 @@ function buildCommands(): PaletteItem[] {
   // Plugins: their commands, and managing them.
   const plugins = usePluginStore.getState();
   for (const { pluginId, pluginName, command } of plugins.commands) {
+    if (command.hidden) continue;
     items.push({
       id: `plugin:${pluginId}:${command.id}`,
       label: `${pluginName}: ${command.title}`,
@@ -936,6 +951,23 @@ function buildCommands(): PaletteItem[] {
     { id: "plugins-show", label: "Plugins: Show Installed Plugins", run: () => tabs.openSettings("plugins", "installed") },
     { id: "plugins-create", label: "Plugins: Create New Plugin…", run: () => tabs.openSettings("plugins", "create") },
     { id: "plugins-reload", label: "Plugins: Reload All Plugins", run: () => void plugins.reloadAll() },
+    {
+      id: "toggle-vim",
+      label: "View: Toggle Vim Mode",
+      detail: useSettingsStore.getState().values["editor.vim"] ? "on" : "off",
+      run: () => useSettingsStore.getState().set("editor.vim", !useSettingsStore.getState().values["editor.vim"]),
+    },
+    {
+      id: "keybindings-json",
+      label: "Preferences: Open Keyboard Shortcuts (JSON)",
+      run: () =>
+        void (async () => {
+          const path = keybindingsPath();
+          if (!path) return;
+          if (!(await pathExists(path))) await writeFile(path, "// Your keyboard shortcuts (VS Code's format).\n[\n]\n");
+          await tabs.openFile(path);
+        })(),
+    },
     {
       id: "plugins-convert-vscode",
       label: "Plugins: Convert VS Code Extension…",

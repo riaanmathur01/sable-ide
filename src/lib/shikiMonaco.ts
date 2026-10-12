@@ -10,7 +10,7 @@ import {
   type StateStack,
 } from "@shikijs/vscode-textmate";
 import type * as MonacoTypes from "monaco-editor";
-import { THEMES, semanticRules, themeById, type ThemeDefinition, type ThemeId } from "./themes";
+import { semanticRules, themeById, type ThemeDefinition, type ThemeId } from "./themes";
 
 /**
  * TextMate-grammar highlighting for Monaco, via Shiki — the same
@@ -183,6 +183,14 @@ class TokenizerState implements MonacoTypes.languages.IState {
  * Install TextMate highlighting. Returns immediately; Monarch colors show
  * until the highlighter is ready (a few ms), then grammars take over.
  */
+/** Add a TextMate grammar for a language (a plugin's, e.g. a VS Code
+ *  extension's `contributes.grammars`); set once Shiki is installed. */
+let addGrammar: ((languageId: string, grammar: Record<string, unknown>) => Promise<void>) | null = null;
+
+export function addTextmateGrammar(languageId: string, grammar: Record<string, unknown>): Promise<void> {
+  return addGrammar ? addGrammar(languageId, grammar) : Promise.resolve();
+}
+
 export function installShikiHighlighting(monaco: Monaco, initialTheme: ThemeId) {
   let highlighter: HighlighterCore | null = null;
   let requestedTheme: string = initialTheme;
@@ -238,16 +246,50 @@ export function installShikiHighlighting(monaco: Monaco, initialTheme: ThemeId) 
     });
   }
 
-  // Wrap setTheme (used by the editor component) so every switch also
-  // updates Shiki and re-tokenizes with the new theme's color indices.
-  const originalSetTheme = monaco.editor.setTheme.bind(monaco.editor);
-  monaco.editor.setTheme = (id: string) => {
-    requestedTheme = id;
+  /** Themes are prepared for Shiki when first used (building all of
+   *  them up front cost the first file open ~100 ms). */
+  const loadedThemes = new Set<string>();
+  const themeLoads = new Map<string, Promise<void>>();
+  function loadTheme(id: string): Promise<void> {
+    const theme = themeById(id);
+    if (loadedThemes.has(theme.id)) return Promise.resolve();
+    if (!themeLoads.has(theme.id)) {
+      themeLoads.set(
+        theme.id,
+        (async () => {
+          const base = theme.baseTokenColors
+            ? ((await BASE_TOKEN_COLORS[theme.baseTokenColors]()) as { default: ThemeRegistrationRaw }).default
+            : null;
+          const registration = buildTextmateTheme(theme, base);
+          const ready = await initialized;
+          await ready.loadTheme(registration);
+          loadedThemes.add(theme.id);
+        })(),
+      );
+    }
+    return themeLoads.get(theme.id)!;
+  }
+
+  function apply(id: string) {
     activate(id);
     originalSetTheme(id);
     if (highlighter) for (const language of providers.keys()) register(language);
     activeTheme = id;
     for (const listener of themeListeners) listener(id);
+  }
+
+  // Wrap setTheme (used by the editor component) so every switch also
+  // updates Shiki and re-tokenizes with the new theme's color indices.
+  const originalSetTheme = monaco.editor.setTheme.bind(monaco.editor);
+  monaco.editor.setTheme = (id: string) => {
+    requestedTheme = id;
+    if (loadedThemes.has(themeById(id).id)) {
+      apply(id);
+      return;
+    }
+    void loadTheme(id).then(() => {
+      if (requestedTheme === id) apply(id);
+    });
   };
 
   async function ensureLanguage(language: string) {
@@ -290,23 +332,22 @@ export function installShikiHighlighting(monaco: Monaco, initialTheme: ThemeId) 
   };
 
   const initialized = (async () => {
-    const themes = await Promise.all(
-      Object.values(THEMES).map(async (theme) => {
-        const base = theme.baseTokenColors
-          ? ((await BASE_TOKEN_COLORS[theme.baseTokenColors]()) as { default: ThemeRegistrationRaw })
-              .default
-          : null;
-        return buildTextmateTheme(theme, base);
-      }),
-    );
     highlighter = await createHighlighterCore({
-      themes,
+      themes: [],
       langs: [],
       engine: createJavaScriptRegexEngine(),
     });
-    monaco.editor.setTheme(requestedTheme);
     return highlighter;
   })();
+  void loadTheme(requestedTheme).then(() => monaco.editor.setTheme(requestedTheme));
+
+  addGrammar = async (languageId, grammar) => {
+    const ready = await initialized;
+    await ready.loadLanguage({ ...grammar, name: languageId } as never);
+    GRAMMAR_NAME[languageId] ??= languageId;
+    await monaco.editor.colorize("", languageId, {}).catch(() => "");
+    register(languageId);
+  };
 
   // Load grammars for whatever is (or becomes) open.
   for (const model of monaco.editor.getModels()) {

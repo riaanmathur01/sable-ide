@@ -1,6 +1,6 @@
 /** Plugin shapes shared by the host, the store and the UI. */
 
-export type PluginPermission = "editor" | "workspace:read" | "workspace:write" | "shell" | "network";
+export type PluginPermission = "editor" | "workspace:read" | "workspace:write" | "shell" | "network" | "node";
 
 /** What each permission lets a plugin do (shown before installing). */
 export const PERMISSION_DESCRIPTIONS: Record<PluginPermission, string> = {
@@ -9,6 +9,7 @@ export const PERMISSION_DESCRIPTIONS: Record<PluginPermission, string> = {
   "workspace:write": "Create and change files in the open folder",
   shell: "Run commands on your computer (in the open folder)",
   network: "Connect to the internet",
+  node: "Run in Node.js with full access to your computer — files, programs, the internet — as VS Code extensions do",
 };
 
 export interface PluginManifest {
@@ -23,6 +24,8 @@ export interface PluginManifest {
   homepage?: string;
   /** Shortcuts for the plugin's commands: "ctrl+alt+c" (and a "mac" variant: "cmd+alt+c"). */
   keybindings?: { command: string; key: string; mac?: string }[];
+  /** "node": a VS Code extension made for Node (runs in a Node process when Node.js is installed). */
+  runtime?: "node";
 }
 
 export interface PluginInfo {

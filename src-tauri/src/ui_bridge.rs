@@ -28,8 +28,20 @@ fn reply<T: Serialize>(result: Result<T, String>) -> Value {
     }
 }
 
+/// Events for the page (Node plugins), collected until the driver polls.
+static EVENTS: std::sync::Mutex<Vec<Value>> = std::sync::Mutex::new(Vec::new());
+
+fn bridge_events() -> crate::events::Events {
+    std::sync::Arc::new(|name, payload| EVENTS.lock().unwrap().push(json!({ "event": name, "payload": payload })))
+}
+
 async fn dispatch(command: &str, args: &Value) -> Result<Value, String> {
     Ok(match command {
+        "__events" => json!({ "ok": std::mem::take(&mut *EVENTS.lock().unwrap()) }),
+        "plugin_node_available" => json!({ "ok": crate::plugin_node::plugin_node_available() }),
+        "plugin_node_start" => reply(crate::plugin_node::start(bridge_events(), arg(args, "id")?).await),
+        "plugin_node_send" => reply(crate::plugin_node::plugin_node_send(arg(args, "id")?, arg(args, "message")?)),
+        "plugin_node_stop" => reply(crate::plugin_node::plugin_node_stop(arg(args, "id")?).await),
         "read_directory" => reply(fs::read_directory(arg(args, "path")?)),
         "read_file" => reply(fs::read_file(arg(args, "path")?)),
         "read_file_base64" => reply(fs::read_file_base64(arg(args, "path")?)),

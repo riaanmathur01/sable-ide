@@ -24,6 +24,8 @@ mod remote;
 mod vscode;
 #[cfg(feature = "desktop")]
 mod devcontainer;
+#[cfg(feature = "desktop")]
+mod plugin_node;
 #[cfg(all(test, feature = "desktop"))]
 mod ui_bridge;
 
@@ -190,6 +192,10 @@ pub fn run() {
             remote::remote_askpass_answer,
             devcontainer::devcontainer_exists,
             devcontainer::devcontainer_up,
+            plugin_node::plugin_node_available,
+            plugin_node::plugin_node_start,
+            plugin_node::plugin_node_send,
+            plugin_node::plugin_node_stop,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -25,7 +25,7 @@ static LOCK: Mutex<()> = Mutex::new(());
 
 pub const MANIFEST_FILE: &str = "sable-plugin.json";
 /// What a plugin may ask for; anything else is refused at install.
-pub const PERMISSIONS: &[&str] = &["editor", "workspace:read", "workspace:write", "shell", "network"];
+pub const PERMISSIONS: &[&str] = &["editor", "workspace:read", "workspace:write", "shell", "network", "node"];
 const MAX_DOWNLOAD_BYTES: usize = 50 * 1024 * 1024;
 const MAX_SOURCE_BYTES: u64 = 10 * 1024 * 1024;
 /// Not copied when installing from a folder.
@@ -37,6 +37,19 @@ pub fn set_plugins_dir(dir: PathBuf) {
 
 fn plugins_dir() -> Result<PathBuf, String> {
     PLUGINS_DIR.get().cloned().ok_or_else(|| "Plugins folder unavailable".to_string())
+}
+
+/// The process's one plugins folder, for tests: they take turns with it,
+/// each finding it empty.
+#[cfg(test)]
+pub fn test_plugins_dir() -> (std::sync::MutexGuard<'static, ()>, PathBuf) {
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let guard = LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let dir = std::env::temp_dir().join(format!("sable-plugins-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    set_plugins_dir(dir.clone());
+    assert_eq!(plugins_dir().unwrap(), dir, "something else set the plugins folder");
+    (guard, dir)
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -62,6 +75,10 @@ pub struct Manifest {
     /// Keyboard shortcuts for the plugin's commands.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub keybindings: Vec<Keybinding>,
+    /// "node": runs in a Node.js process (VS Code extensions that need
+    /// Node), with the sandboxed worker as the fallback without Node.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runtime: Option<String>,
 }
 
 /// `{"command": "convert", "key": "ctrl+alt+c", "mac": "cmd+alt+c"}`
@@ -449,16 +466,23 @@ async fn unpack_staged(bytes: Vec<u8>, subpath: Option<String>) -> Result<PathBu
 }
 
 fn copy_dir(from: &Path, to: &Path) -> std::io::Result<()> {
+    copy_tree(from, to, true)
+}
+
+/// Copy a folder; `.git` and (at the plugin's top only) `node_modules`
+/// are left out — a converted VS Code extension's own dependencies, in
+/// extension/node_modules, are part of it.
+fn copy_tree(from: &Path, to: &Path, top: bool) -> std::io::Result<()> {
     std::fs::create_dir_all(to)?;
     for entry in std::fs::read_dir(from)? {
         let entry = entry?;
         let name = entry.file_name();
-        if SKIPPED.iter().any(|skipped| name == *skipped) {
+        if name == ".git" || (top && SKIPPED.iter().any(|skipped| name == *skipped)) {
             continue;
         }
         let kind = entry.file_type()?;
         if kind.is_dir() {
-            copy_dir(&entry.path(), &to.join(&name))?;
+            copy_tree(&entry.path(), &to.join(&name), false)?;
         } else if kind.is_file() {
             std::fs::copy(entry.path(), to.join(&name))?;
         }
@@ -529,6 +553,17 @@ pub fn plugin_set_enabled(id: String, enabled: bool) -> Result<(), String> {
     let mut registry = read_registry()?;
     registry.plugins.get_mut(&id).ok_or_else(|| format!("No plugin {id}"))?.enabled = enabled;
     write_registry(&registry)
+}
+
+/// The folder plugins are installed in.
+pub fn plugin_folder_root() -> Result<PathBuf, String> {
+    plugins_dir()
+}
+
+/// The folder a plugin runs from.
+pub fn plugin_folder(id: &str) -> Result<PathBuf, String> {
+    let registry = read_registry()?;
+    Ok(registry.plugins.get(id).ok_or_else(|| format!("No plugin {id}"))?.path.clone())
 }
 
 /// A plugin's main module source (the frontend runs it in a worker).
@@ -629,11 +664,9 @@ mod tests {
     /// GitHub-style tarball — against a private plugins folder.
     #[test]
     fn installs_links_and_uninstalls() {
-        let base = std::env::temp_dir().join(format!("sable-plugins-{}", std::process::id()));
+        let (_lock, dir) = test_plugins_dir();
+        let base = std::env::temp_dir().join(format!("sable-plugins-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
-        set_plugins_dir(base.join("plugins"));
-        let dir = plugins_dir().unwrap();
-        assert!(dir.starts_with(&base), "another test set the plugins folder first");
 
         let source = base.join("src/hello");
         write_plugin(&source, GOOD, Some("export function activate() {}"));
