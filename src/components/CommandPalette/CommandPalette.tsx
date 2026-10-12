@@ -48,6 +48,7 @@ import { useCoverageStore } from "../../store/coverageStore";
 import { toggleInlineCompletions } from "../../lib/ai/inlineCompletions";
 import { allThemes } from "../../lib/themes";
 import { isNotebookPath, notebookHooks, type NotebookCommand } from "../../lib/notebook/hooks";
+import { databaseHooks, type DatabaseCommand } from "../../lib/database/hooks";
 import {
   restartLanguageServers,
   setUpPythonSemanticHighlighting,
@@ -424,6 +425,40 @@ function notebookCommands(): PaletteItem[] {
   ];
 }
 
+/** Database commands: for the SQLite database in front. */
+function databaseCommands(): PaletteItem[] {
+  const { tabs, activePath } = useTabsStore.getState();
+  const active = tabs.find((tab) => tab.path === activePath);
+  const file = active?.kind === "database" ? active.databaseFile : undefined;
+  if (!file) return [];
+  const command = (id: DatabaseCommand, label: string, detail?: string): PaletteItem => ({
+    id: `database-${id}`,
+    label,
+    detail,
+    run: () => databaseHooks.command?.(file, id),
+  });
+  return [
+    command("write", "Database: Write Changes", "⌘S"),
+    command("revert", "Database: Revert Changes"),
+    command("structure", "Database: Show Database Structure"),
+    command("browse", "Database: Browse Data"),
+    command("pragmas", "Database: Edit Pragmas"),
+    command("execute", "Database: Execute SQL"),
+    command("createTable", "Database: Create Table…"),
+    command("createIndex", "Database: Create Index…"),
+    command("importCsv", "Database: Import Table from CSV…"),
+    command("exportCsv", "Database: Export Table as CSV…"),
+    command("exportJson", "Database: Export Table as JSON…"),
+    command("exportSql", "Database: Export Database as SQL…"),
+    command("openSql", "Database: Open SQL File…"),
+    command("saveSql", "Database: Save SQL File"),
+    command("integrityCheck", "Database: Integrity Check"),
+    command("vacuum", "Database: Vacuum"),
+    command("refresh", "Database: Refresh"),
+    { id: "database-reveal", label: "Database: Reveal in Explorer", run: () => void useWorkspaceStore.getState().revealPath(file) },
+  ];
+}
+
 /** Flip a boolean setting. */
 function toggleSetting(key: SettingKey) {
   const { values, set } = useSettingsStore.getState();
@@ -611,6 +646,7 @@ function buildCommands(): PaletteItem[] {
       },
     },
     ...notebookCommands(),
+    ...databaseCommands(),
     { id: "inline-completions", label: "AI: Toggle Inline Completions", run: toggleInlineCompletions },
     {
       id: "debug-attach",
@@ -968,6 +1004,7 @@ function buildCommands(): PaletteItem[] {
       run: () => void openFolderDialog(),
     },
     { id: "new-window", label: "File: New Window", detail: "⇧⌘N", run: () => void newWindow() },
+    { id: "pick-color", label: "Pick a Color…", run: () => void import("../../lib/colorPicker/editorColors").then(({ pickColorAtCursor }) => pickColorAtCursor()) },
     { id: "open-folder-new-window", label: "File: Open Folder in New Window…", run: () => void openFolderInNewWindow() },
     { id: "close-window", label: "File: Close Window", detail: "⇧⌘W", run: () => void closeWindow() },
     { id: "add-root-folder", label: "Workspaces: Add Folder to Workspace…", run: () => void addFolderToWorkspace() },

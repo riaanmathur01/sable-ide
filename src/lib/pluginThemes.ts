@@ -1,6 +1,6 @@
 import { invokeLocal } from "./backend";
 import { parseJsonc } from "./jsonc";
-import { setPluginThemes } from "./themes";
+import { pluginThemeOwners, setPluginThemes } from "./themes";
 import { themeFromVscode, type VscodeThemeJson } from "./vscodeTheme";
 import type { PluginInfo } from "./plugins/types";
 
@@ -27,7 +27,8 @@ function signature(plugin: PluginInfo): string {
 /** Bring the registered themes in line with `plugins`. */
 export async function syncPluginThemes(plugins: PluginInfo[], options: { force?: string } = {}): Promise<void> {
   const present = new Set(plugins.map((plugin) => plugin.manifest.id));
-  for (const id of [...loaded.keys()]) {
+  // Uninstalled plugins' themes go (including one cached from last time).
+  for (const id of new Set([...loaded.keys(), ...pluginThemeOwners()])) {
     if (!present.has(id)) {
       loaded.delete(id);
       setPluginThemes(id, []);

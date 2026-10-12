@@ -38,6 +38,9 @@ fn bridge_events() -> crate::events::Events {
 /// Notebook kernels started through the bridge.
 static NOTEBOOKS: std::sync::LazyLock<crate::notebook::NotebookState> = std::sync::LazyLock::new(Default::default);
 
+/// Databases opened through the bridge.
+static DATABASES: std::sync::LazyLock<std::sync::Arc<crate::database::DatabaseState>> = std::sync::LazyLock::new(Default::default);
+
 async fn dispatch(command: &str, args: &Value) -> Result<Value, String> {
     Ok(match command {
         "__events" => json!({ "ok": std::mem::take(&mut *EVENTS.lock().unwrap()) }),
@@ -59,6 +62,7 @@ async fn dispatch(command: &str, args: &Value) -> Result<Value, String> {
         "notebook_send" => reply(crate::notebook::send(&NOTEBOOKS, arg(args, "session")?, arg(args, "message")?).await),
         "notebook_stop" => reply(crate::notebook::stop(&NOTEBOOKS, arg(args, "session")?).await),
         "notebook_install_ipykernel" => reply(crate::notebook::install_ipykernel(arg(args, "python")?).await),
+        "database_call" => reply(crate::database::request(DATABASES.clone(), arg(args, "op")?, arg(args, "args")?).await),
         "plugin_node_stop" => {
             crate::plugin_node::stop("main", &arg::<String>(args, "id")?).await;
             json!({ "ok": null })

@@ -273,12 +273,17 @@ export function installShikiHighlighting(monaco: Monaco, initialTheme: ThemeId) 
     return themeLoads.get(theme)!;
   }
 
+  /** The theme definition the editor shows (a plugin's theme that's gone
+   *  falls back to Sable Dark: the editor must switch to it too). */
+  let applied: ThemeDefinition | null = null;
   function apply(id: string) {
-    activate(id);
-    originalSetTheme(id);
+    const theme = themeById(id);
+    activate(theme.id);
+    originalSetTheme(theme.id);
     if (highlighter) for (const language of providers.keys()) register(language);
-    activeTheme = id;
-    for (const listener of themeListeners) listener(id);
+    applied = theme;
+    activeTheme = theme.id;
+    for (const listener of themeListeners) listener(theme.id);
   }
 
   // Wrap setTheme (used by the editor component) so every switch also
@@ -346,7 +351,9 @@ export function installShikiHighlighting(monaco: Monaco, initialTheme: ThemeId) 
 
   // A plugin added (or changed) the theme in use: show it.
   onThemeRegistryChange(() => {
-    if (!isLoaded(requestedTheme)) monaco.editor.setTheme(requestedTheme);
+    // A plugin added, changed or removed the theme in use: show what
+    // the setting now resolves to.
+    if (themeById(requestedTheme) !== applied) monaco.editor.setTheme(requestedTheme);
   });
 
   addGrammar = async (languageId, grammar) => {

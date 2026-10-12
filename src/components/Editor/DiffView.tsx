@@ -7,7 +7,7 @@ import { folderOf, useWorkspaceStore } from "../../store/workspaceStore";
 import type { DiffSource } from "../../store/tabsStore";
 import { monaco } from "../../lib/monacoSetup";
 import { getSetting, useSettingsStore } from "../../store/settingsStore";
-import { cachedThemeId } from "../../lib/themes";
+import { cachedThemeId, themeById } from "../../lib/themes";
 import { stageHunk, unstageHunk, type LineChange } from "../../lib/git/hunks";
 import { useGitStore } from "../../store/gitStore";
 import "./DiffView.css";
@@ -159,7 +159,7 @@ export default function DiffView({ source }: DiffViewProps) {
 
         const diffEditor = monaco.editor.createDiffEditor(container, {
           theme: useSettingsStore.getState().loaded
-            ? getSetting("workbench.colorTheme")
+            ? themeById(getSetting("workbench.colorTheme")).id
             : cachedThemeId(),
           readOnly: true,
           originalEditable: false,

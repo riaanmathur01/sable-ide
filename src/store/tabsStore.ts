@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { ask as confirmNative } from "@tauri-apps/plugin-dialog";
 import { pathExists, readFile, writeFile } from "../lib/ipc";
 import { isNotebookPath, notebookHooks, notebookTabKey } from "../lib/notebook/hooks";
+import { databaseHooks, databaseTabKey, isDatabasePath, SQLITE_HEADER } from "../lib/database/hooks";
+import { invoke } from "../lib/backend";
 import { closeDocument, openDocument, saveDocument } from "../lib/lsp/lspClient";
 import { useGitStore } from "./gitStore";
 import { useWorkspaceStore } from "./workspaceStore";
@@ -54,7 +56,7 @@ export interface EditorTab {
   path: string;
   name: string;
   isDirty: boolean;
-  kind: "file" | "diff" | "settings" | "merge" | "history" | "preview" | "plugin" | "webview" | "notebook";
+  kind: "file" | "diff" | "settings" | "merge" | "history" | "preview" | "plugin" | "webview" | "notebook" | "database";
   /** Present on diff tabs: what to compare. */
   diff?: DiffSource;
   /** Present on merge tabs: the conflicted file. */
@@ -69,6 +71,8 @@ export interface EditorTab {
   webviewId?: string;
   /** On notebook tabs: the .ipynb file shown in the notebook editor. */
   notebookFile?: string;
+  /** On database tabs: the SQLite file shown in the database editor. */
+  databaseFile?: string;
 }
 
 /**
@@ -224,10 +228,10 @@ function persistSession(state: Pick<TabsState, "groups" | "activeGroupId">) {
     // synthetic keys that aren't openable paths).
     const groups = state.groups.map((group) => {
       // Notebook tabs persist as their file (reopened as notebooks).
-      const restorable = group.tabs.filter((tab) => tab.kind === "file" || tab.kind === "notebook");
-      const openPaths = restorable.map((tab) => tab.notebookFile ?? tab.path);
+      const restorable = group.tabs.filter((tab) => tab.kind === "file" || tab.kind === "notebook" || tab.kind === "database");
+      const openPaths = restorable.map((tab) => tab.notebookFile ?? tab.databaseFile ?? tab.path);
       const active = restorable.find((tab) => tab.path === group.activePath);
-      const activePath = active ? (active.notebookFile ?? active.path) : null;
+      const activePath = active ? (active.notebookFile ?? active.databaseFile ?? active.path) : null;
       return { openPaths, activePath };
     });
     const session: PersistedSession = {
@@ -341,6 +345,32 @@ function releaseIfUnused(groups: EditorGroup[], path: string) {
 
 const initialGroup = emptyGroup();
 
+/** Open (or focus) a SQLite database in the database editor. */
+function openDatabaseTab(
+  set: (update: (state: TabsState) => Partial<TabsState>) => void,
+  groupId: string,
+  path: string,
+) {
+  const key = databaseTabKey(path);
+  set((state) =>
+    withGroups(
+      updateGroup(state.groups, groupId, (current) =>
+        current.tabs.some((tab) => tab.path === key)
+          ? { ...current, activePath: key }
+          : {
+              ...current,
+              tabs: [...current.tabs, { path: key, name: fileNameOf(path), isDirty: false, kind: "database", databaseFile: path }],
+              activePath: key,
+            },
+      ),
+      groupId,
+    ),
+  );
+}
+
+/** A file without a database extension that is one anyway ("SQLite format 3\0"). */
+const isSqliteFile = (path: string) => invoke<boolean>("database_call", { op: "sniff", args: { path } }).catch(() => false);
+
 export const useTabsStore = create<TabsState>((set, get) => ({
   ...withGroups([initialGroup], initialGroup.id),
   initialContentByPath: {},
@@ -375,6 +405,16 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       persistSession(get());
       return;
     }
+    if (!options?.asText && isDatabasePath(path)) {
+      const key = databaseTabKey(path);
+      if (!group.tabs.some((tab) => tab.path === key) && !(await pathExists(path).catch(() => false))) {
+        useUiStore.getState().setLastError(`${path} doesn't exist`);
+        return;
+      }
+      openDatabaseTab(set, groupId, path);
+      persistSession(get());
+      return;
+    }
     if (group.tabs.some((tab) => tab.path === path)) {
       get().setActive(path, groupId);
       return;
@@ -386,7 +426,18 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       try {
         contents = await readFile(path);
       } catch (error) {
+        // Not text: maybe a SQLite database without a database extension.
+        if (!options?.asText && (await isSqliteFile(path))) {
+          openDatabaseTab(set, groupId, path);
+          persistSession(get());
+          return;
+        }
         useUiStore.getState().setLastError(String(error));
+        return;
+      }
+      if (!options?.asText && contents.startsWith(SQLITE_HEADER)) {
+        openDatabaseTab(set, groupId, path);
+        persistSession(get());
         return;
       }
     }
@@ -760,6 +811,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     const paths = new Set(get().groups.flatMap((group) => group.tabs.map((tab) => tab.path)));
     for (const path of paths) {
       if (path.startsWith("notebook:")) notebookHooks.close?.(path.slice("notebook:".length));
+      if (path.startsWith("database:")) databaseHooks.close?.(path.slice("database:".length));
       cancelAutoSave(path);
       disposeModel(path);
       void closeDocument(path);
@@ -812,6 +864,10 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       } catch (error) {
         useUiStore.getState().setLastError(String(error));
       }
+      return;
+    }
+    if (tab?.kind === "database" && tab.databaseFile) {
+      await databaseHooks.save?.(tab.databaseFile);
       return;
     }
     if (tab && tab.kind !== "file") return;
@@ -895,6 +951,31 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       );
       persistSession(get());
     }
+    // Database tabs follow their file too (their changes were written first).
+    const movedDatabases = new Set(
+      get()
+        .groups.flatMap((group) => group.tabs)
+        .filter((tab) => tab.kind === "database" && tab.databaseFile && isSameOrInside(tab.databaseFile, oldPath))
+        .map((tab) => tab.databaseFile!),
+    );
+    for (const file of movedDatabases) {
+      const moved = newPath + file.slice(oldPath.length);
+      const [from, to] = [databaseTabKey(file), databaseTabKey(moved)];
+      databaseHooks.rename?.(file, moved);
+      set((state) =>
+        withGroups(
+          state.groups.map((group) => ({
+            ...group,
+            tabs: group.tabs.map((tab) =>
+              tab.path === from ? { ...tab, path: to, name: fileNameOf(moved), databaseFile: moved, isDirty: false } : tab,
+            ),
+            activePath: group.activePath === from ? to : group.activePath,
+          })),
+          state.activeGroupId,
+        ),
+      );
+      persistSession(get());
+    }
     const affected = new Set(
       get()
         .groups.flatMap((group) => group.tabs)
@@ -941,7 +1022,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     const dirty = new Set(
       get()
         .groups.flatMap((group) => group.tabs)
-        .filter((tab) => (tab.kind === "file" || tab.kind === "notebook") && tab.isDirty && isSameOrInside(tab.notebookFile ?? tab.path, path))
+        .filter((tab) => (tab.kind === "file" || tab.kind === "notebook" || tab.kind === "database") && tab.isDirty && isSameOrInside(tab.notebookFile ?? tab.databaseFile ?? tab.path, path))
         .map((tab) => tab.path),
     );
     for (const dirtyPath of dirty) await get().saveTab(dirtyPath);
@@ -951,12 +1032,13 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     const closing = new Set(
       get()
         .groups.flatMap((group) => group.tabs)
-        .filter((tab) => (tab.kind === "file" || tab.kind === "notebook") && isSameOrInside(tab.notebookFile ?? tab.path, path))
+        .filter((tab) => (tab.kind === "file" || tab.kind === "notebook" || tab.kind === "database") && isSameOrInside(tab.notebookFile ?? tab.databaseFile ?? tab.path, path))
         .map((tab) => tab.path),
     );
     if (closing.size === 0) return;
     for (const closedPath of closing) {
       if (closedPath.startsWith("notebook:")) notebookHooks.close?.(closedPath.slice("notebook:".length));
+      if (closedPath.startsWith("database:")) databaseHooks.close?.(closedPath.slice("database:".length));
       cancelAutoSave(closedPath);
       void closeDocument(closedPath);
       disposeModel(closedPath);
@@ -990,7 +1072,10 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     );
     // Unsaved edits live in the shared model — only at risk when this is
     // the last tab showing the file.
-    if (closingTab.isDirty && !openElsewhere) {
+    // A database with unwritten changes: Write / Discard / Cancel.
+    if (closingTab.kind === "database" && closingTab.databaseFile && closingTab.isDirty && !openElsewhere) {
+      if (!(await (databaseHooks.confirmClose?.(closingTab.databaseFile) ?? Promise.resolve(true)))) return;
+    } else if (closingTab.isDirty && !openElsewhere) {
       const discard = await confirmNative(
         `"${closingTab.name}" has unsaved changes. Discard them?`,
         { title: "Unsaved Changes", kind: "warning" },
@@ -1024,6 +1109,11 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       cancelAutoSave(path);
       rememberClosed(closingTab.notebookFile);
       notebookHooks.close?.(closingTab.notebookFile);
+    }
+    // The database's last tab: close its connection.
+    if (closingTab.kind === "database" && closingTab.databaseFile && !isOpenAnywhere(get().groups, path)) {
+      rememberClosed(closingTab.databaseFile);
+      databaseHooks.close?.(closingTab.databaseFile);
     }
     persistSession(get());
   },

@@ -854,6 +854,12 @@ export function setPluginThemes(pluginId: string, themes: ThemeDefinition[]): vo
   for (const listener of registryListeners) listener();
 }
 
+/** The plugins whose themes are registered (a theme cached from last
+ *  session can belong to a plugin that's since gone). */
+export function pluginThemeOwners(): string[] {
+  return [...new Set([...pluginThemes.values()].map((theme) => theme.pluginId!).filter(Boolean))];
+}
+
 /** Whether a theme with this id exists right now. */
 export function hasTheme(id: string): boolean {
   return id in THEMES || pluginThemes.has(id);
@@ -894,6 +900,7 @@ export function applyUiTheme(id: string): void {
   try {
     localStorage.setItem(THEME_CACHE_KEY, theme.id);
     if (theme.pluginId) localStorage.setItem(PLUGIN_THEME_CACHE_KEY, JSON.stringify(theme));
+    else localStorage.removeItem(PLUGIN_THEME_CACHE_KEY);
   } catch {
     /* storage unavailable — only costs a flash on next launch */
   }

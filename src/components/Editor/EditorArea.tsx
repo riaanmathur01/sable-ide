@@ -24,6 +24,7 @@ const SettingsView = preloadable(() => import("../Settings/SettingsView"));
 const PluginDetailsView = preloadable(() => import("../Plugins/PluginDetailsView"));
 const PluginWebviewTab = preloadable(() => import("../Plugins/PluginWebviewTab"));
 const NotebookView = preloadable(() => import("../Notebook/NotebookView"));
+const DatabaseView = preloadable(() => import("../Database/DatabaseView"));
 
 const MIN_GROUP_WIDTH = 220;
 
@@ -140,7 +141,8 @@ function EditorGroupView({
   const pluginActive = activeTab?.kind === "plugin";
   const webviewActive = activeTab?.kind === "webview";
   const notebookActive = activeTab?.kind === "notebook";
-  const fileActive = !diffActive && !settingsActive && !mergeActive && !historyActive && !previewActive && !pluginActive && !webviewActive && !notebookActive;
+  const databaseActive = activeTab?.kind === "database";
+  const fileActive = !diffActive && !settingsActive && !mergeActive && !historyActive && !previewActive && !pluginActive && !webviewActive && !notebookActive && !databaseActive;
   const hasFileTab = group.tabs.some((tab) => tab.kind === "file");
 
   return (
@@ -163,6 +165,19 @@ function EditorGroupView({
               <div key={tab.path} className="editor-layer" style={{ display: tab.path === activeTab?.path ? "block" : "none" }}>
                 <Suspense fallback={null}>
                   <NotebookView path={tab.notebookFile} active={tab.path === activeTab?.path && isFocused} />
+                </Suspense>
+              </div>
+            ),
+        )}
+        {/* Databases stay mounted while their tab is open (grid scroll,
+            SQL editor, results). */}
+        {group.tabs.map(
+          (tab) =>
+            tab.kind === "database" &&
+            tab.databaseFile && (
+              <div key={tab.path} className="editor-layer" style={{ display: tab.path === activeTab?.path ? "block" : "none" }}>
+                <Suspense fallback={null}>
+                  <DatabaseView path={tab.databaseFile} active={tab.path === activeTab?.path && isFocused} />
                 </Suspense>
               </div>
             ),

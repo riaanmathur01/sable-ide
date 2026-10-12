@@ -11,7 +11,7 @@ import { folderOf, useWorkspaceStore } from "../../store/workspaceStore";
 import { useTabsStore } from "../../store/tabsStore";
 import { useGitStore } from "../../store/gitStore";
 import { getSetting, useSettingsStore } from "../../store/settingsStore";
-import { cachedThemeId } from "../../lib/themes";
+import { cachedThemeId, themeById } from "../../lib/themes";
 import "./DiffView.css";
 import "./MergeView.css";
 
@@ -27,7 +27,7 @@ function languageForPath(path: string): string {
 
 function editorOptions(readOnly: boolean): MonacoTypes.editor.IStandaloneEditorConstructionOptions {
   return {
-    theme: useSettingsStore.getState().loaded ? getSetting("workbench.colorTheme") : cachedThemeId(),
+    theme: useSettingsStore.getState().loaded ? themeById(getSetting("workbench.colorTheme")).id : cachedThemeId(),
     readOnly,
     automaticLayout: true,
     minimap: { enabled: false },

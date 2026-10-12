@@ -16,7 +16,7 @@
 
 use crate::commands::{format, fs, git, history, interpreter, refactor, search, shell, terminal};
 use crate::events::Events;
-use crate::{debug, lsp, notebook, watcher};
+use crate::{database, debug, lsp, notebook, watcher};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -58,6 +58,7 @@ pub struct AgentState {
     lsp: lsp::LspManager,
     debug: debug::DebugManager,
     notebooks: notebook::NotebookState,
+    databases: Arc<database::DatabaseState>,
     tunnels: std::sync::Mutex<std::collections::HashMap<u64, mpsc::UnboundedSender<Vec<u8>>>>,
     watching_ports: std::sync::atomic::AtomicBool,
 }
@@ -379,6 +380,9 @@ pub async fn dispatch(state: &AgentState, events: &Events, command: &str, args: 
             "notebook_stop" => ok(notebook::stop(&state.notebooks, arg(args, "session")?).await),
             "notebook_install_ipykernel" => ok(notebook::install_ipykernel(arg(args, "python")?).await),
 
+            // --- SQLite databases ----------------------------------------------------------
+            "database_call" => ok(database::request(state.databases.clone(), arg(args, "op")?, arg(args, "args")?).await),
+
             // --- Git -------------------------------------------------------------------
             "git_status" => ok(git::git_status(arg(args, "path")?)),
             "git_stage" => ok(git::git_stage(arg(args, "root")?, arg(args, "file")?)),
@@ -555,6 +559,7 @@ pub async fn serve_stdio() {
     let _ = debug::stop(&state.debug).await;
     let _ = lsp::stop_all(&state.lsp).await;
     notebook::stop_all(&state.notebooks).await;
+    state.databases.close_all();
     drop(out_tx);
     drop(events);
     let _ = writer.await;

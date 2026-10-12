@@ -8,7 +8,7 @@ import { useWorkspaceStore } from "../../store/workspaceStore";
 import { useTabsStore } from "../../store/tabsStore";
 import { useUiStore } from "../../store/uiStore";
 import { getSetting, useSettingsStore } from "../../store/settingsStore";
-import { cachedThemeId } from "../../lib/themes";
+import { cachedThemeId, themeById } from "../../lib/themes";
 import "./DiffView.css";
 import "./LocalHistoryView.css";
 
@@ -90,7 +90,7 @@ export default function LocalHistoryView({ filePath: initialFile }: { filePath: 
       models.push(monaco.editor.createModel(old, language), monaco.editor.createModel(current, language));
       if (!editorRef.current) {
         editorRef.current = monaco.editor.createDiffEditor(container, {
-          theme: useSettingsStore.getState().loaded ? getSetting("workbench.colorTheme") : cachedThemeId(),
+          theme: useSettingsStore.getState().loaded ? themeById(getSetting("workbench.colorTheme")).id : cachedThemeId(),
           readOnly: true,
           originalEditable: false,
           automaticLayout: true,

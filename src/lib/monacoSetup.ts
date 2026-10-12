@@ -39,6 +39,7 @@ import { registerPythonRefactorings } from "./refactor";
 import { registerInlineCompletions } from "./ai/inlineCompletions";
 import { registerEasedScrolling } from "./easedScroll";
 import { registerSnippets } from "./snippets";
+import { registerEditorColors } from "./colorPicker/editorColors";
 
 self.MonacoEnvironment = {
   getWorker(_workerId: string, label: string) {
@@ -81,6 +82,17 @@ registerPythonRefactorings(monaco);
 registerInlineCompletions(monaco);
 registerEasedScrolling(monaco);
 registerSnippets(monaco);
+// Monaco cancels its own pending requests (a closing quick-fix menu, a
+// disposed editor) with a rejected promise nothing awaits: not an error.
+window.addEventListener("unhandledrejection", (event) => {
+  const reason = event.reason as { name?: string; message?: string } | undefined;
+  if (reason?.name === "Canceled" || (reason?.name === "CancellationError" && reason.message?.startsWith("Canceled"))) {
+    event.preventDefault();
+  }
+});
+
+// Color swatches and the color picker (light bulb), in every language.
+registerEditorColors(monaco);
 
 // Cross-file navigation (go to definition, peek → open): Monaco asks us
 // to open the target; route it through the tab store so it becomes a
@@ -177,6 +189,9 @@ export function editorOptionsFromSettings(
     // Quick fixes: a lightbulb on lines with available fixes (⌘. opens
     // the menu anywhere); hover a squiggle for the message + "Quick Fix…".
     lightbulb: { enabled: monaco.editor.ShowLightbulbIconMode.OnCode },
+    // Sable's own swatches and picker (lib/colorPicker) cover every
+    // language; Monaco's CSS-only ones would double up.
+    colorDecorators: false,
     hover: { delay: 300, sticky: true },
     renderValidationDecorations: "on",
     // Colors from the language server's understanding of the code

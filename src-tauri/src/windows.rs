@@ -92,6 +92,9 @@ pub fn closed(app: &AppHandle, label: &str) {
     let lsp = app.state::<PerWindow<crate::lsp::LspManager>>().remove(label);
     let debug = app.state::<PerWindow<crate::debug::DebugManager>>().remove(label);
     let notebooks = app.state::<PerWindow<crate::notebook::NotebookState>>().remove(label);
+    if let Some(databases) = app.state::<PerWindow<crate::database::DatabaseState>>().remove(label) {
+        databases.interrupt_all();
+    }
     let label = label.to_string();
     tauri::async_runtime::spawn(async move {
         if let Some(lsp) = lsp {

@@ -115,6 +115,7 @@ export const REMOTE_COMMANDS = new Set([
   "notebook_send",
   "notebook_stop",
   "notebook_install_ipykernel",
+  "database_call",
 ]);
 
 /** File commands, and the argument holding the path they act on. */

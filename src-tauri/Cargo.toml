@@ -67,6 +67,9 @@ futures-util = "0.3.32"
 tauri-plugin-opener = { version = "2.7.0", optional = true }
 base64 = "0.23.1"
 flate2 = { version = "1", optional = true }
+# SQLite databases (database.rs): the C library built in, so the remote
+# agent needs no system SQLite.
+rusqlite = { version = "0.40", features = ["bundled"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-process = { version = "2.4.0", optional = true }

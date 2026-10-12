@@ -17,6 +17,7 @@ import { useTasksStore } from "./store/tasksStore";
 import { usePluginStore } from "./store/pluginStore";
 import { ActivityBar } from "./components/ActivityBar/ActivityBar";
 import { clearTestContexts } from "./lib/testing/runner";
+import { ColorPicker } from "./components/ColorPicker/ColorPicker";
 import { AgentPanel } from "./components/Agent/AgentPanel";
 import { Resizer } from "./components/Layout/Resizer";
 import { useUiStore, lastTerminalVisible } from "./store/uiStore";
@@ -311,6 +312,7 @@ function App() {
       <AttachDialog />
       <RebaseDialog />
       <AskpassDialog />
+      <ColorPicker />
     </div>
   );
 }

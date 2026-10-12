@@ -77,6 +77,22 @@ may ask once too (More info → Run anyway).
   sandboxed frame), Markdown, JSON, `clear_output` and updatable
   displays. Saves nbformat 4 as Jupyter does, keeping metadata, cell ids
   and attachments; works in remote workspaces too.
+- **SQLite databases** — `.db`, `.sqlite`, `.sqlite3`, `.db3` files (and
+  any file starting with SQLite's header) open in a database editor like
+  DB Browser for SQLite: **Database Structure** (tables with their
+  columns, PK/NN/U/AI/foreign-key markers and defaults, indexes, views,
+  triggers and their CREATE statements; Create / Modify / Delete Table,
+  Create Index), **Browse Data** (a virtualized grid that pages through
+  millions of rows, sort, a filter under each column — text contains,
+  `=x`, `>x`, `<=x`, `<>x`, `x~y`, `NULL` — and across all columns,
+  inline editing, an Edit Cell pane with JSON, hex and image views and
+  blob import/export, New/Delete Record, copy as TSV, click a foreign key
+  to jump to its row), **Edit Pragmas** and **Execute SQL** (tabs, Run
+  All ⌘↵ / Run Current ⇧⌘↵, results, timings, errors with their line,
+  history). Edits stay in a transaction until **Write Changes** (⌘S);
+  **Revert Changes** drops them, and closing asks. Export CSV, JSON or a
+  SQL dump, import CSV, Integrity Check, Vacuum. Read-only files open
+  read-only; works in remote workspaces too.
 - **Run configurations** — per-file program arguments, environment
   variables and working directory (the sliders button next to Run, or
   "Run: Edit Configuration…"), used by both Run and Debug.
@@ -178,6 +194,14 @@ may ask once too (More info → Run anyway).
   Uses the agent's provider with a fast model (Claude Haiku 4.5 by
   default). Off by default — each suggestion is an API call on your key:
   Settings → AI Completions, or “AI: Toggle Inline Completions”.
+- **Color picker** — wherever a color goes (a hex code, `rgb()`/`hsl()`,
+  an empty CSS color value, an empty string for something named like a
+  color, a `#` just typed), the light bulb (⌘.) offers **Pick a Color…**;
+  colors in the code also get a swatch that opens it. Pick by eye, with
+  the eyedropper, or by typing any CSS color; the code shows it as you go,
+  Enter puts in the hex (Escape puts back what was there), and the same
+  color is listed in every format to copy or insert: RGB, HSL, HSV, HWB,
+  OKLCH, CMYK, CSS names, SwiftUI/UIKit, Android, Flutter, Unity, .NET.
 - **Markdown preview** — ⇧⌘V (or the book icon) shows a `.md` file
   rendered beside it, updating as you type: GitHub-flavored Markdown
   (tables, task lists), code in the editor's colors, the file's images,
@@ -460,6 +484,9 @@ script using `scripts/ui-test/driver.mjs` (puppeteer), which forwards
 `invoke()` to it and stands in for what needs the app window (terminals,
 language servers). To use other ports, set `SABLE_UI_VITE_PORT` and
 `SABLE_UI_BRIDGE_PORT` for the driver script (and the bridge).
+`node scripts/ui-test/database.mjs` tests the database editor end to end
+(it builds a sample database with `python3`; `SHOTS=/dir` keeps its
+screenshots).
 
 ## Installers and updates
 

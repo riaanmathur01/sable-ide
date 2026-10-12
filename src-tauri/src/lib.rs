@@ -14,6 +14,7 @@ mod commands;
 pub mod events;
 mod lsp;
 pub mod notebook;
+pub mod database;
 mod watcher;
 
 mod debug;
@@ -66,6 +67,7 @@ pub fn run() {
         .manage(windows::PerWindow::<lsp::LspManager>::default())
         .manage(windows::PerWindow::<debug::DebugManager>::default())
         .manage(windows::PerWindow::<notebook::NotebookState>::default())
+        .manage(windows::PerWindow::<database::DatabaseState>::default())
         .manage(commands::ai::AiState::default())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::Destroyed = event {
@@ -212,6 +214,7 @@ pub fn run() {
             notebook::notebook_send,
             notebook::notebook_stop,
             notebook::notebook_install_ipykernel,
+            database::database_call,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { BookOpen, Bug, Columns2, NotebookText, Play, Puzzle, Settings, SlidersHorizontal, X } from "lucide-react";
+import { BookOpen, Bug, Columns2, Database, NotebookText, Play, Puzzle, Settings, SlidersHorizontal, X } from "lucide-react";
 import { MAX_GROUPS, useTabsStore, type EditorGroup } from "../../store/tabsStore";
 import { isDebuggable, useDebugStore } from "../../store/debugStore";
 import { runActiveFile } from "../../lib/runFile";
@@ -64,6 +64,9 @@ export function TabBar({
             )}
             {tab.kind === "notebook" && (
               <NotebookText size={13} strokeWidth={1.5} className="editor-tab-icon" />
+            )}
+            {tab.kind === "database" && (
+              <Database size={13} strokeWidth={1.5} className="editor-tab-icon" />
             )}
             <span className="editor-tab-name">{tab.name}</span>
             <span
