@@ -4,7 +4,7 @@ import { join, tempDir } from "@tauri-apps/api/path";
 import { deletePath, pathExists, readDirectory, readFile, writeFile } from "../ipc";
 import { shellQuote } from "../runConfig";
 import { useInterpreterStore } from "../../store/interpreterStore";
-import { useWorkspaceStore } from "../../store/workspaceStore";
+import { folderOf, useWorkspaceStore } from "../../store/workspaceStore";
 import type { Framework, TestItem } from "./discover";
 import { parseCargoTest, parseGoTestJson, parseJestJson, parseJUnitXml, type TestResult } from "./results";
 import { parseCoveragePy, parseGoCoverprofile, parseIstanbul, type FileCoverage } from "./coverage";
@@ -34,7 +34,7 @@ function exists(path: string): Promise<boolean> {
 /** The nearest directory above `file` (up to the project folder) holding
  *  one of `names`, and which one. */
 async function findUp(file: string, names: string[]): Promise<{ dir: string; name: string } | null> {
-  const root = useWorkspaceStore.getState().rootPath;
+  const root = folderOf(file) ?? useWorkspaceStore.getState().rootPath;
   let dir = parentOf(file);
   for (let depth = 0; depth < 30; depth++) {
     for (const name of names) {
@@ -61,7 +61,7 @@ export function testContext(file: string): Promise<TestContext | null> {
 
 async function detect(file: string): Promise<TestContext | null> {
   const extension = file.split(".").pop()?.toLowerCase() ?? "";
-  const root = useWorkspaceStore.getState().rootPath ?? parentOf(file);
+  const root = folderOf(file) ?? useWorkspaceStore.getState().rootPath ?? parentOf(file);
   if (extension === "py") return { framework: "pytest", projectDir: root };
   if (/^[cm]?[jt]sx?$/.test(extension)) {
     const found = await findUp(file, ["package.json"]);

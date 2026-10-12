@@ -1,0 +1,24 @@
+{
+  "author": "BisnetoInc",
+  "description": "Microsoft Excel Theme for Visual Studio Code",
+  "homepage": "https://github.com/hbisneto/excel-theme",
+  "id": "vscode.bisnetoinc.theme-excel",
+  "minSableVersion": "0.3.8",
+  "name": "Excel Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-bisnetoinc-theme-excel-excel-dark",
+      "label": "Excel Theme (Dark)",
+      "path": "themes/excel-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-bisnetoinc-theme-excel-excel-light",
+      "label": "Excel Theme (Light)",
+      "path": "themes/excel-light.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "1.0.1"
+}

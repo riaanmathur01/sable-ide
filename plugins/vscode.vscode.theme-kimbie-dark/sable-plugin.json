@@ -1,0 +1,18 @@
+{
+  "author": "vscode",
+  "description": "Kimbie dark theme for Visual Studio Code",
+  "homepage": "https://github.com/eclipse-theia/vscode-builtin-extensions",
+  "id": "vscode.vscode.theme-kimbie-dark",
+  "minSableVersion": "0.3.8",
+  "name": "VS Code Kimbie Dark",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-vscode-theme-kimbie-dark-kimbie-dark",
+      "label": "Kimbie Dark",
+      "path": "themes/kimbie-dark.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.95.3"
+}

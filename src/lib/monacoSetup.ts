@@ -24,7 +24,7 @@ import { registerLspProviders } from "./lsp/monacoLsp";
 import { useTabsStore } from "../store/tabsStore";
 import { useProblemsStore, type Problem } from "../store/problemsStore";
 import type { Settings } from "../store/settingsStore";
-import { THEMES, cachedThemeId, semanticRules } from "./themes";
+import { allThemes, cachedThemeId, onThemeRegistryChange, semanticRules } from "./themes";
 import { installShikiHighlighting } from "./shikiMonaco";
 import { onServerConnection } from "./lsp/lspClient";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
@@ -296,13 +296,18 @@ monaco.editor.onWillDisposeModel((model) => {
   }
 });
 
-// Every color theme (src/lib/themes.ts) as a Monaco theme, keyed by id.
-for (const theme of Object.values(THEMES)) {
-  monaco.editor.defineTheme(theme.id, {
-    ...theme.editor,
-    rules: [...theme.editor.rules, ...semanticRules(theme)],
-  });
+// Every color theme (src/lib/themes.ts, and plugins') as a Monaco theme,
+// keyed by id.
+function defineThemes() {
+  for (const theme of allThemes()) {
+    monaco.editor.defineTheme(theme.id, {
+      ...theme.editor,
+      rules: [...theme.editor.rules, ...semanticRules(theme)],
+    });
+  }
 }
+defineThemes();
+onThemeRegistryChange(defineThemes);
 
 // Monaco measures character widths when an editor is created; if the
 // bundled font finishes loading after that, the cursor and selections

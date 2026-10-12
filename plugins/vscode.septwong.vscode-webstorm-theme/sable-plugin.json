@@ -1,0 +1,48 @@
+{
+  "author": "SeptWong",
+  "description": "A WebStorm Theme Plugin for VS Code",
+  "homepage": "https://github.com/septwong/vscode-webstorm-theme",
+  "id": "vscode.septwong.vscode-webstorm-theme",
+  "minSableVersion": "0.3.8",
+  "name": "WebStorm New Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-septwong-vscode-webstorm-theme-webstorm-darker",
+      "label": "WebStorm Darker",
+      "path": "themes/webstorm-darker.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-septwong-vscode-webstorm-theme-webstorm-darcula",
+      "label": "WebStorm Darcula",
+      "path": "themes/webstorm-darcula.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-septwong-vscode-webstorm-theme-webstorm-dark",
+      "label": "WebStorm Dark",
+      "path": "themes/webstorm-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-septwong-vscode-webstorm-theme-webstorm-new-dark",
+      "label": "WebStorm New Dark",
+      "path": "themes/webstorm-new-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-septwong-vscode-webstorm-theme-webstorm-new-darcula",
+      "label": "WebStorm New Darcula",
+      "path": "themes/webstorm-new-darcula.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-septwong-vscode-webstorm-theme-webstorm-light",
+      "label": "WebStorm Light",
+      "path": "themes/webstorm-light.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "1.0.6"
+}

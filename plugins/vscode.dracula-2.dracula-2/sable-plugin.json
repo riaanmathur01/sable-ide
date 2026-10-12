@@ -1,0 +1,18 @@
+{
+  "author": "Dracula-2",
+  "description": "A refined dark theme with purple and pink colors, enhanced semantic highlighting, and modern VS Code integration.",
+  "homepage": "https://github.com/TimDeen/Dracula-2",
+  "id": "vscode.dracula-2.dracula-2",
+  "minSableVersion": "0.3.8",
+  "name": "Dracula Remastered",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-dracula-2-dracula-2-darcula",
+      "label": "Darcula",
+      "path": "themes/darcula.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.3.8"
+}

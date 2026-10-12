@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { ask as confirmNative } from "@tauri-apps/plugin-dialog";
 import { Archive, ArrowDownToLine, Check, ChevronDown, ChevronRight, GitMerge, Minus, Plus, Trash2 } from "lucide-react";
-import { useGitStore } from "../../store/gitStore";
+import { repositoryRoot, useGitStore } from "../../store/gitStore";
 import { useTabsStore } from "../../store/tabsStore";
 import { iconForFile } from "../../lib/fileIcons";
 import { gitCommitFiles, type CommitFile, type GitFileStatus, type StashInfo } from "../../lib/ipc";
-import { useWorkspaceStore } from "../../store/workspaceStore";
+import { folderName, useWorkspaceStore } from "../../store/workspaceStore";
 import "./SourceControlPanel.css";
 
 /** Single-letter badge + color class per status (mirrors the tree). */
@@ -32,6 +32,26 @@ interface ChangeRow {
  * stage/unstage, a commit message box, and the commit action. All git
  * work goes through gitStore → Rust (git2).
  */
+/** Which folder's repository to show (multi-root workspaces). */
+function RepositoryPicker() {
+  const folders = useWorkspaceStore((state) => state.folders);
+  const repoRoot = useGitStore((state) => state.repoRoot);
+  if (folders.length < 2) return null;
+  const current = repoRoot && folders.includes(repoRoot) ? repoRoot : folders[0];
+  return (
+    <label className="scm-repository">
+      <span>Repository</span>
+      <select value={current} onChange={(event) => useGitStore.getState().setRepository(event.target.value)}>
+        {folders.map((folder) => (
+          <option key={folder} value={folder}>
+            {folderName(folder)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 export function SourceControlPanel() {
   const isRepo = useGitStore((state) => state.isRepo);
   const branch = useGitStore((state) => state.branch);
@@ -88,9 +108,12 @@ export function SourceControlPanel() {
 
   if (!isRepo) {
     return (
-      <div className="scm-empty">
-        This folder isn’t a Git repository.
-      </div>
+      <>
+        <RepositoryPicker />
+        <div className="scm-empty">
+          This folder isn’t a Git repository.
+        </div>
+      </>
     );
   }
 
@@ -133,6 +156,7 @@ export function SourceControlPanel() {
 
   return (
     <div className="scm-panel">
+      <RepositoryPicker />
       <div className="scm-commit-box">
         <textarea
           className="scm-message"
@@ -395,7 +419,7 @@ function StashSection({ hasChanges }: { hasChanges: boolean }) {
   const toggle = async (stash: StashInfo) => {
     if (expanded === stash.hash) return setExpanded(null);
     setExpanded(stash.hash);
-    const root = useWorkspaceStore.getState().rootPath;
+    const root = repositoryRoot();
     if (root && !files[stash.hash]) {
       const changed = await gitCommitFiles(root, stash.hash).catch(() => []);
       setFiles((current) => ({ ...current, [stash.hash]: changed }));

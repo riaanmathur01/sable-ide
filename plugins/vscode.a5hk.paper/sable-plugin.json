@@ -1,0 +1,24 @@
+{
+  "author": "a5hk",
+  "description": "Light theme with good contrast",
+  "homepage": "https://github.com/a5hk/paper",
+  "id": "vscode.a5hk.paper",
+  "minSableVersion": "0.3.8",
+  "name": "Paper",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-a5hk-paper-paper",
+      "label": "Paper",
+      "path": "themes/paper.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-a5hk-paper-paper-contrast",
+      "label": "Paper Contrast",
+      "path": "themes/paper-contrast.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "3.0.2"
+}

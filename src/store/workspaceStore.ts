@@ -1,5 +1,7 @@
 import { create } from "zustand";
-import { readDirectory, watchWorkspace, type FsEntry } from "../lib/ipc";
+import { readDirectory, readFile, watchFolders, writeFile, type FsEntry } from "../lib/ipc";
+import { parseJsonc } from "../lib/jsonc";
+import { isMainWindow } from "../lib/windows";
 import { useUiStore } from "./uiStore";
 import { useGitStore } from "./gitStore";
 import { useInterpreterStore } from "./interpreterStore";
@@ -19,13 +21,28 @@ import { invokeLocal, isRemoteActive } from "../lib/backend";
  * first expanded, then cached in `childrenByPath`.
  */
 interface WorkspaceState {
+  /** The workspace's first folder (its only one, usually). */
   rootPath: string | null;
   rootName: string | null;
+  /** Every folder of the workspace, `rootPath` first. More than one is a
+   *  multi-root workspace (Add Folder to Workspace, .code-workspace). */
+  folders: string[];
+  /** The .code-workspace file the folders came from, if any. */
+  workspaceFile: string | null;
   /** Cached listings, keyed by absolute directory path. */
   childrenByPath: Record<string, FsEntry[]>;
   /** Absolute paths of directories currently expanded in the tree. */
   expandedPaths: Set<string>;
   openWorkspace: (path: string) => Promise<void>;
+  /** Open several folders as one workspace (the first is the root). */
+  openFolders: (paths: string[], workspaceFile?: string | null) => Promise<void>;
+  /** Add a folder to the workspace (opens it if none is open). */
+  addFolder: (path: string) => Promise<void>;
+  removeFolder: (path: string) => Promise<void>;
+  /** Open a VS Code-style .code-workspace file. */
+  openWorkspaceFile: (file: string) => Promise<void>;
+  /** Save the folders as a .code-workspace file. */
+  saveWorkspaceAs: (file: string) => Promise<void>;
   /** Close the folder (e.g. when its remote connection is closed). */
   closeWorkspace: () => void;
   toggleDirectory: (path: string) => Promise<void>;
@@ -53,9 +70,72 @@ export function clearLastOpenedFolder(): void {
   localStorage.removeItem(LAST_FOLDER_KEY);
 }
 
+// --- Folders -------------------------------------------------------------------
+
+const separatorOf = (path: string) => (path.includes("\\") && !path.includes("/") ? "\\" : "/");
+const isInside = (path: string, folder: string) =>
+  path === folder || path.startsWith(`${folder}/`) || path.startsWith(`${folder}\\`);
+export const folderName = (folder: string) => folder.split(/[/\\]/).filter(Boolean).pop() ?? folder;
+
+/** The workspace folder `path` is in (the innermost, if folders nest). */
+export function folderOf(path: string): string | null {
+  const { folders } = useWorkspaceStore.getState();
+  let best: string | null = null;
+  for (const folder of folders) {
+    if (isInside(path, folder) && (!best || folder.length > best.length)) best = folder;
+  }
+  return best;
+}
+
+/** `path` for display: relative to its folder, which is named first in a
+ *  multi-root workspace ("api/src/main.ts"). */
+export function workspaceRelativePath(path: string): string {
+  const folder = folderOf(path);
+  if (!folder) return path;
+  const relative = path.slice(folder.length).replace(/^[/\\]/, "");
+  return useWorkspaceStore.getState().folders.length > 1 ? `${folderName(folder)}/${relative}` : relative;
+}
+
+/** Folders added or removed (language servers, plugins and git follow). */
+type FoldersListener = (change: { added: string[]; removed: string[] }) => void;
+const foldersListeners = new Set<FoldersListener>();
+export function onFoldersChange(listener: FoldersListener): () => void {
+  foldersListeners.add(listener);
+  return () => foldersListeners.delete(listener);
+}
+function foldersChanged(added: string[], removed: string[]) {
+  for (const listener of foldersListeners) listener({ added, removed });
+}
+
+/** A path from a .code-workspace file, resolved against the file's folder. */
+function resolveFrom(directory: string, path: string): string {
+  const separator = separatorOf(directory);
+  if (/^([A-Za-z]:[/\\]|[/\\])/.test(path)) return path.replace(/[/\\]+$/, "") || path;
+  const parts = directory.split(/[/\\]/);
+  for (const part of path.split(/[/\\]/)) {
+    if (part === "" || part === ".") continue;
+    if (part === "..") parts.pop();
+    else parts.push(part);
+  }
+  return parts.join(separator);
+}
+
+/** `path` relative to `directory` (for saving a workspace file). */
+function relativeTo(directory: string, path: string): string {
+  const from = directory.split(/[/\\]/).filter(Boolean);
+  const to = path.split(/[/\\]/).filter(Boolean);
+  if (from[0] !== to[0]) return path;
+  let common = 0;
+  while (common < from.length && common < to.length && from[common] === to[common]) common++;
+  const relative = [...from.slice(common).map(() => ".."), ...to.slice(common)].join("/");
+  return relative || ".";
+}
+
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   rootPath: null,
   rootName: null,
+  folders: [],
+  workspaceFile: null,
   childrenByPath: {},
   expandedPaths: new Set(),
 
@@ -80,16 +160,21 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       const rootChildren = await readDirectory(path);
       // Both separators so Windows paths split correctly too.
       const rootName = path.split(/[/\\]/).filter(Boolean).pop() ?? path;
+      const removed = get().folders.filter((folder) => folder !== path);
       set({
         rootPath: path,
         rootName,
+        folders: [path],
+        workspaceFile: null,
         childrenByPath: { [path]: rootChildren },
         expandedPaths: new Set([path]),
       });
-      // Remember this folder so the next launch reopens it.
-      localStorage.setItem(LAST_FOLDER_KEY, path);
+      if (removed.length) foldersChanged([], removed);
+      // Remember this folder so the next launch reopens it (other windows
+      // remember theirs with the window, lib/windows.ts).
+      if (isMainWindow) localStorage.setItem(LAST_FOLDER_KEY, path);
       // Keep the tree in sync with Finder/other apps from here on.
-      await watchWorkspace(path);
+      await watchFolders([path]);
       // Load git status for the newly opened folder (no-op if not a repo).
       useGitStore.getState().refresh();
       // Discover Python interpreters (workspace venv + system).
@@ -114,6 +199,82 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }
   },
 
+  openFolders: async (paths, workspaceFile = null) => {
+    const [first, ...rest] = [...new Set(paths)];
+    if (!first) return;
+    await get().openWorkspace(first);
+    if (get().rootPath !== first) return;
+    for (const folder of rest) await get().addFolder(folder);
+    set({ workspaceFile });
+  },
+
+  addFolder: async (path) => {
+    const normalized = path.replace(/[/\\]+$/, "") || path;
+    if (!get().rootPath) return get().openWorkspace(normalized);
+    if (get().folders.includes(normalized)) return;
+    try {
+      const children = await readDirectory(normalized);
+      set((state) => ({
+        folders: [...state.folders, normalized],
+        childrenByPath: { ...state.childrenByPath, [normalized]: children },
+        expandedPaths: new Set([...state.expandedPaths, normalized]),
+      }));
+      await watchFolders(get().folders);
+      foldersChanged([normalized], []);
+    } catch (error) {
+      reportError(error);
+    }
+  },
+
+  removeFolder: async (path) => {
+    const { folders, rootPath, workspaceFile } = get();
+    if (!folders.includes(path)) return;
+    const rest = folders.filter((folder) => folder !== path);
+    if (rest.length === 0) return;
+    // The first folder is the workspace's root (language servers, git,
+    // the terminal start there): the next one takes over.
+    if (path === rootPath) {
+      await get().openFolders(rest, workspaceFile);
+      return;
+    }
+    set((state) => {
+      const childrenByPath = { ...state.childrenByPath };
+      delete childrenByPath[path];
+      return { folders: rest, childrenByPath };
+    });
+    await watchFolders(rest).catch(reportError);
+    useTabsStore.getState().closeTabsUnder(path);
+    foldersChanged([], [path]);
+  },
+
+  openWorkspaceFile: async (file) => {
+    try {
+      const parsed = parseJsonc(await readFile(file)) as { folders?: { path?: unknown }[] };
+      const directory = file.replace(/[/\\][^/\\]*$/, "");
+      const folders = (parsed.folders ?? [])
+        .map((folder) => (typeof folder?.path === "string" ? resolveFrom(directory, folder.path) : null))
+        .filter((folder): folder is string => Boolean(folder));
+      if (folders.length === 0) throw new Error(`${file} lists no folders`);
+      await get().openFolders(folders, file);
+    } catch (error) {
+      reportError(error);
+    }
+  },
+
+  saveWorkspaceAs: async (file) => {
+    const directory = file.replace(/[/\\][^/\\]*$/, "");
+    let existing: Record<string, unknown> = {};
+    try {
+      existing = parseJsonc(await readFile(file)) as Record<string, unknown>;
+    } catch {
+      // A new file.
+    }
+    const contents = { ...existing, folders: get().folders.map((folder) => ({ path: relativeTo(directory, folder) })) };
+    await writeFile(file, `${JSON.stringify(contents, null, "\t")}\n`);
+    set({ workspaceFile: file });
+    useUiStore.getState().showStatus(`Saved the workspace as ${file.split(/[/\\]/).pop()}`);
+  },
+
   closeWorkspace: () => {
     useTabsStore.getState().resetTabs();
     useSearchStore.getState().reset();
@@ -121,8 +282,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     useProblemsStore.getState().clear();
     useGitStore.getState().reset();
     useInterpreterStore.getState().reset();
-    localStorage.removeItem(LAST_FOLDER_KEY);
-    set({ rootPath: null, rootName: null, childrenByPath: {}, expandedPaths: new Set() });
+    if (isMainWindow) localStorage.removeItem(LAST_FOLDER_KEY);
+    const removed = get().folders;
+    set({ rootPath: null, rootName: null, folders: [], workspaceFile: null, childrenByPath: {}, expandedPaths: new Set() });
+    if (removed.length) foldersChanged([], removed);
   },
 
   toggleDirectory: async (path) => {
@@ -160,8 +323,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   revealPath: async (path) => {
-    const { rootPath, toggleDirectory } = get();
-    if (!rootPath || !path.startsWith(rootPath)) return;
+    const { toggleDirectory } = get();
+    const rootPath = folderOf(path);
+    if (!rootPath) return;
     const segments = path
       .slice(rootPath.length)
       .split(/[/\\]/)

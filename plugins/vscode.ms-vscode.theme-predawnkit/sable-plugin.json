@@ -1,0 +1,30 @@
+{
+  "author": "ms-vscode",
+  "description": "Predawn themes for VS Code. Based on the TextMate themes.",
+  "homepage": "https://github.com/Microsoft/vscode-themes",
+  "id": "vscode.ms-vscode.theme-predawnkit",
+  "minSableVersion": "0.3.8",
+  "name": "Predawn Theme Kit",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-ms-vscode-theme-predawnkit-predawn",
+      "label": "Predawn",
+      "path": "themes/predawn.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-ms-vscode-theme-predawnkit-predawn-gf-markdown",
+      "label": "Predawn GF Markdown",
+      "path": "themes/predawn-gf-markdown.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-ms-vscode-theme-predawnkit-predawn-markdown",
+      "label": "Predawn Markdown",
+      "path": "themes/predawn-markdown.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.1.4"
+}

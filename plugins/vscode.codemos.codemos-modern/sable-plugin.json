@@ -1,0 +1,24 @@
+{
+  "author": "Codemos",
+  "description": "Innovative, modern theme suite/hub for VS Code",
+  "homepage": "https://github.com/EmrecanKaracayir/Codemos-Modern",
+  "id": "vscode.codemos.codemos-modern",
+  "minSableVersion": "0.3.8",
+  "name": "Codemos Modern",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-codemos-codemos-modern-codemos-modern-dark",
+      "label": "Codemos Modern (Dark)",
+      "path": "themes/codemos-modern-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-codemos-codemos-modern-codemos-modern-light",
+      "label": "Codemos Modern (Light)",
+      "path": "themes/codemos-modern-light.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "3.1.2"
+}

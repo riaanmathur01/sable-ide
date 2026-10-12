@@ -1,0 +1,48 @@
+{
+  "author": "sainnhe",
+  "description": "High Contrast & Vivid Color Scheme based on Monokai Pro",
+  "homepage": "https://github.com/sainnhe/sonokai-vscode",
+  "id": "vscode.sainnhe.sonokai",
+  "minSableVersion": "0.3.8",
+  "name": "Sonokai",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-sainnhe-sonokai-sonokai",
+      "label": "Sonokai",
+      "path": "themes/sonokai.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-sainnhe-sonokai-sonokai-shusia",
+      "label": "Sonokai Shusia",
+      "path": "themes/sonokai-shusia.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-sainnhe-sonokai-sonokai-andromeda",
+      "label": "Sonokai Andromeda",
+      "path": "themes/sonokai-andromeda.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-sainnhe-sonokai-sonokai-atlantis",
+      "label": "Sonokai Atlantis",
+      "path": "themes/sonokai-atlantis.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-sainnhe-sonokai-sonokai-maia",
+      "label": "Sonokai Maia",
+      "path": "themes/sonokai-maia.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-sainnhe-sonokai-sonokai-espresso",
+      "label": "Sonokai Espresso",
+      "path": "themes/sonokai-espresso.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.2.9"
+}

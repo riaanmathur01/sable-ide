@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createCommandTerminal, createTerminal, killTerminal } from "../lib/ipc";
-import { useWorkspaceStore } from "./workspaceStore";
+import { folderOf, useWorkspaceStore } from "./workspaceStore";
+import { useTabsStore } from "./tabsStore";
 import { useUiStore } from "./uiStore";
 
 /**
@@ -114,7 +115,9 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       }
       return;
     }
-    const workspaceRoot = useWorkspaceStore.getState().rootPath;
+    // The active file's folder in a multi-root workspace, else the root.
+    const active = useTabsStore.getState().activePath;
+    const workspaceRoot = (active && folderOf(active)) || useWorkspaceStore.getState().rootPath;
     try {
       // 80x24 only if the caller doesn't know its size yet; the view
       // resizes the PTY as soon as it fits.

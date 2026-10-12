@@ -64,6 +64,19 @@ may ask once too (More info → Run anyway).
   TS/JS, JSON, CSS and HTML built in.
 - **Terminal** — real PTY shells (xterm.js), several at once; ⌘R runs the
   active file.
+- **Notebooks** — `.ipynb` files open in a notebook editor (“Notebook:
+  Open as Text” shows the JSON): code cells are small Monaco editors,
+  Markdown cells render until you edit them, and cells run on a real
+  Jupyter kernel started with the workspace's Python interpreter (via
+  `jupyter_client`; one click installs `ipykernel` if it's missing).
+  JupyterLab's keys (Shift/⌘/Alt+Enter, Esc/Enter, A/B, D D, Z, M/Y,
+  I I, 0 0), Run All / Above / Below, Interrupt, Restart (& Run All),
+  Clear Outputs, a kernel picker, `[n]` counts with run times, kernel
+  completions and hover, and `input()`. Outputs: streams and tracebacks
+  with ANSI colors, images, SVG, HTML (scripted HTML such as Plotly in a
+  sandboxed frame), Markdown, JSON, `clear_output` and updatable
+  displays. Saves nbformat 4 as Jupyter does, keeping metadata, cell ids
+  and attachments; works in remote workspaces too.
 - **Run configurations** — per-file program arguments, environment
   variables and working directory (the sliders button next to Run, or
   "Run: Edit Configuration…"), used by both Run and Debug.
@@ -198,9 +211,14 @@ may ask once too (More info → Run anyway).
   save it. Each plugin runs sandboxed in its own worker with only the
   permissions it declares (`editor`, `workspace:read`, `workspace:write`,
   `shell`, `network`, `node`), and you see them before installing. The
-  Marketplace has over 30 plugins (JSON and CSV tools, Markdown TOC, tables
+  Marketplace has over 30 tool plugins (JSON and CSV tools, Markdown TOC, tables
   and lint, color, number and timestamp hovers, bookmarks, snippets, a
-  clock, a pomodoro timer…). **VS Code extensions run** too: give Sable
+  clock, a pomodoro timer, and Pets: pixel-art pets that live in a
+  sidebar view and chase the ball you throw). **121 color-theme plugins**
+  (539 themes: Dracula, One Dark Pro, GitHub, Night Owl, Gruvbox, Tokyo
+  Night, Rosé Pine, Nord, Solarized, VS Code's own…) are in the
+  Marketplace's Color Themes tab, each card showing a sample in its
+  colors. **VS Code extensions run** too: give Sable
   an extension id or a `.vsix`, and it runs the extension in Node.js
   (as VS Code does) through a compatibility layer for VS Code's API,
   covering language features (go to definition, references, symbols,
@@ -219,6 +237,17 @@ may ask once too (More info → Run anyway).
   SSH Host…** in the command palette). Sable uses your own `ssh`
   (`~/.ssh/config`, keys and agents) and copies a small agent to the
   remote the first time. Guide: [docs/remote.md](docs/remote.md).
+- **Windows and multi-root workspaces** — each window has its own
+  folders, tabs, terminals, language servers and remote connection: File:
+  New Window (⇧⌘N), Open Folder in New Window, or right-click a folder →
+  Open in New Window. Every window open at quit comes back at launch. A
+  window can hold several folders (Workspaces: Add Folder to Workspace…):
+  the Explorer shows each, and search, Go to File, language servers, the
+  AI agent and plugins cover them all, while Source Control shows the
+  active file's repository (or the one you pick). VS Code's
+  `.code-workspace` files open and save (File: Open Workspace from File…,
+  Save Workspace As…). Settings, shortcuts and plugins changed in one
+  window apply to all.
 - **Layout** — switch views (Explorer, Search, Source Control, History,
   Run and Debug, Plugins) from a VS Code-style activity bar at the left
   edge, from icons in the sidebar header, or from a ☰ menu: Settings →
@@ -384,6 +413,7 @@ one can be changed. The defaults:
 | `⌘J` | Toggle the bottom panel (terminal / debug console) |
 | `⌘B` / `⌥⌘A` | Toggle sidebar / agent panel |
 | `⇧⇧` | Search Everywhere |
+| `⇧⌘N` / `⇧⌘W` | New window / close window |
 | `⌥⌘O`, `⌘F12`, `⌘E` | Go to symbol, file structure, recent files |
 | `⌥F7`, `⌥⌘B`, `⌃⌥H` | Find usages, go to implementation, call hierarchy |
 | `⌃Tab`, `⌘1…9`, `⇧⌘T` | Switch tabs, jump to tab N, reopen closed tab |
@@ -411,6 +441,8 @@ variables:
   `node_modules` (debugging a single Vitest test)
 - `SABLE_TEST_INSTALL_RUFF=1` — download Ruff for the formatter test
 - `SABLE_TEST_INSTALL_ROPE=1` — install Rope for the Python refactoring test
+- `SABLE_TEST_JUPYTER_PYTHON=/path/to/python` — an interpreter with
+  `ipykernel` (the notebook kernel test; default: `python3` if it has it)
 - `SABLE_TEST_INSTALL_TS_SERVER=1` — install the TypeScript server
 - `SABLE_TEST_MAVEN=/path/to/mvn`, `SABLE_TEST_GRADLE=/path/to/gradle` —
   debugging a single JUnit test
@@ -426,7 +458,8 @@ SABLE_UI_BRIDGE_PORT=1531 cargo test --lib ui_bridge -- --ignored
 so the frontend can run in Chrome (`npx vite --port 1530`), driven by a
 script using `scripts/ui-test/driver.mjs` (puppeteer), which forwards
 `invoke()` to it and stands in for what needs the app window (terminals,
-language servers).
+language servers). To use other ports, set `SABLE_UI_VITE_PORT` and
+`SABLE_UI_BRIDGE_PORT` for the driver script (and the bridge).
 
 ## Installers and updates
 

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { invoke } from "../lib/backend";
 import { useTabsStore } from "./tabsStore";
-import { useWorkspaceStore } from "./workspaceStore";
+import { folderOf, useWorkspaceStore } from "./workspaceStore";
 import { useInterpreterStore } from "./interpreterStore";
 import { sourceBreakpoints, useBreakpointsStore } from "./breakpointsStore";
 import { useUiStore } from "./uiStore";
@@ -14,7 +14,7 @@ import {
 import { JAVA_DEBUG_MISSING, attachJavaLaunch, resolveJavaLaunch } from "../lib/debug/javaLaunch";
 import { useTerminalStore } from "./terminalStore";
 import { loginShellArgs } from "../lib/shell";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "../lib/events";
 import { useRunConfigStore } from "./runConfigStore";
 import { parseArgs, parseEnv } from "../lib/runConfig";
 
@@ -319,7 +319,7 @@ export const useDebugStore = create<DebugState>((set, get) => {
         : null;
       const config = useRunConfigStore.getState().configFor(program);
       const cwd =
-        config.cwd.trim() || (useWorkspaceStore.getState().rootPath ?? parentDirectoryOf(program));
+        config.cwd.trim() || (folderOf(program) ?? useWorkspaceStore.getState().rootPath ?? parentDirectoryOf(program));
       // Arguments, environment and working directory from the run
       // configuration; the program runs in a terminal tab so it can read
       // keyboard input.
@@ -346,7 +346,7 @@ export const useDebugStore = create<DebugState>((set, get) => {
         } else if (/\.java$/i.test(program)) {
           const { port, launch } = await resolveJavaLaunch(
             program,
-            useWorkspaceStore.getState().rootPath ?? cwd,
+            folderOf(program) ?? useWorkspaceStore.getState().rootPath ?? cwd,
             (line) => get().appendConsole("console", line),
             options,
           );

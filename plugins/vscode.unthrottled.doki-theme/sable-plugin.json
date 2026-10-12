@@ -1,0 +1,540 @@
+{
+  "author": "unthrottled",
+  "description": "Cute anime character themes!",
+  "homepage": "https://github.com/doki-theme/doki-theme-vscode",
+  "id": "vscode.unthrottled.doki-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Doki Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-unthrottled-doki-theme-13adffd9-acbe-47af-8101-fa71269a4c5c",
+      "label": "Doki Theme: Franxx:  Zero Two Dark Obsidian",
+      "path": "themes/13adffd9-acbe-47af-8101-fa71269a4c5c.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-e55e70ea-454b-47ef-9270-d46390dd2769",
+      "label": "Doki Theme: AzurLane:  Essex",
+      "path": "themes/e55e70ea-454b-47ef-9270-d46390dd2769.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-6106e529-efef-444d-9db0-a9b0b444cf1b",
+      "label": "Doki Theme: BlendS:  Maika",
+      "path": "themes/6106e529-efef-444d-9db0-a9b0b444cf1b.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-0527c6fc-316a-4f80-9459-d92ced0e6492",
+      "label": "Doki Theme: BunnySenpai:  Mai",
+      "path": "themes/0527c6fc-316a-4f80-9459-d92ced0e6492.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-98878c8e-9f91-4e25-930d-dd7d280d9e35",
+      "label": "Doki Theme: BunnySenpai:  Mai",
+      "path": "themes/98878c8e-9f91-4e25-930d-dd7d280d9e35.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-4fb20370-1b89-4a0d-9f8f-84542ec147b2",
+      "label": "Doki Theme: Charlotte:  Nao",
+      "path": "themes/4fb20370-1b89-4a0d-9f8f-84542ec147b2.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-5412c41d-f76b-4488-85a7-1ae1a63bbfcc",
+      "label": "Doki Theme: Chuunibyou:  Rikka",
+      "path": "themes/5412c41d-f76b-4488-85a7-1ae1a63bbfcc.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-3462121b-b101-406f-8b31-ce04d09b2ef6",
+      "label": "Doki Theme: CodeGeass:  C.C.",
+      "path": "themes/3462121b-b101-406f-8b31-ce04d09b2ef6.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-dce48196-ff46-470c-b5f9-d1e23f4a79d3",
+      "label": "Doki Theme: DDLC:  Monika",
+      "path": "themes/dce48196-ff46-470c-b5f9-d1e23f4a79d3.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-9a310731-ab2d-40f5-b502-fa5419f799a2",
+      "label": "Doki Theme: DDLC:  Monika",
+      "path": "themes/9a310731-ab2d-40f5-b502-fa5419f799a2.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-a7e0aa28-739a-4671-80ae-3980997e6b71",
+      "label": "Doki Theme: DDLC:  Natsuki",
+      "path": "themes/a7e0aa28-739a-4671-80ae-3980997e6b71.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-91415015-8fe3-48eb-9951-70a5cd6cbb7f",
+      "label": "Doki Theme: DDLC:  Natsuki",
+      "path": "themes/91415015-8fe3-48eb-9951-70a5cd6cbb7f.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-b0340303-0a5a-4a20-9b9c-fc8ce9880078",
+      "label": "Doki Theme: DDLC:  Sayori",
+      "path": "themes/b0340303-0a5a-4a20-9b9c-fc8ce9880078.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-cb8ef4b7-0844-4a04-b08b-754086598de4",
+      "label": "Doki Theme: DDLC:  Sayori",
+      "path": "themes/cb8ef4b7-0844-4a04-b08b-754086598de4.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-a14733d6-8e15-4e75-b6b8-509f323e5b3b",
+      "label": "Doki Theme: DDLC:  Yuri",
+      "path": "themes/a14733d6-8e15-4e75-b6b8-509f323e5b3b.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-cecf3f92-76d4-4f14-9a9c-3d558b6b3b68",
+      "label": "Doki Theme: DDLC:  Yuri",
+      "path": "themes/cecf3f92-76d4-4f14-9a9c-3d558b6b3b68.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-b93ab4ea-ff96-4459-8fa2-0caae5bc7116",
+      "label": "Doki Theme: DM:  Kanna",
+      "path": "themes/b93ab4ea-ff96-4459-8fa2-0caae5bc7116.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-2d049451-6e89-4325-af38-6ce889991e5b",
+      "label": "Doki Theme: DM:  Tohru",
+      "path": "themes/2d049451-6e89-4325-af38-6ce889991e5b.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-420b0ed5-803c-4127-97e3-dae6aa1a5972",
+      "label": "Doki Theme: DR:  Ibuki",
+      "path": "themes/420b0ed5-803c-4127-97e3-dae6aa1a5972.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-697e8564-0975-4907-a34c-51f65177ebf3",
+      "label": "Doki Theme: DR:  Ibuki",
+      "path": "themes/697e8564-0975-4907-a34c-51f65177ebf3.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-ca45f54a-57cb-4d8c-82a6-d4b31c850bd6",
+      "label": "Doki Theme: DTWMMN:  Nagatoro",
+      "path": "themes/ca45f54a-57cb-4d8c-82a6-d4b31c850bd6.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-c5e92ad9-2fa0-491e-b92a-48ab92d13597",
+      "label": "Doki Theme: DxD:  Rias",
+      "path": "themes/c5e92ad9-2fa0-491e-b92a-48ab92d13597.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-ea9a13f6-fa7f-46a4-ba6e-6cefe1f55160",
+      "label": "Doki Theme: DxD:  Rias",
+      "path": "themes/ea9a13f6-fa7f-46a4-ba6e-6cefe1f55160.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-dc8e4142-c371-4107-a3c3-99dceefadac2",
+      "label": "Doki Theme: EroManga:  Sagiri",
+      "path": "themes/dc8e4142-c371-4107-a3c3-99dceefadac2.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-8e8773ee-4bbb-4812-b311-005f04f6bb20",
+      "label": "Doki Theme: EVA:  Misato",
+      "path": "themes/8e8773ee-4bbb-4812-b311-005f04f6bb20.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-c262185d-9682-413b-9143-85a2dda76b2f",
+      "label": "Doki Theme: EVA:  Rei",
+      "path": "themes/c262185d-9682-413b-9143-85a2dda76b2f.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-ceb8c11f-f736-420b-962b-fc0db26b3708",
+      "label": "Doki Theme: Franxx:  Hiro",
+      "path": "themes/ceb8c11f-f736-420b-962b-fc0db26b3708.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-1f9697bd-aec1-49ff-bdb4-c37ef8ace62b",
+      "label": "Doki Theme: Franxx:  Hiro x Zero Two",
+      "path": "themes/1f9697bd-aec1-49ff-bdb4-c37ef8ace62b.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-8c99ec4b-fda0-4ab7-95ad-a6bf80c3924b",
+      "label": "Doki Theme: Franxx:  Zero Two Dark Rose",
+      "path": "themes/8c99ec4b-fda0-4ab7-95ad-a6bf80c3924b.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-4fd5cb34-d36e-4a3c-8639-052b19b26ba1",
+      "label": "Doki Theme: Franxx:  Zero Two Light Lily",
+      "path": "themes/4fd5cb34-d36e-4a3c-8639-052b19b26ba1.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-2eedcc31-b5fa-4b30-b045-6a539e915581",
+      "label": "Doki Theme: Franxx:  Zero Two Light Sakura",
+      "path": "themes/2eedcc31-b5fa-4b30-b045-6a539e915581.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-5ec63d95-1e7d-4649-b3d0-0078af8f8740",
+      "label": "Doki Theme: FutureDiary:  Yuno",
+      "path": "themes/5ec63d95-1e7d-4649-b3d0-0078af8f8740.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-355d711c-2fa6-4df2-9504-dd44d8f5e350",
+      "label": "Doki Theme: Gate:  Rory",
+      "path": "themes/355d711c-2fa6-4df2-9504-dd44d8f5e350.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-926c4bf5-eafb-463e-815a-b6a101fc1f4a",
+      "label": "Doki Theme: GuiltyCrown:  Inori",
+      "path": "themes/926c4bf5-eafb-463e-815a-b6a101fc1f4a.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-44ed0d2d-cce8-4707-a0cf-5150e1b31c16",
+      "label": "Doki Theme: Haikyu:  Shoyo",
+      "path": "themes/44ed0d2d-cce8-4707-a0cf-5150e1b31c16.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-91d0931d-3e1d-4101-b923-278ce264f0f5",
+      "label": "Doki Theme: JahySama:  Jahy",
+      "path": "themes/91d0931d-3e1d-4101-b923-278ce264f0f5.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-a1da4f2f-e736-40e7-86d9-9167a247da93",
+      "label": "Doki Theme: Kakegurui:  Yumeko",
+      "path": "themes/a1da4f2f-e736-40e7-86d9-9167a247da93.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-19b65ec8-133c-4655-a77b-13623d8e97d3",
+      "label": "Doki Theme: KillLaKill:  Ryuko",
+      "path": "themes/19b65ec8-133c-4655-a77b-13623d8e97d3.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-3fbd90c3-859d-4618-8e31-90461ac7a556",
+      "label": "Doki Theme: KillLaKill:  Ryuko",
+      "path": "themes/3fbd90c3-859d-4618-8e31-90461ac7a556.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-12a54623-1f0b-4769-9917-d5267092a605",
+      "label": "Doki Theme: KillLaKill:  Satsuki",
+      "path": "themes/12a54623-1f0b-4769-9917-d5267092a605.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-3a78b13e-dbf2-410f-bb20-12b57bff7735",
+      "label": "Doki Theme: KillLaKill:  Satsuki",
+      "path": "themes/3a78b13e-dbf2-410f-bb20-12b57bff7735.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-15e51483-1ccd-46b7-90cf-885cccaaaf2c",
+      "label": "Doki Theme: KonoSuba:  Aqua",
+      "path": "themes/15e51483-1ccd-46b7-90cf-885cccaaaf2c.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-774ec7ad-d6a0-4d9c-b195-2f54d72ab664",
+      "label": "Doki Theme: KonoSuba:  Darkness",
+      "path": "themes/774ec7ad-d6a0-4d9c-b195-2f54d72ab664.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-8474d98d-7bb1-462c-82b1-dd7c512142a6",
+      "label": "Doki Theme: KonoSuba:  Darkness",
+      "path": "themes/8474d98d-7bb1-462c-82b1-dd7c512142a6.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-63fe4617-4cac-47a5-9b93-6794514c35ad",
+      "label": "Doki Theme: KonoSuba:  Megumin",
+      "path": "themes/63fe4617-4cac-47a5-9b93-6794514c35ad.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-2d1112ac-04ab-4f78-82c4-22e5e2c1754b",
+      "label": "Doki Theme: Love Live:  Umi",
+      "path": "themes/2d1112ac-04ab-4f78-82c4-22e5e2c1754b.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-be058474-b967-4afb-b6d9-bda1948b33ec",
+      "label": "Doki Theme: LS:  Konata",
+      "path": "themes/be058474-b967-4afb-b6d9-bda1948b33ec.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-dfd05a73-c189-4622-87c7-573fbb3a46b9",
+      "label": "Doki Theme: Monogatari:  Tsubasa",
+      "path": "themes/dfd05a73-c189-4622-87c7-573fbb3a46b9.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-5903b523-ea0a-4724-85d4-f0d0652c3010",
+      "label": "Doki Theme: MonsterMusume:  Miia",
+      "path": "themes/5903b523-ea0a-4724-85d4-f0d0652c3010.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-83e94920-9ae2-4838-9b85-4c3fa22b67b8",
+      "label": "Doki Theme: NekoPara:  Azuki",
+      "path": "themes/83e94920-9ae2-4838-9b85-4c3fa22b67b8.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-93035c21-9eb7-4b0e-92d0-35d66d16c8e0",
+      "label": "Doki Theme: NekoPara:  Chocola",
+      "path": "themes/93035c21-9eb7-4b0e-92d0-35d66d16c8e0.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-6428e1ff-202c-4a43-afb3-9999ebe3b2ca",
+      "label": "Doki Theme: NekoPara:  Christmas Chocola",
+      "path": "themes/6428e1ff-202c-4a43-afb3-9999ebe3b2ca.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-84dc0d3c-1c83-4dde-87b9-e1ea27cd34b0",
+      "label": "Doki Theme: NekoPara:  Cinnamon",
+      "path": "themes/84dc0d3c-1c83-4dde-87b9-e1ea27cd34b0.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-432fdab1-b8fa-412e-8cca-1844f18a1a43",
+      "label": "Doki Theme: NekoPara:  Coconut",
+      "path": "themes/432fdab1-b8fa-412e-8cca-1844f18a1a43.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-13407818-da66-432b-94e3-fd2192e98118",
+      "label": "Doki Theme: NekoPara:  Maple",
+      "path": "themes/13407818-da66-432b-94e3-fd2192e98118.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-ea7a8b00-2d86-4e06-81a2-5c14a46264d5",
+      "label": "Doki Theme: NekoPara:  Maple",
+      "path": "themes/ea7a8b00-2d86-4e06-81a2-5c14a46264d5.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-67278007-b7f8-46d4-88b7-e40cac3576a7",
+      "label": "Doki Theme: NekoPara:  Shigure",
+      "path": "themes/67278007-b7f8-46d4-88b7-e40cac3576a7.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-31d5574d-f56b-408f-81dc-9d44feeb62c2",
+      "label": "Doki Theme: NekoPara:  Vanilla",
+      "path": "themes/31d5574d-f56b-408f-81dc-9d44feeb62c2.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-22d0250f-a33b-409a-9cef-22f5eb69fc3d",
+      "label": "Doki Theme: OPM:  Genos",
+      "path": "themes/22d0250f-a33b-409a-9cef-22f5eb69fc3d.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-06143cbe-2d51-4423-9a93-73a02c828119",
+      "label": "Doki Theme: OreGairu:  Yukino",
+      "path": "themes/06143cbe-2d51-4423-9a93-73a02c828119.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-2f2dff01-7e0e-4ebc-ab1e-34be2486c66f",
+      "label": "Doki Theme: OreImo:  Kirino",
+      "path": "themes/2f2dff01-7e0e-4ebc-ab1e-34be2486c66f.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-a8c6675e-7bdb-41f0-af80-4e9ebbf617d2",
+      "label": "Doki Theme: QQ:  Ichika",
+      "path": "themes/a8c6675e-7bdb-41f0-af80-4e9ebbf617d2.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-dd37f2e1-24bd-4cb2-b350-e2d1f4a0a50f",
+      "label": "Doki Theme: QQ:  Itsuki",
+      "path": "themes/dd37f2e1-24bd-4cb2-b350-e2d1f4a0a50f.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-d96c6599-ebf8-4359-ae26-19f79b69e919",
+      "label": "Doki Theme: QQ:  Miku",
+      "path": "themes/d96c6599-ebf8-4359-ae26-19f79b69e919.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-5e6a266f-c6d5-4891-a065-a2c2b857016a",
+      "label": "Doki Theme: QQ:  Nino",
+      "path": "themes/5e6a266f-c6d5-4891-a065-a2c2b857016a.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-3b11c8f4-d030-4a7e-a46f-b22d3e430a1d",
+      "label": "Doki Theme: QQ:  Yotsuba",
+      "path": "themes/3b11c8f4-d030-4a7e-a46f-b22d3e430a1d.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-01e61500-862c-41cd-b653-48d2ef7b1882",
+      "label": "Doki Theme: Railgun:  Mikoto",
+      "path": "themes/01e61500-862c-41cd-b653-48d2ef7b1882.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-35422aa4-1396-4e76-8ec6-c5560884df22",
+      "label": "Doki Theme: Re:Zero:  Beatrice",
+      "path": "themes/35422aa4-1396-4e76-8ec6-c5560884df22.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-b4d08c16-a891-4186-884d-e469cba72e99",
+      "label": "Doki Theme: Re:Zero:  Echidna",
+      "path": "themes/b4d08c16-a891-4186-884d-e469cba72e99.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-696de7c1-3a8e-4445-83ee-3eb7e9dca47f",
+      "label": "Doki Theme: Re:Zero:  Emilia",
+      "path": "themes/696de7c1-3a8e-4445-83ee-3eb7e9dca47f.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-e828aaae-aa8c-4084-8993-d64697146930",
+      "label": "Doki Theme: Re:Zero:  Emilia",
+      "path": "themes/e828aaae-aa8c-4084-8993-d64697146930.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-ecb74f1c-8c84-40c4-916f-601039ba2af0",
+      "label": "Doki Theme: Re:Zero:  Ram",
+      "path": "themes/ecb74f1c-8c84-40c4-916f-601039ba2af0.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-f770dcfc-f41e-4b49-aa17-66e9ffc208fd",
+      "label": "Doki Theme: Re:Zero:  Rem",
+      "path": "themes/f770dcfc-f41e-4b49-aa17-66e9ffc208fd.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-bac375a4-abb3-44d5-9bef-8039eb83fec0",
+      "label": "Doki Theme: SAO:  Asuna",
+      "path": "themes/bac375a4-abb3-44d5-9bef-8039eb83fec0.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-546e8fb8-6082-4ef5-a5e3-44790686f02f",
+      "label": "Doki Theme: SAO:  Asuna",
+      "path": "themes/546e8fb8-6082-4ef5-a5e3-44790686f02f.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-7bafa167-148d-472a-8a9b-6f4129ef2e1f",
+      "label": "Doki Theme: Senko-san:  Senko",
+      "path": "themes/7bafa167-148d-472a-8a9b-6f4129ef2e1f.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-df23dabc-61eb-4559-a504-992786964602",
+      "label": "Doki Theme: ShieldHero:  Raphtalia",
+      "path": "themes/df23dabc-61eb-4559-a504-992786964602.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-fb25d871-4a7c-49f5-9426-1f7eb00c2699",
+      "label": "Doki Theme: Shokugeki:  Soma",
+      "path": "themes/fb25d871-4a7c-49f5-9426-1f7eb00c2699.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-5ca2846d-31a9-40b3-8908-965dad3c127d",
+      "label": "Doki Theme: Slime:  Rimuru",
+      "path": "themes/5ca2846d-31a9-40b3-8908-965dad3c127d.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-d39df813-8701-463b-a964-b8cb7714d1cc",
+      "label": "Doki Theme: Steins Gate:  Kurisu",
+      "path": "themes/d39df813-8701-463b-a964-b8cb7714d1cc.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-930c70c8-474e-4e2d-a223-d1e2b9da4fb1",
+      "label": "Doki Theme: TypeMoon:  Astolfo",
+      "path": "themes/930c70c8-474e-4e2d-a223-d1e2b9da4fb1.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-5de1c901-2a12-411f-b75b-64e43aaf2c9d",
+      "label": "Doki Theme: TypeMoon:  Gray",
+      "path": "themes/5de1c901-2a12-411f-b75b-64e43aaf2c9d.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-62a4f26f-34b2-46f8-a10c-798e48c1ce9d",
+      "label": "Doki Theme: TypeMoon:  Ishtar",
+      "path": "themes/62a4f26f-34b2-46f8-a10c-798e48c1ce9d.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-325c5d4d-5614-4c58-b296-18924f2f6928",
+      "label": "Doki Theme: TypeMoon:  Ishtar",
+      "path": "themes/325c5d4d-5614-4c58-b296-18924f2f6928.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-3546f7be-b84f-4b8e-8cad-effa3f4603af",
+      "label": "Doki Theme: TypeMoon:  Rin",
+      "path": "themes/3546f7be-b84f-4b8e-8cad-effa3f4603af.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-bc12b380-1f2a-4a9d-89d8-388a07f1e15f",
+      "label": "Doki Theme: Vocaloid:  Miku",
+      "path": "themes/bc12b380-1f2a-4a9d-89d8-388a07f1e15f.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-d587f5ab-9334-4b7b-a99e-58461719d87b",
+      "label": "Doki Theme: YuruCamp:  Nadeshiko",
+      "path": "themes/d587f5ab-9334-4b7b-a99e-58461719d87b.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-unthrottled-doki-theme-5fb9c0a4-e613-457c-97a5-6204f9076cef",
+      "label": "Doki Theme: YuruCamp:  Rin",
+      "path": "themes/5fb9c0a4-e613-457c-97a5-6204f9076cef.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "88.1.15"
+}

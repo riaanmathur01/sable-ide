@@ -1,0 +1,18 @@
+{
+  "author": "vscode",
+  "description": "Abyss theme for Visual Studio Code",
+  "homepage": "https://github.com/eclipse-theia/vscode-builtin-extensions",
+  "id": "vscode.vscode.theme-abyss",
+  "minSableVersion": "0.3.8",
+  "name": "VS Code Abyss",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-vscode-theme-abyss-abyss",
+      "label": "Abyss",
+      "path": "themes/abyss.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.95.3"
+}

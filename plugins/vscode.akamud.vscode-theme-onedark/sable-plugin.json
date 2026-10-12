@@ -1,0 +1,18 @@
+{
+  "author": "akamud",
+  "description": "One Dark Theme based on Atom",
+  "homepage": "https://github.com/akamud/vscode-theme-onedark",
+  "id": "vscode.akamud.vscode-theme-onedark",
+  "minSableVersion": "0.3.8",
+  "name": "Atom One Dark Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-akamud-vscode-theme-onedark-atom-one-dark",
+      "label": "Atom One Dark",
+      "path": "themes/atom-one-dark.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "2.3.0"
+}

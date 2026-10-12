@@ -1,0 +1,36 @@
+{
+  "author": "ms-vscode",
+  "description": "UI Themes for C/C++ extension.",
+  "homepage": "https://github.com/Microsoft/vscode-cpptools",
+  "id": "vscode.ms-vscode.cpptools-themes",
+  "minSableVersion": "0.3.8",
+  "name": "C/C++ Themes",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-ms-vscode-cpptools-themes-visual-studio-dark-c",
+      "label": "Dark (Visual Studio - C/C++)",
+      "path": "themes/visual-studio-dark-c.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-ms-vscode-cpptools-themes-visual-studio-2017-dark-c",
+      "label": "2017 Dark (Visual Studio - C/C++)",
+      "path": "themes/visual-studio-2017-dark-c.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-ms-vscode-cpptools-themes-visual-studio-light-c",
+      "label": "Light (Visual Studio - C/C++)",
+      "path": "themes/visual-studio-light-c.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-ms-vscode-cpptools-themes-visual-studio-2017-light-c",
+      "label": "2017 Light (Visual Studio - C/C++)",
+      "path": "themes/visual-studio-2017-light-c.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "2.0.0"
+}

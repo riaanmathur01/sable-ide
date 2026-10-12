@@ -1,0 +1,84 @@
+{
+  "author": "deadraid",
+  "description": "Universal autonomous agent with multi-agent swarm execution, directly in your editor.",
+  "homepage": "https://github.com/deadraid/genesis",
+  "id": "vscode.deadraid.genesis-vscode",
+  "minSableVersion": "0.3.8",
+  "name": "Genesis",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-deadraid-genesis-vscode-genesis-dark",
+      "label": "Genesis Dark",
+      "path": "themes/genesis-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-deadraid-genesis-vscode-genesis-light",
+      "label": "Genesis Light",
+      "path": "themes/genesis-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-deadraid-genesis-vscode-monikai-dark",
+      "label": "Monikai Dark",
+      "path": "themes/monikai-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-deadraid-genesis-vscode-monikai-light",
+      "label": "Monikai Light",
+      "path": "themes/monikai-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-deadraid-genesis-vscode-tokyo-night-dark",
+      "label": "Tokyo Night Dark",
+      "path": "themes/tokyo-night-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-deadraid-genesis-vscode-tokyo-night-light",
+      "label": "Tokyo Night Light",
+      "path": "themes/tokyo-night-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-deadraid-genesis-vscode-nord-dark",
+      "label": "Nord Dark",
+      "path": "themes/nord-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-deadraid-genesis-vscode-nord-light",
+      "label": "Nord Light",
+      "path": "themes/nord-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-deadraid-genesis-vscode-solarized-dark",
+      "label": "Solarized Dark",
+      "path": "themes/solarized-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-deadraid-genesis-vscode-solarized-light",
+      "label": "Solarized Light",
+      "path": "themes/solarized-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-deadraid-genesis-vscode-vesper-dark",
+      "label": "Vesper Dark",
+      "path": "themes/vesper-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-deadraid-genesis-vscode-vesper-light",
+      "label": "Vesper Light",
+      "path": "themes/vesper-light.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "0.6.19"
+}

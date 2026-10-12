@@ -82,7 +82,10 @@ function bootstrap() {
         post({ type: "return", id: message.id, error: error instanceof Error ? error.message : String(error) });
       }
     } else if (message.type === "root") {
-      if (api) api.workspace.root = message.root;
+      if (api) {
+        api.workspace.root = message.root;
+        api.workspace.folders = message.folders ?? (message.root ? [message.root] : []);
+      }
       for (const listener of rootListeners) {
         try {
           listener(message.root);
@@ -197,6 +200,8 @@ function bootstrap() {
       },
       workspace: {
         root,
+        /** Every folder of a multi-root workspace (root first). */
+        folders: message.folders ?? (root ? [root] : []),
         readFile: (path: string) => call("workspace.readFile", String(path)),
         writeFile: (path: string, text: string) => call("workspace.writeFile", String(path), String(text)),
         listFiles: () => call("workspace.listFiles"),

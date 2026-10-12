@@ -1,0 +1,36 @@
+{
+  "author": "flvffy",
+  "description": "open-vsx version of the poimandres theme",
+  "homepage": "https://github.com/marcusleonas/poimandres-theme",
+  "id": "vscode.flvffy.poimandres",
+  "minSableVersion": "0.3.8",
+  "name": "poimandres",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-flvffy-poimandres-poimandres",
+      "label": "poimandres",
+      "path": "themes/poimandres.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-flvffy-poimandres-poimandres-noitalics",
+      "label": "poimandres-noitalics",
+      "path": "themes/poimandres-noitalics.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-flvffy-poimandres-poimandres-storm",
+      "label": "poimandres-storm",
+      "path": "themes/poimandres-storm.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-flvffy-poimandres-poimandres-noitalics-storm",
+      "label": "poimandres-noitalics-storm",
+      "path": "themes/poimandres-noitalics-storm.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.0.4"
+}

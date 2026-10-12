@@ -1,0 +1,24 @@
+{
+  "author": "charcoal-mint-studio",
+  "description": "A refreshing dark theme with charcoal background and mint accents that reduces eye strain and brings natural freshness to your coding experience",
+  "homepage": "https://github.com/danganhtai959-droid/The-Charcoal-Mint-VS-Code",
+  "id": "vscode.charcoal-mint-studio.theme-charcoal-mint",
+  "minSableVersion": "0.3.8",
+  "name": "Theme Charcoal Mint Co.",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-charcoal-mint-studio-theme-charcoal-mint-charcoal-mint",
+      "label": "Charcoal Mint",
+      "path": "themes/charcoal-mint.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-charcoal-mint-studio-theme-charcoal-mint-charcoal-mint-soft",
+      "label": "Charcoal Mint Soft",
+      "path": "themes/charcoal-mint-soft.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.0.2"
+}

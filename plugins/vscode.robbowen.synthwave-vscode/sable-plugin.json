@@ -1,0 +1,18 @@
+{
+  "author": "RobbOwen",
+  "description": "A Synthwave-inspired colour theme to satisfy your neon dreams",
+  "homepage": "https://github.com/robb0wen/synthwave-vscode",
+  "id": "vscode.robbowen.synthwave-vscode",
+  "minSableVersion": "0.3.8",
+  "name": "SynthWave '84",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-robbowen-synthwave-vscode-synthwave-84",
+      "label": "SynthWave '84",
+      "path": "themes/synthwave-84.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.1.20"
+}

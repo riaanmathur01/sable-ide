@@ -28,6 +28,7 @@ export const REMOTE_COMMANDS = new Set([
   "rename_path",
   "move_path",
   "watch_workspace",
+  "watch_folders",
   "history_list",
   "history_read",
   "history_deleted_files",
@@ -109,6 +110,11 @@ export const REMOTE_COMMANDS = new Set([
   "git_fetch",
   "git_pull",
   "git_push",
+  "notebook_kernelspecs",
+  "notebook_start",
+  "notebook_send",
+  "notebook_stop",
+  "notebook_install_ipykernel",
 ]);
 
 /** File commands, and the argument holding the path they act on. */

@@ -1,0 +1,24 @@
+{
+  "author": "castrogusttavo",
+  "description": "A minimal theme that comes in dark and light.",
+  "homepage": "https://github.com/misolori/min-theme",
+  "id": "vscode.castrogusttavo.min-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Min Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-castrogusttavo-min-theme-min-dark",
+      "label": "Min Dark",
+      "path": "themes/min-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-castrogusttavo-min-theme-min-light",
+      "label": "Min Light",
+      "path": "themes/min-light.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "1.0.0"
+}

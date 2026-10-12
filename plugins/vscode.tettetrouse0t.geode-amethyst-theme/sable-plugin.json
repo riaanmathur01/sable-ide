@@ -1,0 +1,48 @@
+{
+  "author": "tettetrouse0t",
+  "description": "Crystalline beauty hidden in darkness — a theme forged in geological time. Inspired by amethyst geodes with their deep purple crystals.",
+  "homepage": "https://github.com/tettetrouse0t/geode-amethyst-theme",
+  "id": "vscode.tettetrouse0t.geode-amethyst-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Geode Amethyst",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-tettetrouse0t-geode-amethyst-theme-geode-amethyst",
+      "label": "Geode Amethyst",
+      "path": "themes/geode-amethyst.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-tettetrouse0t-geode-amethyst-theme-geode-amethyst-dawn",
+      "label": "Geode Amethyst Dawn",
+      "path": "themes/geode-amethyst-dawn.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-tettetrouse0t-geode-amethyst-theme-geode-amethyst-dusk",
+      "label": "Geode Amethyst Dusk",
+      "path": "themes/geode-amethyst-dusk.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-tettetrouse0t-geode-amethyst-theme-geode-amethyst-midnight",
+      "label": "Geode Amethyst Midnight",
+      "path": "themes/geode-amethyst-midnight.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-tettetrouse0t-geode-amethyst-theme-geode-amethyst-crystal",
+      "label": "Geode Amethyst Crystal",
+      "path": "themes/geode-amethyst-crystal.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-tettetrouse0t-geode-amethyst-theme-geode-amethyst-cave",
+      "label": "Geode Amethyst Cave",
+      "path": "themes/geode-amethyst-cave.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.0.0"
+}

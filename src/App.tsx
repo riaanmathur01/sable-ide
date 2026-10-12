@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { listen } from "./lib/events";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { EditorArea, warmEditor } from "./components/Editor/EditorArea";
@@ -21,7 +21,7 @@ import { AgentPanel } from "./components/Agent/AgentPanel";
 import { Resizer } from "./components/Layout/Resizer";
 import { useUiStore, lastTerminalVisible } from "./store/uiStore";
 import { useColorTheme, useSetting, useSettingsStore } from "./store/settingsStore";
-import { applyUiTheme } from "./lib/themes";
+import { applyUiTheme, onThemeRegistryChange, themeRegistryVersion } from "./lib/themes";
 import { useTabsStore } from "./store/tabsStore";
 import {
   useWorkspaceStore,
@@ -30,9 +30,11 @@ import {
 } from "./store/workspaceStore";
 import { useSearchStore } from "./store/searchStore";
 import { useGitStore } from "./store/gitStore";
-import { isDirectory, type SearchMatch } from "./lib/ipc";
+import { isDirectory, pathExists, type SearchMatch } from "./lib/ipc";
 import { initLocalRoots, isRemoteActive } from "./lib/backend";
 import { lastRemote, useRemoteStore } from "./store/remoteStore";
+import { launchState, mainWindowState, openNewWindow, takeOtherWindowStates, type WindowState } from "./lib/windows";
+import { startWindowSync } from "./lib/windowSync";
 import { uploadToRemote } from "./lib/transfer";
 import { useGlobalKeybindings } from "./lib/useGlobalKeybindings";
 import { useShortcutStore } from "./lib/shortcuts";
@@ -78,13 +80,19 @@ function App() {
   useGlobalKeybindings();
 
   const colorTheme = useColorTheme();
-  useEffect(() => applyUiTheme(colorTheme), [colorTheme]);
+  // Plugins' themes register as their files load: repaint when the one in
+  // use arrives (or changes).
+  const themes = useSyncExternalStore(onThemeRegistryChange, themeRegistryVersion);
+  useEffect(() => applyUiTheme(colorTheme), [colorTheme, themes]);
 
   // Register LSP + debug event listeners once for the app's lifetime,
   // and load the user's settings.
   useEffect(() => {
     initLspListeners();
     initDebugListeners();
+    // Themes from plugins don't wait for the folder: the window's colors
+    // may depend on one.
+    void usePluginStore.getState().loadThemes();
     // Settings first: whether to check for updates is one of them.
     void useSettingsStore
       .getState()
@@ -110,15 +118,43 @@ function App() {
     restoredRef.current = true;
     const last = lastOpenedFolder();
     const remote = lastRemote();
+    const launch = launchState();
     void (async () => {
       // Sable's own files stay local even in a remote window.
       await initLocalRoots();
       try {
-        await restoreLastWorkspace();
+        if (launch === "empty") return;
+        if (launch) {
+          // A window opened from another one (New Window, Open in New
+          // Window), or one reopened from last time.
+          await openWindowState(launch);
+        } else {
+          const saved = mainWindowState();
+          // A multi-root workspace: its folders (or workspace file).
+          if (saved && !saved.remote && (saved.folders.length > 1 || saved.workspaceFile)) await openWindowState(saved);
+          else await restoreLastWorkspace();
+          // …and the other windows that were open at quit.
+          for (const state of takeOtherWindowStates()) void openNewWindow(state);
+        }
       } finally {
         markWorkspaceRestored();
+        startWindowSync();
       }
     })();
+    async function openWindowState(state: WindowState) {
+      if (state.remote) {
+        if (!(await useRemoteStore.getState().connect(state.remote.target, state.remote.folder))) return;
+        for (const folder of state.folders.slice(1)) await useWorkspaceStore.getState().addFolder(folder);
+      } else if (state.workspaceFile && (await pathExists(state.workspaceFile).catch(() => false))) {
+        await useWorkspaceStore.getState().openWorkspaceFile(state.workspaceFile);
+      } else {
+        const existing: string[] = [];
+        for (const folder of state.folders) if (await isDirectory(folder).catch(() => false)) existing.push(folder);
+        if (!existing.length) return;
+        await useWorkspaceStore.getState().openFolders(existing, state.workspaceFile ?? null);
+      }
+      await useTabsStore.getState().restoreSession();
+    }
     async function restoreLastWorkspace() {
       if (!last) return;
       if (remote && remote.folder === last) {

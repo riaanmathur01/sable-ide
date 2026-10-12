@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Check, FileJson, KeyRound, RefreshCw, RotateCcw, Search } from "lucide-react";
 import {
   MONO_FONT_STACK,
@@ -22,6 +22,7 @@ import { ShortcutsEditor } from "./ShortcutsEditor";
 import { pythonServerHasSemanticTokens } from "../../lib/ipc";
 import { setUpPythonSemanticHighlighting } from "../../lib/lsp/lspClient";
 import { PluginsPage } from "../Plugins/PluginsPage";
+import { allThemes, hasTheme, onThemeRegistryChange, themeRegistryVersion, type ThemeDefinition } from "../../lib/themes";
 import "./SettingsView.css";
 
 const SECTIONS = [
@@ -215,7 +216,9 @@ export function SettingRow({ spec }: { spec: SettingSpec }) {
       );
       break;
     case "enum":
-      control = (
+      control = spec.key === "workbench.colorTheme" ? (
+        <ThemePicker value={value as string} onChange={(id) => set(spec.key, id as never)} />
+      ) : (
         <select
           className="settings-select"
           value={value as string}
@@ -366,6 +369,37 @@ function stackFor(family: string): string {
  * mono (SF Mono), and every monospace font installed — with a live
  * preview in the chosen font.
  */
+/** Built-in themes, then plugins' (a theme whose plugin is gone stays
+ *  listed while it's chosen). */
+function ThemePicker({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  useSyncExternalStore(onThemeRegistryChange, themeRegistryVersion);
+  const themes = allThemes();
+  const builtin = themes.filter((theme) => !theme.pluginId);
+  const fromPlugins = themes.filter((theme) => theme.pluginId);
+  const label = (theme: ThemeDefinition) => `${theme.label}${theme.type === "light" ? " (light)" : ""}`;
+  return (
+    <select className="settings-select" value={value} onChange={(event) => onChange(event.target.value)}>
+      {!hasTheme(value) && <option value={value}>{value} (not installed)</option>}
+      <optgroup label="Built-in">
+        {builtin.map((theme) => (
+          <option key={theme.id} value={theme.id}>
+            {label(theme)}
+          </option>
+        ))}
+      </optgroup>
+      {fromPlugins.length > 0 && (
+        <optgroup label="From plugins">
+          {fromPlugins.map((theme) => (
+            <option key={theme.id} value={theme.id}>
+              {label(theme)}
+            </option>
+          ))}
+        </optgroup>
+      )}
+    </select>
+  );
+}
+
 function FontPicker({ value, onChange }: { value: string; onChange: (stack: string) => void }) {
   const [installed, setInstalled] = useState<string[] | null>(null);
   const fontSize = useSettingsStore((state) => state.values["editor.fontSize"]);

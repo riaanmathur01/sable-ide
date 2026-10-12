@@ -511,6 +511,3099 @@
       ],
       "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/web-search",
       "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/web-search"
+    },
+    {
+      "id": "pets",
+      "name": "Pets",
+      "version": "1.0.0",
+      "description": "Little pixel-art pets that live in a sidebar view or an editor tab: they wander, nap, chase the ball you throw and say hello to each other.",
+      "author": "Sable",
+      "permissions": [],
+      "tags": [
+        "fun",
+        "views"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/pets",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/pets"
+    },
+    {
+      "id": "vscode.vscode.theme-defaults",
+      "name": "VS Code Default Themes",
+      "version": "1.95.3",
+      "description": "The default Visual Studio light and dark themes",
+      "author": "vscode",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.vscode.theme-defaults",
+      "homepage": "https://github.com/eclipse-theia/vscode-builtin-extensions",
+      "themes": 7,
+      "preview": {
+        "background": "#1e1e1e",
+        "foreground": "#d4d4d4",
+        "accent": "#007acc",
+        "keyword": "#C586C0",
+        "string": "#ce9178",
+        "function": "#DCDCAA",
+        "comment": "#6A9955",
+        "type": "#4EC9B0"
+      }
+    },
+    {
+      "id": "vscode.dracula-theme.theme-dracula",
+      "name": "Dracula Theme Official",
+      "version": "2.25.1",
+      "description": "The official Dracula Theme: a dark theme for many editors, shells, and more. 🦇",
+      "author": "dracula-theme",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.dracula-theme.theme-dracula",
+      "homepage": "https://github.com/dracula/visual-studio-code",
+      "themes": 2,
+      "preview": {
+        "background": "#282a36",
+        "foreground": "#f8f8f2",
+        "accent": "#ff79c6",
+        "keyword": "#FF79C6",
+        "string": "#F1FA8C",
+        "function": "#50FA7B",
+        "comment": "#6272A4",
+        "type": "#8BE9FD"
+      }
+    },
+    {
+      "id": "vscode.zhuangtongfa.material-theme",
+      "name": "One Dark Pro",
+      "version": "3.20.3",
+      "description": "Atom's iconic One Dark theme for Visual Studio Code",
+      "author": "zhuangtongfa",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.zhuangtongfa.material-theme",
+      "homepage": "https://github.com/Binaryify/OneDark-Pro",
+      "themes": 5,
+      "preview": {
+        "background": "#282c34",
+        "foreground": "#abb2bf",
+        "accent": "#4d78cc",
+        "keyword": "#c678dd",
+        "string": "#98c379",
+        "function": "#61afef",
+        "comment": "#7f848e",
+        "type": "#e5c07b"
+      }
+    },
+    {
+      "id": "vscode.github.github-vscode-theme",
+      "name": "GitHub Theme",
+      "version": "6.3.5",
+      "description": "GitHub theme for VS Code",
+      "author": "GitHub",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.github.github-vscode-theme",
+      "homepage": "https://github.com/primer/github-vscode-theme",
+      "themes": 9,
+      "preview": {
+        "background": "#ffffff",
+        "foreground": "#1f2328",
+        "accent": "#0969da",
+        "keyword": "#cf222e",
+        "string": "#0a3069",
+        "function": "#8250df",
+        "comment": "#6e7781",
+        "type": "#953800"
+      }
+    },
+    {
+      "id": "vscode.sdras.night-owl",
+      "name": "Night Owl",
+      "version": "2.1.1",
+      "description": "A VS Code theme for the night owls out there. Now introducing Light Owl theme for daytime usage. Decisions were based on meaningful contrast for reading comprehension and for optimal razzle dazzle. ✨",
+      "author": "sdras",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.sdras.night-owl",
+      "homepage": "https://github.com/sdras/night-owl-vscode-theme",
+      "themes": 4,
+      "preview": {
+        "background": "#011627",
+        "foreground": "#d6deeb",
+        "accent": "#44596b",
+        "keyword": "#c792ea",
+        "string": "#ecc48d",
+        "function": "#82AAFF",
+        "comment": "#637777",
+        "type": "#5f7e97"
+      }
+    },
+    {
+      "id": "vscode.jdinhlife.gruvbox",
+      "name": "Gruvbox Theme",
+      "version": "1.29.1",
+      "description": "Gruvbox Theme",
+      "author": "jdinhlife",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.jdinhlife.gruvbox",
+      "homepage": "https://github.com/jdinhify/vscode-theme-gruvbox",
+      "themes": 6,
+      "preview": {
+        "background": "#282828",
+        "foreground": "#ebdbb2",
+        "accent": "#458588",
+        "keyword": "#fb4934",
+        "string": "#b8bb26",
+        "function": "#fabd2f",
+        "comment": "#928374",
+        "type": "#fabd2f"
+      }
+    },
+    {
+      "id": "vscode.sainnhe.gruvbox-material",
+      "name": "Gruvbox Material",
+      "version": "6.5.2",
+      "description": "Gruvbox with Material Palette",
+      "author": "sainnhe",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.sainnhe.gruvbox-material",
+      "homepage": "https://github.com/sainnhe/gruvbox-material-vscode",
+      "themes": 2,
+      "preview": {
+        "background": "#292828",
+        "foreground": "#d4be98",
+        "accent": "#a89984",
+        "keyword": "#ea6962",
+        "string": "#d8a657",
+        "function": "#a9b665",
+        "comment": "#928374",
+        "type": "#7daea3"
+      }
+    },
+    {
+      "id": "vscode.teabyii.ayu",
+      "name": "Ayu",
+      "version": "1.4.1",
+      "description": "A simple theme with bright colors and comes in three versions — dark, light and mirage for all day long comfortable work.",
+      "author": "teabyii",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.teabyii.ayu",
+      "homepage": "https://github.com/ayu-theme/vscode-ayu",
+      "themes": 6,
+      "preview": {
+        "background": "#fcfcfc",
+        "foreground": "#5c6166",
+        "accent": "#f29718",
+        "keyword": "#fa8532",
+        "string": "#86b300",
+        "function": "#eba400",
+        "comment": "#adaeb1",
+        "type": "#22a4e6"
+      }
+    },
+    {
+      "id": "vscode.enkia.tokyo-night",
+      "name": "Tokyo Night",
+      "version": "1.1.2",
+      "description": "A clean Visual Studio Code theme that celebrates the lights of Downtown Tokyo at night.",
+      "author": "enkia",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.enkia.tokyo-night",
+      "homepage": "https://github.com/enkia/tokyo-night-vscode-theme",
+      "themes": 3,
+      "preview": {
+        "background": "#1a1b26",
+        "foreground": "#a9b1d6",
+        "accent": "#3d59a1",
+        "keyword": "#bb9af7",
+        "string": "#9ece6a",
+        "function": "#7aa2f7",
+        "comment": "#51597d",
+        "type": "#c0caf5"
+      }
+    },
+    {
+      "id": "vscode.mvllow.rose-pine",
+      "name": "Rosé Pine",
+      "version": "2.15.2",
+      "description": "All natural pine, faux fur and a bit of soho vibes for the classy minimalist",
+      "author": "mvllow",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.mvllow.rose-pine",
+      "homepage": "https://github.com/rose-pine/vscode",
+      "themes": 6,
+      "preview": {
+        "background": "#191724",
+        "foreground": "#e0def4",
+        "accent": "#ebbcba",
+        "keyword": "#31748f",
+        "string": "#f6c177",
+        "function": "#ebbcba",
+        "comment": "#6e6a86",
+        "type": "#9ccfd8"
+      }
+    },
+    {
+      "id": "vscode.arcticicestudio.nord-visual-studio-code",
+      "name": "Nord",
+      "version": "0.19.0",
+      "description": "An arctic, north-bluish clean and elegant Visual Studio Code theme.",
+      "author": "arcticicestudio",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.arcticicestudio.nord-visual-studio-code",
+      "homepage": "https://github.com/arcticicestudio/nord-visual-studio-code",
+      "themes": 1,
+      "preview": {
+        "background": "#2e3440",
+        "foreground": "#d8dee9",
+        "accent": "#88c0d0",
+        "keyword": "#81A1C1",
+        "string": "#A3BE8C",
+        "function": "#88C0D0",
+        "comment": "#616E88",
+        "type": "#8FBCBB"
+      }
+    },
+    {
+      "id": "vscode.akamud.vscode-theme-onedark",
+      "name": "Atom One Dark Theme",
+      "version": "2.3.0",
+      "description": "One Dark Theme based on Atom",
+      "author": "akamud",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.akamud.vscode-theme-onedark",
+      "homepage": "https://github.com/akamud/vscode-theme-onedark",
+      "themes": 1,
+      "preview": {
+        "background": "#282c34",
+        "foreground": "#abb2bf",
+        "accent": "#528bff",
+        "keyword": "#C678DD",
+        "string": "#98C379",
+        "function": "#61AFEF",
+        "comment": "#5C6370",
+        "type": "#E5C07B"
+      }
+    },
+    {
+      "id": "vscode.akamud.vscode-theme-onelight",
+      "name": "Atom One Light Theme",
+      "version": "2.3.0",
+      "description": "One Light Theme based on Atom",
+      "author": "akamud",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.akamud.vscode-theme-onelight",
+      "homepage": "https://github.com/akamud/vscode-theme-onelight",
+      "themes": 1,
+      "preview": {
+        "background": "#fafafa",
+        "foreground": "#383a42",
+        "accent": "#526fff",
+        "keyword": "#A626A4",
+        "string": "#50A14F",
+        "function": "#4078F2",
+        "comment": "#A0A1A7",
+        "type": "#C18401"
+      }
+    },
+    {
+      "id": "vscode.sainnhe.everforest",
+      "name": "Everforest",
+      "version": "0.3.0",
+      "description": "Comfortable & Pleasant Color Scheme for Visual Studio Code",
+      "author": "sainnhe",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.sainnhe.everforest",
+      "homepage": "https://github.com/sainnhe/everforest-vscode",
+      "themes": 2,
+      "preview": {
+        "background": "#2d353b",
+        "foreground": "#d3c6aa",
+        "accent": "#a7c080",
+        "keyword": "#e67e80",
+        "string": "#dbbc7f",
+        "function": "#a7c080",
+        "comment": "#859289",
+        "type": "#7fbbb3"
+      }
+    },
+    {
+      "id": "vscode.sainnhe.sonokai",
+      "name": "Sonokai",
+      "version": "0.2.9",
+      "description": "High Contrast & Vivid Color Scheme based on Monokai Pro",
+      "author": "sainnhe",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.sainnhe.sonokai",
+      "homepage": "https://github.com/sainnhe/sonokai-vscode",
+      "themes": 6,
+      "preview": {
+        "background": "#2c2e34",
+        "foreground": "#e2e2e3",
+        "accent": "#85d3f2",
+        "keyword": "#fc5d7c",
+        "string": "#e7c664",
+        "function": "#9ed072",
+        "comment": "#7f8490",
+        "type": "#76cce0"
+      }
+    },
+    {
+      "id": "vscode.liviuschera.noctis",
+      "name": "Noctis",
+      "version": "10.43.3",
+      "description": "Noctis is a collection of light & dark themes with a well balanced blend of warm and cold colors",
+      "author": "liviuschera",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.liviuschera.noctis",
+      "homepage": "https://github.com/liviuschera/noctis",
+      "themes": 11,
+      "preview": {
+        "background": "#fef8ec",
+        "foreground": "#005661",
+        "accent": "#0099ad",
+        "keyword": "#ff5792",
+        "string": "#00b368",
+        "function": "#0095a8",
+        "comment": "#8ca6a6",
+        "type": "#b3694d"
+      }
+    },
+    {
+      "id": "vscode.robbowen.synthwave-vscode",
+      "name": "SynthWave '84",
+      "version": "0.1.20",
+      "description": "A Synthwave-inspired colour theme to satisfy your neon dreams",
+      "author": "RobbOwen",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.robbowen.synthwave-vscode",
+      "homepage": "https://github.com/robb0wen/synthwave-vscode",
+      "themes": 1,
+      "preview": {
+        "background": "#262335",
+        "foreground": "#d4d4d4",
+        "accent": "#f97e72",
+        "keyword": "#fede5d",
+        "string": "#ff8b39",
+        "function": "#36f9f6",
+        "comment": "#848bbd",
+        "type": "#fe4450"
+      }
+    },
+    {
+      "id": "vscode.wesbos.theme-cobalt2",
+      "name": "Cobalt2 Theme Official",
+      "version": "2.4.3",
+      "description": "🔥 Official theme by Wes Bos.",
+      "author": "wesbos",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.wesbos.theme-cobalt2",
+      "homepage": "https://github.com/wesbos/cobalt2-vscode",
+      "themes": 1,
+      "preview": {
+        "background": "#193549",
+        "foreground": "#ffffff",
+        "accent": "#ffc600",
+        "keyword": "#ff9d00",
+        "string": "#a5ff90",
+        "function": "#ffc600",
+        "comment": "#0088ff",
+        "type": "#ffc600"
+      }
+    },
+    {
+      "id": "vscode.antfu.theme-vitesse",
+      "name": "Vitesse Theme",
+      "version": "1.0.1",
+      "description": "Vitesse theme for VS Code",
+      "author": "antfu",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.antfu.theme-vitesse",
+      "homepage": "https://github.com/antfu/vscode-theme-vitesse",
+      "themes": 5,
+      "preview": {
+        "background": "#ffffff",
+        "foreground": "#393a34",
+        "accent": "#4e4f47",
+        "keyword": "#1e754f",
+        "string": "#b56959",
+        "function": "#59873a",
+        "comment": "#a0ada0",
+        "type": "#2e8f82"
+      }
+    },
+    {
+      "id": "vscode.vscode.theme-monokai",
+      "name": "VS Code Monokai",
+      "version": "1.95.3",
+      "description": "Monokai theme for Visual Studio Code",
+      "author": "vscode",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.vscode.theme-monokai",
+      "homepage": "https://github.com/eclipse-theia/vscode-builtin-extensions",
+      "themes": 1,
+      "preview": {
+        "background": "#272822",
+        "foreground": "#f8f8f2",
+        "accent": "#75715e",
+        "keyword": "#F92672",
+        "string": "#E6DB74",
+        "function": "#A6E22E",
+        "comment": "#88846f",
+        "type": "#A6E22E"
+      }
+    },
+    {
+      "id": "vscode.vscode.theme-monokai-dimmed",
+      "name": "VS Code Monokai Dimmed",
+      "version": "1.95.3",
+      "description": "Monokai dimmed theme for Visual Studio Code",
+      "author": "vscode",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.vscode.theme-monokai-dimmed",
+      "homepage": "https://github.com/eclipse-theia/vscode-builtin-extensions",
+      "themes": 1,
+      "preview": {
+        "background": "#1e1e1e",
+        "foreground": "#c5c8c6",
+        "accent": "#3655b5",
+        "keyword": "#9872A2",
+        "string": "#9AA83A",
+        "function": "#CE6700",
+        "comment": "#9A9B99",
+        "type": "#9B0000"
+      }
+    },
+    {
+      "id": "vscode.vscode.theme-solarized-dark",
+      "name": "VS Code Solarized Dark",
+      "version": "1.95.3",
+      "description": "Solarized dark theme for Visual Studio Code",
+      "author": "vscode",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.vscode.theme-solarized-dark",
+      "homepage": "https://github.com/eclipse-theia/vscode-builtin-extensions",
+      "themes": 1,
+      "preview": {
+        "background": "#002b36",
+        "foreground": "#839496",
+        "accent": "#197271",
+        "keyword": "#859900",
+        "string": "#2AA198",
+        "function": "#268BD2",
+        "comment": "#586E75",
+        "type": "#CB4B16"
+      }
+    },
+    {
+      "id": "vscode.vscode.theme-solarized-light",
+      "name": "VS Code Solarized Light",
+      "version": "1.95.3",
+      "description": "Solarized light theme for Visual Studio Code",
+      "author": "vscode",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.vscode.theme-solarized-light",
+      "homepage": "https://github.com/eclipse-theia/vscode-builtin-extensions",
+      "themes": 1,
+      "preview": {
+        "background": "#fdf6e3",
+        "foreground": "#657b83",
+        "accent": "#b58900",
+        "keyword": "#859900",
+        "string": "#2AA198",
+        "function": "#268BD2",
+        "comment": "#93A1A1",
+        "type": "#CB4B16"
+      }
+    },
+    {
+      "id": "vscode.vscode.theme-quietlight",
+      "name": "VS Code Quiet Light",
+      "version": "1.95.3",
+      "description": "Quiet light theme for Visual Studio Code",
+      "author": "vscode",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.vscode.theme-quietlight",
+      "homepage": "https://github.com/eclipse-theia/vscode-builtin-extensions",
+      "themes": 1,
+      "preview": {
+        "background": "#f5f5f5",
+        "foreground": "#333333",
+        "accent": "#705697",
+        "keyword": "#4B69C6",
+        "string": "#448C27",
+        "function": "#AA3731",
+        "comment": "#AAAAAA",
+        "type": "#7A3E9D"
+      }
+    },
+    {
+      "id": "vscode.vscode.theme-abyss",
+      "name": "VS Code Abyss",
+      "version": "1.95.3",
+      "description": "Abyss theme for Visual Studio Code",
+      "author": "vscode",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.vscode.theme-abyss",
+      "homepage": "https://github.com/eclipse-theia/vscode-builtin-extensions",
+      "themes": 1,
+      "preview": {
+        "background": "#000c18",
+        "foreground": "#6688cc",
+        "accent": "#596f99",
+        "keyword": "#225588",
+        "string": "#22aa44",
+        "function": "#ddbb88",
+        "comment": "#384887",
+        "type": "#ffeebb"
+      }
+    },
+    {
+      "id": "vscode.vscode.theme-kimbie-dark",
+      "name": "VS Code Kimbie Dark",
+      "version": "1.95.3",
+      "description": "Kimbie dark theme for Visual Studio Code",
+      "author": "vscode",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.vscode.theme-kimbie-dark",
+      "homepage": "https://github.com/eclipse-theia/vscode-builtin-extensions",
+      "themes": 1,
+      "preview": {
+        "background": "#221a0f",
+        "foreground": "#d3af86",
+        "accent": "#6e583b",
+        "keyword": "#98676a",
+        "string": "#889b4a",
+        "function": "#8ab1b0",
+        "comment": "#a57a4c",
+        "type": "#f06431"
+      }
+    },
+    {
+      "id": "vscode.vscode.theme-red",
+      "name": "VS Code Red",
+      "version": "1.95.3",
+      "description": "Red theme for Visual Studio Code",
+      "author": "vscode",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.vscode.theme-red",
+      "homepage": "https://github.com/eclipse-theia/vscode-builtin-extensions",
+      "themes": 1,
+      "preview": {
+        "background": "#390000",
+        "foreground": "#f8f8f8",
+        "accent": "#883333",
+        "keyword": "#f12727",
+        "string": "#cd8d8d",
+        "function": "#fec758",
+        "comment": "#e7c0c0",
+        "type": "#fec758"
+      }
+    },
+    {
+      "id": "vscode.vscode.theme-tomorrow-night-blue",
+      "name": "VS Code Tomorrow Night Blue",
+      "version": "1.95.3",
+      "description": "Tomorrow night blue theme for Visual Studio Code",
+      "author": "vscode",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.vscode.theme-tomorrow-night-blue",
+      "homepage": "https://github.com/eclipse-theia/vscode-builtin-extensions",
+      "themes": 1,
+      "preview": {
+        "background": "#002451",
+        "foreground": "#ffffff",
+        "accent": "#bbdaff",
+        "keyword": "#EBBBFF",
+        "string": "#D1F1A9",
+        "function": "#BBDAFF",
+        "comment": "#7285B7",
+        "type": "#FFEEAD"
+      }
+    },
+    {
+      "id": "vscode.johnpapa.winteriscoming",
+      "name": "Winter is Coming Theme",
+      "version": "1.5.0",
+      "description": "Preferred dark/light themes by John Papa",
+      "author": "johnpapa",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.johnpapa.winteriscoming",
+      "homepage": "https://github.com/johnpapa/vscode-winteriscoming",
+      "themes": 6,
+      "preview": {
+        "background": "#011627",
+        "foreground": "#a7dbf7",
+        "accent": "#219fd5",
+        "keyword": "#00bff9",
+        "string": "#bcf0c0",
+        "function": "#87aff4",
+        "comment": "#999999",
+        "type": "#d29ffc"
+      }
+    },
+    {
+      "id": "vscode.fisheva.eva-theme",
+      "name": "Eva Theme",
+      "version": "2.9.1",
+      "description": "A comfortable and semantic theme.",
+      "author": "fisheva",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.fisheva.eva-theme",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.fisheva.eva-theme",
+      "themes": 8,
+      "preview": {
+        "background": "#282c34",
+        "foreground": "#9da5b3",
+        "accent": "#598def",
+        "keyword": "#CF68E1",
+        "string": "#98C379",
+        "function": "#6495EE",
+        "comment": "#676E95",
+        "type": "#56B7C3"
+      }
+    },
+    {
+      "id": "vscode.castrogusttavo.min-theme",
+      "name": "Min Theme",
+      "version": "1.0.0",
+      "description": "A minimal theme that comes in dark and light.",
+      "author": "castrogusttavo",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.castrogusttavo.min-theme",
+      "homepage": "https://github.com/misolori/min-theme",
+      "themes": 2,
+      "preview": {
+        "background": "#1f1f1f",
+        "foreground": "#24292e",
+        "accent": "#cccccc",
+        "keyword": "#f97583",
+        "string": "#ffab70",
+        "function": "#b392f0",
+        "comment": "#6a737d",
+        "type": "#b392f0"
+      }
+    },
+    {
+      "id": "vscode.flvffy.poimandres",
+      "name": "poimandres",
+      "version": "0.0.4",
+      "description": "open-vsx version of the poimandres theme",
+      "author": "flvffy",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.flvffy.poimandres",
+      "homepage": "https://github.com/marcusleonas/poimandres-theme",
+      "themes": 4,
+      "preview": {
+        "background": "#1b1e28",
+        "foreground": "#a6accd",
+        "accent": "#add7ff",
+        "keyword": "#a6accd",
+        "string": "#5DE4c7",
+        "function": "#ADD7FF",
+        "comment": "#767c9d",
+        "type": "#a6accd"
+      }
+    },
+    {
+      "id": "vscode.raunofreiberg.vesper",
+      "name": "Vesper",
+      "version": "0.0.39",
+      "description": "Peppermint and orange flavored dark theme for VSCode.",
+      "author": "raunofreiberg",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.raunofreiberg.vesper",
+      "homepage": "https://github.com/raunofreiberg/vesper",
+      "themes": 1,
+      "preview": {
+        "background": "#101010",
+        "foreground": "#ffffff",
+        "accent": "#ffc799",
+        "keyword": "#A0A0A0",
+        "string": "#99FFE4",
+        "function": "#FFC799",
+        "comment": "#8b8b8b",
+        "type": "#FFC799"
+      }
+    },
+    {
+      "id": "vscode.atomiks.moonlight",
+      "name": "Moonlight",
+      "version": "0.10.6",
+      "description": "A VS Code theme with bubblegum colors on a moonlit background.",
+      "author": "atomiks",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.atomiks.moonlight",
+      "homepage": "https://github.com/atomiks/moonlight-vscode-theme",
+      "themes": 4,
+      "preview": {
+        "background": "#222436",
+        "foreground": "#c8d3f5",
+        "accent": "#3e68d7",
+        "keyword": "#86e1fc",
+        "string": "#c3e88d",
+        "function": "#82aaff",
+        "comment": "#7a88cf",
+        "type": "#ffc777"
+      }
+    },
+    {
+      "id": "vscode.jolaleye.horizon-theme-vscode",
+      "name": "Horizon Theme",
+      "version": "2.0.2",
+      "description": "A beautifully warm dual theme for Visual Studio Code",
+      "author": "jolaleye",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.jolaleye.horizon-theme-vscode",
+      "homepage": "https://github.com/jolaleye/horizon-theme-vscode",
+      "themes": 6,
+      "preview": {
+        "background": "#1c1e26",
+        "foreground": "#d4d4d4",
+        "accent": "#e95378",
+        "keyword": "#B877DB",
+        "string": "#FAB795",
+        "function": "#25B0BC",
+        "comment": "#BBBBBB",
+        "type": "#FAC29A"
+      }
+    },
+    {
+      "id": "vscode.metaphore.kanagawa-vscode-color-theme",
+      "name": "Kanagawa Flavors",
+      "version": "0.5.0",
+      "description": "A port of the Kanagawa Neovim color theme for Visual Studio Code, including all three flavors Wave, Dragon and Lotus.",
+      "author": "metaphore",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.metaphore.kanagawa-vscode-color-theme",
+      "homepage": "https://github.com/metapho-re/kanagawa-vscode-theme",
+      "themes": 3,
+      "preview": {
+        "background": "#1f1f28",
+        "foreground": "#dcd7ba",
+        "accent": "#658594",
+        "keyword": "#957FB8",
+        "string": "#98BB6C",
+        "function": "#7E9CD8",
+        "comment": "#727169",
+        "type": "#7AA89F"
+      }
+    },
+    {
+      "id": "vscode.nuromirg.nightfox-theme-collections",
+      "name": "Nightfox Theme Collections",
+      "version": "1.0.7",
+      "description": "A highly customizable themes for VSCode, ported from nightfox.nvim",
+      "author": "nuromirg",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.nuromirg.nightfox-theme-collections",
+      "homepage": "https://github.com/nuromirg/nightfox-vscode",
+      "themes": 7,
+      "preview": {
+        "background": "#192330",
+        "foreground": "#cdcecf",
+        "accent": "#719cd6",
+        "keyword": "#9d79d6",
+        "string": "#81b29a",
+        "function": "#86abdc",
+        "comment": "#738091",
+        "type": "#dbc074"
+      }
+    },
+    {
+      "id": "vscode.astro-build.houston",
+      "name": "Houston",
+      "version": "0.1.2",
+      "description": "A theme featuring cool blues, minty greens, and soft purples",
+      "author": "astro-build",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.astro-build.houston",
+      "homepage": "https://github.com/withastro/houston-vscode",
+      "themes": 1,
+      "preview": {
+        "background": "#17191e",
+        "foreground": "#eef0f9",
+        "accent": "#4bf3c8",
+        "keyword": "#54b9ff",
+        "string": "#ffd493",
+        "function": "#00daef",
+        "comment": "#eef0f9",
+        "type": "#acafff"
+      }
+    },
+    {
+      "id": "vscode.brittanychiang.halcyon-vscode",
+      "name": "Halcyon Theme",
+      "version": "0.6.3",
+      "description": "A dark blue theme for VS Code based on the Ayu Mirage theme",
+      "author": "brittanychiang",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.brittanychiang.halcyon-vscode",
+      "homepage": "https://github.com/bchiang7/halcyon-vscode",
+      "themes": 1,
+      "preview": {
+        "background": "#1d2433",
+        "foreground": "#a2aabc",
+        "accent": "#ffcc66",
+        "keyword": "#ffae57",
+        "string": "#bae67e",
+        "function": "#ffd580",
+        "comment": "#96a6cc",
+        "type": "#ffd580"
+      }
+    },
+    {
+      "id": "vscode.alexanderbast.vscode-snazzy",
+      "name": "Snazzy Theme",
+      "version": "2.9.0",
+      "description": "VS Code theme based on hyper-snazzy with bright colors",
+      "author": "alexanderbast",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.alexanderbast.vscode-snazzy",
+      "homepage": "https://github.com/alexanderbast/vscode-snazzy",
+      "themes": 1,
+      "preview": {
+        "background": "#282a36",
+        "foreground": "#eff0eb",
+        "accent": "#57c7ff",
+        "keyword": "#ff6ac1",
+        "string": "#5af78e",
+        "function": "#57c7ff",
+        "comment": "#616263",
+        "type": "#9aedfe"
+      }
+    },
+    {
+      "id": "vscode.felixicaza.andromeda",
+      "name": "Andromeda Fork",
+      "version": "1.7.1",
+      "description": "Dark theme with a taste of the universe",
+      "author": "FelixIcaza",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.felixicaza.andromeda",
+      "homepage": "https://github.com/FelixIcaza/Andromeda",
+      "themes": 4,
+      "preview": {
+        "background": "#23262e",
+        "foreground": "#d5ced9",
+        "accent": "#00b0ff",
+        "keyword": "#c74ded",
+        "string": "#96E072",
+        "function": "#FFE66D",
+        "comment": "#5f6167",
+        "type": "#FFE66D"
+      }
+    },
+    {
+      "id": "vscode.ms-vscode.theme-predawnkit",
+      "name": "Predawn Theme Kit",
+      "version": "0.1.4",
+      "description": "Predawn themes for VS Code. Based on the TextMate themes.",
+      "author": "ms-vscode",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.ms-vscode.theme-predawnkit",
+      "homepage": "https://github.com/Microsoft/vscode-themes",
+      "themes": 3,
+      "preview": {
+        "background": "#282828",
+        "foreground": "#f1f1f1",
+        "accent": "#f18260",
+        "keyword": "#F49D62",
+        "string": "#BDDCDC",
+        "function": "#92BFBF",
+        "comment": "#777777",
+        "type": "#92BFBF"
+      }
+    },
+    {
+      "id": "vscode.ms-vscode.theme-materialkit",
+      "name": "Material Theme Kit",
+      "version": "0.1.4",
+      "description": "Material themes for VS Code. Based on the TextMate themes.",
+      "author": "ms-vscode",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.ms-vscode.theme-materialkit",
+      "homepage": "https://github.com/Microsoft/vscode-themes",
+      "themes": 3,
+      "preview": {
+        "background": "#263238",
+        "foreground": "#4e7575",
+        "accent": "#ffcc00",
+        "keyword": "#c792ea",
+        "string": "#C3E88D",
+        "function": "#89DDFF",
+        "comment": "#546E7A",
+        "type": "#FFEB95"
+      }
+    },
+    {
+      "id": "vscode.pr1sm8.theme-panda",
+      "name": "Panda Theme",
+      "version": "1.2.0",
+      "description": "Panda Theme for Visual Studio Code.",
+      "author": "pr1sm8",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.pr1sm8.theme-panda",
+      "homepage": "https://github.com/pr1sm8/panda-syntax-vscode",
+      "themes": 1,
+      "preview": {
+        "background": "#292a2b",
+        "foreground": "#e6e6e6",
+        "accent": "#19f9d8",
+        "keyword": "#FF75B5",
+        "string": "#19f9d8",
+        "function": "#6FC1FF",
+        "comment": "#676B79",
+        "type": "#19f9d8"
+      }
+    },
+    {
+      "id": "vscode.t3dotgg.vsc-material-theme-but-i-wont-sue-you",
+      "name": "Material Theme (But I Won't Sue You)",
+      "version": "35.0.2",
+      "description": "A Apache-2 licensed fork of Material Theme with no threats of legal action",
+      "author": "t3dotgg",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.t3dotgg.vsc-material-theme-but-i-wont-sue-you",
+      "homepage": "https://github.com/t3dotgg/vsc-material-but-i-wont-sue-you",
+      "themes": 12,
+      "preview": {
+        "background": "#263238",
+        "foreground": "#eeffff",
+        "accent": "#80cbc4",
+        "keyword": "#89DDFF",
+        "string": "#C3E88D",
+        "function": "#82AAFF",
+        "comment": "#546E7A",
+        "type": "#FFCB6B"
+      }
+    },
+    {
+      "id": "vscode.srcery-colors.srcery-colors",
+      "name": "Srcery (official port)",
+      "version": "0.4.0",
+      "description": "Srcery theme based on the srcery-colors themes",
+      "author": "srcery-colors",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.srcery-colors.srcery-colors",
+      "homepage": "https://github.com/srcery-colors/srcery-vscode",
+      "themes": 1,
+      "preview": {
+        "background": "#121110",
+        "foreground": "#fce8c3",
+        "accent": "#2c78bf",
+        "keyword": "#EF2F27",
+        "string": "#98BC37",
+        "function": "#FBB829",
+        "comment": "#917E6B",
+        "type": "#68A8E4"
+      }
+    },
+    {
+      "id": "vscode.huytd.tokyo-city",
+      "name": "Tokyo City",
+      "version": "0.2.4",
+      "description": "Tokyo City theme, a mixture of City Lights and Tokyo Night",
+      "author": "huytd",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.huytd.tokyo-city",
+      "homepage": "https://github.com/huytd/vscode-tokyo-city",
+      "themes": 4,
+      "preview": {
+        "background": "#1d252c",
+        "foreground": "#d8e2ec",
+        "accent": "#b7c5d3",
+        "keyword": "#BB9AF7",
+        "string": "#9ECE6A",
+        "function": "#7AA2F7",
+        "comment": "#526270",
+        "type": "#C0F0F5"
+      }
+    },
+    {
+      "id": "vscode.armandphilippot.coldark",
+      "name": "Coldark",
+      "version": "1.2.11",
+      "description": "A blue-grey theme with light & dark versions.",
+      "author": "armandphilippot",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.armandphilippot.coldark",
+      "homepage": "https://github.com/ArmandPhilippot/coldark-vscode",
+      "themes": 2,
+      "preview": {
+        "background": "#e3eaf2",
+        "foreground": "#111b27",
+        "accent": "#005a8e",
+        "keyword": "#a04900",
+        "string": "#116b00",
+        "function": "#7c00aa",
+        "comment": "#3c526d",
+        "type": "#005a8e"
+      }
+    },
+    {
+      "id": "vscode.theaflowers.witch-hazel",
+      "name": "Witch Hazel",
+      "version": "2021.10.16",
+      "description": "A dark and feminine color scheme",
+      "author": "TheaFlowers",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.theaflowers.witch-hazel",
+      "homepage": "https://github.com/theacodes/witchhazel",
+      "themes": 2,
+      "preview": {
+        "background": "#433e56",
+        "foreground": "#f8f8f2",
+        "accent": "#31cae3",
+        "keyword": "#C2FFDF",
+        "string": "#1BC5E0",
+        "function": "#ceb1ff",
+        "comment": "#B0BEC5",
+        "type": "#C2FFDF"
+      }
+    },
+    {
+      "id": "vscode.idleberg.hopscotch",
+      "name": "Hopscotch",
+      "version": "0.8.2",
+      "description": "Color scheme inspired by the Hopscotch learning platform for kids",
+      "author": "idleberg",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.idleberg.hopscotch",
+      "homepage": "https://github.com/idleberg/vscode-hopscotch",
+      "themes": 2,
+      "preview": {
+        "background": "#322931",
+        "foreground": "#b9b5b8",
+        "accent": "#fc332b",
+        "keyword": "#c85e7c",
+        "string": "#8fc13e",
+        "function": "#1290bf",
+        "comment": "#797379",
+        "type": "#fdcc59"
+      }
+    },
+    {
+      "id": "vscode.dcasella.monokai-plusplus",
+      "name": "Monokai++",
+      "version": "2.0.4",
+      "description": "A modern Monokai theme for Sublime Text 3 and Visual Studio Code",
+      "author": "dcasella",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.dcasella.monokai-plusplus",
+      "homepage": "https://github.com/dcasella/monokai-plusplus",
+      "themes": 1,
+      "preview": {
+        "background": "#1e1e1e",
+        "foreground": "#d4d4d4",
+        "accent": "#328eff",
+        "keyword": "#f92672",
+        "string": "#e6db74",
+        "function": "#b0ec38",
+        "comment": "#696d70",
+        "type": "#2be98a"
+      }
+    },
+    {
+      "id": "vscode.khan.two-monokai",
+      "name": "Two Monokai Theme",
+      "version": "0.1.3",
+      "description": "Fork of the One Monokai theme",
+      "author": "khan",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.khan.two-monokai",
+      "homepage": "https://github.com/kmnhan/vscode-two-monokai",
+      "themes": 3,
+      "preview": {
+        "background": "#282c34",
+        "foreground": "#abb2bf",
+        "accent": "#528bff",
+        "keyword": "#e06c75",
+        "string": "#e5c07b",
+        "function": "#98c379",
+        "comment": "#676f7d",
+        "type": "#61afef"
+      }
+    },
+    {
+      "id": "vscode.yurihs.sublime-vscode-theme",
+      "name": "Sublime VSCode Theme",
+      "version": "1.5.0",
+      "description": "Light in the sidebar; dark everywhere else. Just like Sublime Text!",
+      "author": "yurihs",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.yurihs.sublime-vscode-theme",
+      "homepage": "https://github.com/yurihs/sublime-vscode-theme",
+      "themes": 1,
+      "preview": {
+        "background": "#282923",
+        "foreground": "#f8f8f2",
+        "accent": "#75715e",
+        "keyword": "#F92672",
+        "string": "#E6DB74",
+        "function": "#A6E22E",
+        "comment": "#75715E",
+        "type": "#A6E22E"
+      }
+    },
+    {
+      "id": "vscode.bpat86.nightcall",
+      "name": "Nightcall",
+      "version": "2.2.3",
+      "description": "A mellow yet colorful Visual Studio Code theme built around vibrant shades of pink, purple, and blue.",
+      "author": "bpat86",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.bpat86.nightcall",
+      "homepage": "https://github.com/bpat86/nightcall-vscode-theme",
+      "themes": 8,
+      "preview": {
+        "background": "#202133",
+        "foreground": "#e6dafb",
+        "accent": "#ffa3d8",
+        "keyword": "#BB9AF7",
+        "string": "#FFC2E4",
+        "function": "#8FAAFB",
+        "comment": "#56568A",
+        "type": "#EBABF9"
+      }
+    },
+    {
+      "id": "vscode.subframe7536.theme-maple",
+      "name": "Maple Theme",
+      "version": "1.0.0",
+      "description": "A colorful editor theme, support light or dark mode, with medium brightness and low saturation.",
+      "author": "subframe7536",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.subframe7536.theme-maple",
+      "homepage": "https://github.com/subframe7536/vscode-theme-maple",
+      "themes": 2,
+      "preview": {
+        "background": "#1e1e1f",
+        "foreground": "#cbd5e1",
+        "accent": "#8dbe74",
+        "keyword": "#d2ccff",
+        "string": "#a4dfae",
+        "function": "#8fc7ff",
+        "comment": "#999999",
+        "type": "#8fc7ff"
+      }
+    },
+    {
+      "id": "vscode.cappyzawa.akari-theme",
+      "name": "Akari",
+      "version": "2.0.0",
+      "description": "A terminal color palette inspired by Japanese alleys lit by round lanterns.",
+      "author": "cappyzawa",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.cappyzawa.akari-theme",
+      "homepage": "https://github.com/cappyzawa/akari-theme",
+      "themes": 2,
+      "preview": {
+        "background": "#25231f",
+        "foreground": "#e6ded3",
+        "accent": "#e26a3b",
+        "keyword": "#E26A3B",
+        "string": "#7FAF6A",
+        "function": "#8E7BA0",
+        "comment": "#9BABB9",
+        "type": "#D4A05A"
+      }
+    },
+    {
+      "id": "vscode.wicked-labs.wvsc-serendipity",
+      "name": "Serendipity",
+      "version": "1.67.0",
+      "description": "Elegant, minimal, and clean color palette to give your eyes rest on different interfaces.",
+      "author": "wicked-labs",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.wicked-labs.wvsc-serendipity",
+      "homepage": "https://github.com/Serendipity-Theme/vs-code",
+      "themes": 4,
+      "preview": {
+        "background": "#f6f7fb",
+        "foreground": "#3f4363",
+        "accent": "#e58678",
+        "keyword": "#2f7aab",
+        "string": "#785fd0",
+        "function": "#e58678",
+        "comment": "#6d7296",
+        "type": "#6288d8"
+      }
+    },
+    {
+      "id": "vscode.muhammad-sammy.solarized-sharp-vscode",
+      "name": "Solarized Sharp",
+      "version": "1.0.4",
+      "description": "Solarized Sharp color themes, from VS Code",
+      "author": "muhammad-sammy",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.muhammad-sammy.solarized-sharp-vscode",
+      "homepage": "https://github.com/muhammadsammy/solarized-sharp-vscode",
+      "themes": 2,
+      "preview": {
+        "background": "#002b36",
+        "foreground": "#819090",
+        "accent": "#859900",
+        "keyword": "#859900",
+        "string": "#2aa198",
+        "function": "#268bd2",
+        "comment": "#586e75",
+        "type": "#b58900"
+      }
+    },
+    {
+      "id": "vscode.silofy.hackthebox",
+      "name": "HackTheBox",
+      "version": "0.2.9",
+      "description": "A Visual Studio Code theme built for hackers BY hackers",
+      "author": "silofy",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.silofy.hackthebox",
+      "homepage": "https://github.com/silofy/hackthebox",
+      "themes": 2,
+      "preview": {
+        "background": "#141d2b",
+        "foreground": "#a4b1cd",
+        "accent": "#9fef00",
+        "keyword": "#CF8DFB",
+        "string": "#C5F467",
+        "function": "#FFCC5C",
+        "comment": "#D7E4FF",
+        "type": "#FF8484"
+      }
+    },
+    {
+      "id": "vscode.gitpod.gitpod-theme",
+      "name": "Gitpod Theme",
+      "version": "0.0.2",
+      "description": "Gitpod Theme for VS Code",
+      "author": "gitpod",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.gitpod.gitpod-theme",
+      "homepage": "https://github.com/gitpod-io/gitpod-vscode-theme",
+      "themes": 2,
+      "preview": {
+        "background": "#12100c",
+        "foreground": "#d4d4d4",
+        "accent": "#007acc",
+        "keyword": "#C586C0",
+        "string": "#CE9178",
+        "function": "#DCDCAA",
+        "comment": "#6A9955",
+        "type": "#4EC9B0"
+      }
+    },
+    {
+      "id": "vscode.a5hk.night-coder",
+      "name": "Night Coder",
+      "version": "6.0.1",
+      "description": "The dark side of coding.",
+      "author": "a5hk",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.a5hk.night-coder",
+      "homepage": "https://github.com/a5hk/night-coder",
+      "themes": 8,
+      "preview": {
+        "background": "#030917",
+        "foreground": "#c1c2c6",
+        "accent": "#006600",
+        "keyword": "#c982c1",
+        "string": "#8dbf82",
+        "function": "#85c3ab",
+        "comment": "#464b55",
+        "type": "#829dc9"
+      }
+    },
+    {
+      "id": "vscode.a5hk.paper",
+      "name": "Paper",
+      "version": "3.0.2",
+      "description": "Light theme with good contrast",
+      "author": "a5hk",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.a5hk.paper",
+      "homepage": "https://github.com/a5hk/paper",
+      "themes": 2,
+      "preview": {
+        "background": "#fcf8e8",
+        "foreground": "#3e3d39",
+        "accent": "#0da492",
+        "keyword": "#c20aac",
+        "string": "#3b7203",
+        "function": "#007aa3",
+        "comment": "#b9b6aa",
+        "type": "#2059cb"
+      }
+    },
+    {
+      "id": "vscode.yama.yama-theme",
+      "name": "YaMa Theme",
+      "version": "1.1.3",
+      "description": "Theme for Vue",
+      "author": "yama",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.yama.yama-theme",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.yama.yama-theme",
+      "themes": 2,
+      "preview": {
+        "background": "#f9fafb",
+        "foreground": "#0f172a",
+        "accent": "#0284c7",
+        "keyword": "#979797",
+        "string": "#059669",
+        "function": "#0369a1",
+        "comment": "#979797",
+        "type": "#b45309"
+      }
+    },
+    {
+      "id": "vscode.ms-vscode.cpptools-themes",
+      "name": "C/C++ Themes",
+      "version": "2.0.0",
+      "description": "UI Themes for C/C++ extension.",
+      "author": "ms-vscode",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.ms-vscode.cpptools-themes",
+      "homepage": "https://github.com/Microsoft/vscode-cpptools",
+      "themes": 4,
+      "preview": {
+        "background": "#1e1e1e",
+        "foreground": "#dadada",
+        "accent": "#007acc",
+        "keyword": "#D8A0DF",
+        "string": "#ce9178",
+        "function": "#DCDCAA",
+        "comment": "#57A64A",
+        "type": "#4EC9B0"
+      }
+    },
+    {
+      "id": "vscode.bastndev.lynx-theme",
+      "name": "Lynx Theme Pro + (Icons)",
+      "version": "5.3.6",
+      "description": "8 stunning themes + 3 icon packs for VS Code, Cursor, Windsurf & more. Dark, Light, Night, Ghibli, Fury, Kiro, NVIM & Blur. Reduce eye strain and boost your coding productivity.",
+      "author": "bastndev",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.bastndev.lynx-theme",
+      "homepage": "https://github.com/bastndev/Lynx-Theme-Pro",
+      "themes": 8,
+      "preview": {
+        "background": "#080c09",
+        "foreground": "#d4ead8",
+        "accent": "#10b981",
+        "keyword": "#ff8040",
+        "string": "#ff7ac8",
+        "function": "#10b981",
+        "comment": "#d4ead8",
+        "type": "#34d399"
+      }
+    },
+    {
+      "id": "vscode.dracula-2.dracula-2",
+      "name": "Dracula Remastered",
+      "version": "0.3.8",
+      "description": "A refined dark theme with purple and pink colors, enhanced semantic highlighting, and modern VS Code integration.",
+      "author": "Dracula-2",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.dracula-2.dracula-2",
+      "homepage": "https://github.com/TimDeen/Dracula-2",
+      "themes": 1,
+      "preview": {
+        "background": "#1e1f35",
+        "foreground": "#f8f8f2",
+        "accent": "#ff6bcb",
+        "keyword": "#ff1daf",
+        "string": "#ffd29c",
+        "function": "#21E4B3",
+        "comment": "#7A86b3",
+        "type": "#2cccff"
+      }
+    },
+    {
+      "id": "vscode.beem.monochromator",
+      "name": "Monochromator",
+      "version": "0.35.0",
+      "description": "Distraction-free monochrome coding theme",
+      "author": "beem",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.beem.monochromator",
+      "homepage": "https://codeberg.org/beem/monochromator",
+      "themes": 14,
+      "preview": {
+        "background": "#08080a",
+        "foreground": "#ccccce",
+        "accent": "#ccccce",
+        "keyword": "#ffffff",
+        "string": "#02a9ff",
+        "function": "#ffffff",
+        "comment": "#808086",
+        "type": "#ffffff"
+      }
+    },
+    {
+      "id": "vscode.gulajavaministudio.mayukaithemevsc",
+      "name": "Mayukai Theme",
+      "version": "3.3.0",
+      "description": "Dark theme based on mixing swatch of Ayu Theme, Andromeda Theme, Monokai, Material Colors, Original Gruvbox Darktooth Colors, and Dracula Colors.",
+      "author": "GulajavaMinistudio",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.gulajavaministudio.mayukaithemevsc",
+      "homepage": "https://github.com/GulajavaMinistudio/Mayukai-Theme",
+      "themes": 9,
+      "preview": {
+        "background": "#141824",
+        "foreground": "#cbcebc",
+        "accent": "#f07178",
+        "keyword": "#ffa759",
+        "string": "#bae67e",
+        "function": "#ffcc66",
+        "comment": "#5c6773",
+        "type": "#ff8f40"
+      }
+    },
+    {
+      "id": "vscode.production-sun-set.theme-sunset-gradient",
+      "name": "Sunset Gradient Theme",
+      "version": "1.0.3",
+      "description": "A warm and romantic VS Code theme inspired by beautiful sunset gradients with coral, orange, and purple accents",
+      "author": "production-sun-set",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.production-sun-set.theme-sunset-gradient",
+      "homepage": "https://github.com/buih39435-pixel/theme-sunset-gradient",
+      "themes": 2,
+      "preview": {
+        "background": "#2d1b3d",
+        "foreground": "#fff3e0",
+        "accent": "#ffa726",
+        "keyword": "#ff6b6b",
+        "string": "#ffcc02",
+        "function": "#ffa726",
+        "comment": "#8e7cc3",
+        "type": "#64b5f6"
+      }
+    },
+    {
+      "id": "vscode.fogio.jetbrains-color-theme",
+      "name": "JetBrains New UI Color Theme Extended",
+      "version": "1.0.3",
+      "description": "JetBrains IDEs New UI inspired color theme. Minimize distractions and boost productivity",
+      "author": "fogio",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.fogio.jetbrains-color-theme",
+      "homepage": "https://github.com/fogio-org/vscode-jetbrains-color-theme",
+      "themes": 2,
+      "preview": {
+        "background": "#1e1f22",
+        "foreground": "#d4d4d4",
+        "accent": "#3574f0",
+        "keyword": "#c48d69",
+        "string": "#5b9c71",
+        "function": "#56a8f5",
+        "comment": "#7a7e85",
+        "type": "#9876AA"
+      }
+    },
+    {
+      "id": "vscode.radiolevity.search-lights",
+      "name": "Search Lights",
+      "version": "1.10.3",
+      "description": "Field Lights based dark theme",
+      "author": "radiolevity",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.radiolevity.search-lights",
+      "homepage": "https://github.com/finnsjames/search-lights",
+      "themes": 4,
+      "preview": {
+        "background": "#212733",
+        "foreground": "#ddd7ca",
+        "accent": "#ffcc66",
+        "keyword": "#FF75BC",
+        "string": "#7ef2ae",
+        "function": "#7DBBD1",
+        "comment": "#5C6773",
+        "type": "#FFCC66"
+      }
+    },
+    {
+      "id": "vscode.aurora-them-creator.theme-aurora-nocturne",
+      "name": "Aurora Nocturne Dreams Theme",
+      "version": "1.0.3",
+      "description": "A mystical VS Code theme inspired by the northern lights on a polar night - featuring deep arctic blues, ethereal aurora greens, and starlight accents",
+      "author": "aurora-them-creator",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.aurora-them-creator.theme-aurora-nocturne",
+      "homepage": "https://github.com/aubineherodvulbdl/Aurora-Nocturne-Dreams",
+      "themes": 2,
+      "preview": {
+        "background": "#0b0f1c",
+        "foreground": "#e8f4ff",
+        "accent": "#8a2be2",
+        "keyword": "#8a2be2",
+        "string": "#00f5d4",
+        "function": "#5dade2",
+        "comment": "#7a8cb0",
+        "type": "#8a2be2"
+      }
+    },
+    {
+      "id": "vscode.travis.simple-dark",
+      "name": "Simple Dark",
+      "version": "1.6.3",
+      "description": "A minimalist theme suite for focus. Includes Simple Dark & Light Soft (Eye-friendly) modes.",
+      "author": "travis",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.travis.simple-dark",
+      "homepage": "https://github.com/HondryTravis/simple-dark",
+      "themes": 4,
+      "preview": {
+        "background": "#202124",
+        "foreground": "#bdbdbd",
+        "accent": "#00bfff",
+        "keyword": "#FF69B4",
+        "string": "#bdbdbd",
+        "function": "#00E673",
+        "comment": "#737373",
+        "type": "#00bfff"
+      }
+    },
+    {
+      "id": "vscode.unthrottled.doki-theme",
+      "name": "Doki Theme",
+      "version": "88.1.15",
+      "description": "Cute anime character themes!",
+      "author": "unthrottled",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.unthrottled.doki-theme",
+      "homepage": "https://github.com/doki-theme/doki-theme-vscode",
+      "themes": 88,
+      "preview": {
+        "background": "#17070e",
+        "foreground": "#f8f8f2",
+        "accent": "#1ecd86",
+        "keyword": "#FDB8EB",
+        "string": "#39e6a6",
+        "function": "#66FA36",
+        "comment": "#57745D",
+        "type": "#B9F8BC"
+      }
+    },
+    {
+      "id": "vscode.nebula-themes.nebula-aura-theme",
+      "name": "Nebula Aura Theme",
+      "version": "0.0.8",
+      "description": "A modern light, dark, violet and midnight theme pack for VS Code, Cursor and Antigravity, inspired by Omni.",
+      "author": "nebula-themes",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.nebula-themes.nebula-aura-theme",
+      "homepage": "https://github.com/luismpenholato/nebula-aura-theme",
+      "themes": 4,
+      "preview": {
+        "background": "#f2f1f8",
+        "foreground": "#2e2d3a",
+        "accent": "#9b59b6",
+        "keyword": "#9B59B6",
+        "string": "#9A8A2E",
+        "function": "#3D9A6E",
+        "comment": "#696381",
+        "type": "#2D9CDB"
+      }
+    },
+    {
+      "id": "vscode.psudo-dev.nebula-oni-theme",
+      "name": "Nebula Oni Theme",
+      "version": "3.0.0",
+      "description": "Oni (鬼) is a type of ogre youkai and \"Nebula Oni Theme\" has colors from Outer Space! Nebula Oni has a Menu with a lot of different options, give it a try, customize it!",
+      "author": "psudo-dev",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.psudo-dev.nebula-oni-theme",
+      "homepage": "https://github.com/psudo-dev/nebula-oni-theme",
+      "themes": 5,
+      "preview": {
+        "background": "#262a30",
+        "foreground": "#b4bbc8",
+        "accent": "#ffd919",
+        "keyword": "#AB80FF",
+        "string": "#50B6FF",
+        "function": "#E6E667",
+        "comment": "#6777CD",
+        "type": "#2FDE73"
+      }
+    },
+    {
+      "id": "vscode.hearth-code.hearth-theme",
+      "name": "HearthCode Theme",
+      "version": "3.7.7",
+      "description": "Warmth or structure, with meaning kept clear across Dark and Light. Includes calibrated Ember and Moss themes plus the built-in Theme Forge.",
+      "author": "hearth-code",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.hearth-code.hearth-theme",
+      "homepage": "https://github.com/hearth-code/HearthTheme",
+      "themes": 4,
+      "preview": {
+        "background": "#1b1d1a",
+        "foreground": "#d2bea2",
+        "accent": "#cb9322",
+        "keyword": "#d4b84f",
+        "string": "#caa46c",
+        "function": "#93ce75",
+        "comment": "#817566",
+        "type": "#68adc1"
+      }
+    },
+    {
+      "id": "vscode.opensumi.opensumi-default-themes",
+      "name": "OpenSumi Default Themes",
+      "version": "2.5.8",
+      "description": "The default OpenSumi themes",
+      "author": "opensumi",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.opensumi.opensumi-default-themes",
+      "homepage": "https://github.com/opensumi/Default-Themes",
+      "themes": 2,
+      "preview": {
+        "background": "#202224",
+        "foreground": "#d4d4d4",
+        "accent": "#167cdb",
+        "keyword": "#C586C0",
+        "string": "#ce9178",
+        "function": "#DCDCAA",
+        "comment": "#6A9955",
+        "type": "#4EC9B0"
+      }
+    },
+    {
+      "id": "vscode.ericgomez.phpstorm-theme",
+      "name": "PhpStorm Dark Theme",
+      "version": "1.0.21",
+      "description": "Dark Theme - PhpStorm Edition",
+      "author": "ericgomez",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.ericgomez.phpstorm-theme",
+      "homepage": "https://github.com/ericgomez/vscode-phpstorm-theme",
+      "themes": 2,
+      "preview": {
+        "background": "#1e1f22",
+        "foreground": "#b0b2b7",
+        "accent": "#3574f0",
+        "keyword": "#C69179",
+        "string": "#6AAB73",
+        "function": "#D2B982",
+        "comment": "#7A7E85",
+        "type": "#507874"
+      }
+    },
+    {
+      "id": "vscode.raymondthurman.ravenwood",
+      "name": "Ravenwood",
+      "version": "1.2.33",
+      "description": "A refined emerald forest theme for VSCode",
+      "author": "RaymondThurman",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.raymondthurman.ravenwood",
+      "homepage": "https://github.com/raythurman2386/ravenwood-vscode",
+      "themes": 10,
+      "preview": {
+        "background": "#222822",
+        "foreground": "#e8d5b7",
+        "accent": "#4ade80",
+        "keyword": "#e67e80",
+        "string": "#fbbf24",
+        "function": "#4ade80",
+        "comment": "#859289",
+        "type": "#22d3ee"
+      }
+    },
+    {
+      "id": "vscode.anan.jetbrains-darcula-theme",
+      "name": "JetBrains Darcula Theme",
+      "version": "1.3.6",
+      "description": "A theme extension for Visual Studio Code based on Darcula theme from Jetbrains IDEs with some improvements",
+      "author": "Anan",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.anan.jetbrains-darcula-theme",
+      "homepage": "https://github.com/Mohamed3nan/JetBrains-Darcula-Theme",
+      "themes": 1,
+      "preview": {
+        "background": "#2b2b2b",
+        "foreground": "#a9b7c6",
+        "accent": "#4787c9",
+        "keyword": "#CC7832",
+        "string": "#6A8759",
+        "function": "#FFC66D",
+        "comment": "#808080",
+        "type": "#e5c07b"
+      }
+    },
+    {
+      "id": "vscode.rokoroku.vscode-theme-darcula",
+      "name": "Darcula Theme",
+      "version": "1.2.3",
+      "description": "A theme extension for VS Code based on Darcula theme from Jetbrains IDEs",
+      "author": "rokoroku",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.rokoroku.vscode-theme-darcula",
+      "homepage": "https://github.com/rokoroku/vscode-theme-darcula",
+      "themes": 1,
+      "preview": {
+        "background": "#242424",
+        "foreground": "#cccccc",
+        "accent": "#007acc",
+        "keyword": "#CC8242",
+        "string": "#6A8759",
+        "function": "#FFC66D",
+        "comment": "#707070",
+        "type": "#7A9EC2"
+      }
+    },
+    {
+      "id": "vscode.radiolevity.neofloss",
+      "name": "Neofloss",
+      "version": "1.1.6",
+      "description": "Dark theme with a sweet tooth",
+      "author": "radiolevity",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.radiolevity.neofloss",
+      "homepage": "https://github.com/radiolevity/neofloss",
+      "themes": 1,
+      "preview": {
+        "background": "#1c1b1d",
+        "foreground": "#d8b2de",
+        "accent": "#9af9e9",
+        "keyword": "#BEA7FF",
+        "string": "#44D1B9",
+        "function": "#7497E6",
+        "comment": "#695A6B",
+        "type": "#FF90BF"
+      }
+    },
+    {
+      "id": "vscode.compassak.intellij-idea-new-ui",
+      "name": "IntelliJ IDEA New UI",
+      "version": "1.4.0",
+      "description": "VSCode theme pack aims to replicate the aesthetic of IntelliJ IDEA's new user interface.",
+      "author": "compassak",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.compassak.intellij-idea-new-ui",
+      "homepage": "https://github.com/compassak/vscode-intellij-idea-new-ui",
+      "themes": 3,
+      "preview": {
+        "background": "#1e1f22",
+        "foreground": "#bcbec3",
+        "accent": "#3574f0",
+        "keyword": "#ce8e6d",
+        "string": "#6aab73",
+        "function": "#57a8f5",
+        "comment": "#7A7E85",
+        "type": "#bcbec3"
+      }
+    },
+    {
+      "id": "vscode.codemos.codemos-modern",
+      "name": "Codemos Modern",
+      "version": "3.1.2",
+      "description": "Innovative, modern theme suite/hub for VS Code",
+      "author": "Codemos",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.codemos.codemos-modern",
+      "homepage": "https://github.com/EmrecanKaracayir/Codemos-Modern",
+      "themes": 2,
+      "preview": {
+        "background": "#171717",
+        "foreground": "#959595",
+        "accent": "#cb8569",
+        "keyword": "#ED63BA",
+        "string": "#CB8569",
+        "function": "#D28342",
+        "comment": "#45AA41",
+        "type": "#BFAF40"
+      }
+    },
+    {
+      "id": "vscode.armantgoldswain.seesharp-theme",
+      "name": "SeeSharp Theme",
+      "version": "5.1.10",
+      "description": "A colourful vibrant syntax theme for C# specifically",
+      "author": "ArmantGoldswain",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.armantgoldswain.seesharp-theme",
+      "homepage": "https://github.com/ArmantG/seesharp-theme",
+      "themes": 10,
+      "preview": {
+        "background": "#181a21",
+        "foreground": "#ffffff",
+        "accent": "#528bff",
+        "keyword": "#FE2149",
+        "string": "#ECEC0E",
+        "function": "#07FB3C",
+        "comment": "#8D8D8D",
+        "type": "#FE2149"
+      }
+    },
+    {
+      "id": "vscode.deadraid.genesis-vscode",
+      "name": "Genesis",
+      "version": "0.6.19",
+      "description": "Universal autonomous agent with multi-agent swarm execution, directly in your editor.",
+      "author": "deadraid",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.deadraid.genesis-vscode",
+      "homepage": "https://github.com/deadraid/genesis",
+      "themes": 12,
+      "preview": {
+        "background": "#1f1f1f",
+        "foreground": "#cccccc",
+        "accent": "#0078d4",
+        "keyword": "#4DAAFC",
+        "string": "#B4B4B4",
+        "function": "#4DAAFC",
+        "comment": "#9D9D9D",
+        "type": "#B4B4B4"
+      }
+    },
+    {
+      "id": "vscode.septwong.vscode-webstorm-theme",
+      "name": "WebStorm New Theme",
+      "version": "1.0.6",
+      "description": "A WebStorm Theme Plugin for VS Code",
+      "author": "SeptWong",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.septwong.vscode-webstorm-theme",
+      "homepage": "https://github.com/septwong/vscode-webstorm-theme",
+      "themes": 6,
+      "preview": {
+        "background": "#23272e",
+        "foreground": "#abb2bf",
+        "accent": "#4d78cc",
+        "keyword": "#c678dd",
+        "string": "#6aab73",
+        "function": "#56A8F5",
+        "comment": "#7A7E85",
+        "type": "#bcbec4"
+      }
+    },
+    {
+      "id": "vscode.fullstacklabxd.matcha-ceremony-theme",
+      "name": "Matcha Ceremony",
+      "version": "1.0.0",
+      "description": "Zen-inspired theme with muted matcha greens and warm rice paper tones",
+      "author": "fullstacklabXD",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.fullstacklabxd.matcha-ceremony-theme",
+      "homepage": "https://github.com/fullstacklabXD/matcha-theme",
+      "themes": 6,
+      "preview": {
+        "background": "#1d1f1b",
+        "foreground": "#ede8dc",
+        "accent": "#7d9b76",
+        "keyword": "#7D9B76",
+        "string": "#E8DCC4",
+        "function": "#8FA8A0",
+        "comment": "#6B6357",
+        "type": "#7BA3A3"
+      }
+    },
+    {
+      "id": "vscode.huacat.office-theme",
+      "name": "Office Theme",
+      "version": "1.4.1",
+      "description": "Microsoft Office(like) theme for VScode",
+      "author": "huacat",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.huacat.office-theme",
+      "homepage": "https://github.com/huacat1017/huacat.office-theme",
+      "themes": 8,
+      "preview": {
+        "background": "#ffffff",
+        "foreground": "#000000",
+        "accent": "#2b579a",
+        "keyword": "#4472c4",
+        "string": "#ed7d31",
+        "function": "#5b9bd5",
+        "comment": "#a5a5a5",
+        "type": "#70ad47"
+      }
+    },
+    {
+      "id": "vscode.wildberries-theme.wildberries",
+      "name": "Wildberries",
+      "version": "0.0.1",
+      "description": "A dark theme for purple lovers",
+      "author": "wildberries-theme",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.wildberries-theme.wildberries",
+      "homepage": "https://github.com/gbgabo/wildberries",
+      "themes": 2,
+      "preview": {
+        "background": "#19002e",
+        "foreground": "#ff0e82",
+        "accent": "#00ffb7",
+        "keyword": "#399ee6",
+        "string": "#a470d8",
+        "function": "#00ffb7",
+        "comment": "#490087",
+        "type": "#4cbf99"
+      }
+    },
+    {
+      "id": "vscode.juanlias.ultra-instinct-theme",
+      "name": "Ultra Instinct Theme",
+      "version": "1.0.1",
+      "description": "Sensory-first theme. 443 color keys, 3 variants — less noise, more focus.",
+      "author": "JuanLias",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.juanlias.ultra-instinct-theme",
+      "homepage": "https://github.com/juanlias/ultra-instinct-theme",
+      "themes": 3,
+      "preview": {
+        "background": "#0d1017",
+        "foreground": "#b0b5c0",
+        "accent": "#3d5afe",
+        "keyword": "#448AFF",
+        "string": "#E0E0FF",
+        "function": "#DCE0E5",
+        "comment": "#7878A0",
+        "type": "#8C9EFF"
+      }
+    },
+    {
+      "id": "vscode.artlaman.chalice-color-theme",
+      "name": "Chalice Color Themes",
+      "version": "1.0.2",
+      "description": "Minimalistic color themes based on Alabaster theme",
+      "author": "artlaman",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.artlaman.chalice-color-theme",
+      "homepage": "https://github.com/artlaman/chalice-color-theme",
+      "themes": 1,
+      "preview": {
+        "background": "#f7f7f7",
+        "foreground": "#000000",
+        "accent": "#007acc",
+        "keyword": "#000000",
+        "string": "#448C27",
+        "function": "#325CC0",
+        "comment": "#AA3731",
+        "type": "#325CC0"
+      }
+    },
+    {
+      "id": "vscode.foxhoundn.synthax",
+      "name": "Synthax",
+      "version": "0.1.13",
+      "description": "🔮 Ride on the retro waves of future with this dark colorful theme for VS Code.",
+      "author": "foxhoundn",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.foxhoundn.synthax",
+      "homepage": "https://github.com/Foxhoundn/synthax-code-theme",
+      "themes": 1,
+      "preview": {
+        "background": "#160b28",
+        "foreground": "#d0b7ff",
+        "accent": "#d65cd3",
+        "keyword": "#d0b7ff",
+        "string": "#38fdb2",
+        "function": "#ff52fc",
+        "comment": "#d0adff",
+        "type": "#c884ff"
+      }
+    },
+    {
+      "id": "vscode.dez64ru.macos-modern-theme",
+      "name": "MacOS Modern Theme",
+      "version": "2.3.18",
+      "description": "MacOS Modern is a theme pack styled to match native MacOS as closely as possible. Use recommended settings in the README.md for best results.",
+      "author": "dez64ru",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.dez64ru.macos-modern-theme",
+      "homepage": "https://github.com/davidbwaters/macos-modern-vscode-theme",
+      "themes": 11,
+      "preview": {
+        "background": "#232222",
+        "foreground": "#dddddd",
+        "accent": "#128cff",
+        "keyword": "#E12DA0",
+        "string": "#ec3d37",
+        "function": "#53b3b1",
+        "comment": "#51C34F",
+        "type": "#53b3b1"
+      }
+    },
+    {
+      "id": "vscode.amerey.blackplusplus",
+      "name": "Black++ Theme",
+      "version": "1.0.11",
+      "description": "Simple Black Theme",
+      "author": "Amerey",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.amerey.blackplusplus",
+      "homepage": "https://github.com/Amereyeu/Black-plus-plus-vscodium",
+      "themes": 1,
+      "preview": {
+        "background": "#000000",
+        "foreground": "#d4d4d4",
+        "accent": "#ffee00",
+        "keyword": "#81A1C1",
+        "string": "#A3BE8C",
+        "function": "#88C0D0",
+        "comment": "#666",
+        "type": "#8FBCBB"
+      }
+    },
+    {
+      "id": "vscode.zerodind.familiar-java-themes",
+      "name": "Familiar Java Themes",
+      "version": "0.1.7",
+      "description": "Familiar color themes inspired by Java IDEs like Eclipse and IntelliJ IDEA.",
+      "author": "zerodind",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.zerodind.familiar-java-themes",
+      "homepage": "https://gitlab.com/zerodind/familiar-java-themes",
+      "themes": 6,
+      "preview": {
+        "background": "#ffffff",
+        "foreground": "#000000",
+        "accent": "#134a8e",
+        "keyword": "#000000",
+        "string": "#000000",
+        "function": "#000000",
+        "comment": "#3F5FBF",
+        "type": "#000000"
+      }
+    },
+    {
+      "id": "vscode.astechlabs.cc-theme",
+      "name": "Clay Terminal",
+      "version": "0.8.1",
+      "description": "A warm dark/light VS Code theme with a coral terminal-inspired accent.",
+      "author": "astechlabs",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.astechlabs.cc-theme",
+      "homepage": "https://github.com/MadhuS-1605/clay-terminal",
+      "themes": 4,
+      "preview": {
+        "background": "#1a1a19",
+        "foreground": "#e4e3dd",
+        "accent": "#d97757",
+        "keyword": "#d97757",
+        "string": "#9dbb7d",
+        "function": "#e0b473",
+        "comment": "#7b7974",
+        "type": "#bcd1ca"
+      }
+    },
+    {
+      "id": "vscode.onkarchougule99.stellar-dust",
+      "name": "Stellar Dust",
+      "version": "2.1.9",
+      "description": "A beautiful, eye-friendly dark custom theme featuring custom semantic highlighting for a focused coding experience.",
+      "author": "OnkarChougule99",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.onkarchougule99.stellar-dust",
+      "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.onkarchougule99.stellar-dust",
+      "themes": 2,
+      "preview": {
+        "background": "#122a40",
+        "foreground": "#d5ced9",
+        "accent": "#e8c44a",
+        "keyword": "#e8c44a",
+        "string": "#D6D6DD",
+        "function": "#FFF6E6",
+        "comment": "#5C7A9C",
+        "type": "#FFF6E6"
+      }
+    },
+    {
+      "id": "vscode.hamza-aziane.obsidian-dark",
+      "name": "Obsidian Dark",
+      "version": "1.0.0",
+      "description": "Elegant yet practical dark theme",
+      "author": "Hamza-Aziane",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.hamza-aziane.obsidian-dark",
+      "homepage": "https://github.com/Hamza-Aziane/obsidian-dark",
+      "themes": 1,
+      "preview": {
+        "background": "#11151a",
+        "foreground": "#c9d1d9",
+        "accent": "#d1a62e",
+        "keyword": "#32c3fc",
+        "string": "#8fc778",
+        "function": "#548ec5",
+        "comment": "#61667e",
+        "type": "#e2bc52"
+      }
+    },
+    {
+      "id": "vscode.stackmason1.synesthesia-theme",
+      "name": "Synesthesia Synthwave",
+      "version": "1.0.0",
+      "description": "A synesthetic coding experience — where code becomes music and colors become sound. Retro-neon theme inspired by 80s synthwave.",
+      "author": "stackmason1",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.stackmason1.synesthesia-theme",
+      "homepage": "https://github.com/stackmason1/synesthesia-theme/",
+      "themes": 4,
+      "preview": {
+        "background": "#0f0e17",
+        "foreground": "#e4f0fb",
+        "accent": "#ff6ac1",
+        "keyword": "#FF6AC1",
+        "string": "#72F1B8",
+        "function": "#82AAFF",
+        "comment": "#676E95",
+        "type": "#89DDFF"
+      }
+    },
+    {
+      "id": "vscode.twin-themes.twin-vsc",
+      "name": "Twin Themes",
+      "version": "1.0.5",
+      "description": "A pair of sibling dark themes for VSCode & VSCodium.",
+      "author": "twin-themes",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.twin-themes.twin-vsc",
+      "homepage": "https://github.com/twin-themes/vscode",
+      "themes": 4,
+      "preview": {
+        "background": "#2a2d2c",
+        "foreground": "#bcc0cc",
+        "accent": "#d5afe9",
+        "keyword": "#D5AFE9",
+        "string": "#F1D093",
+        "function": "#E69F99",
+        "comment": "#E69F99",
+        "type": "#A4D0EF"
+      }
+    },
+    {
+      "id": "vscode.pawelborkar.jellyfish",
+      "name": "JellyFish Theme",
+      "version": "0.0.4",
+      "description": "JellyFish: Theme your code editor will love.",
+      "author": "PawelBorkar",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.pawelborkar.jellyfish",
+      "homepage": "https://github.com/pawelborkar/vscode-jellyfish",
+      "themes": 1,
+      "preview": {
+        "background": "#00002c",
+        "foreground": "#ffffff",
+        "accent": "#ffd900",
+        "keyword": "#ff006a",
+        "string": "#eeff00",
+        "function": "#00ffff",
+        "comment": "#838383",
+        "type": "#FFCB6B"
+      }
+    },
+    {
+      "id": "vscode.bisnetoinc.theme-excel",
+      "name": "Excel Theme",
+      "version": "1.0.1",
+      "description": "Microsoft Excel Theme for Visual Studio Code",
+      "author": "BisnetoInc",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.bisnetoinc.theme-excel",
+      "homepage": "https://github.com/hbisneto/excel-theme",
+      "themes": 2,
+      "preview": {
+        "background": "#1f1f1f",
+        "foreground": "#ffffff",
+        "accent": "#33c481",
+        "keyword": "#C586C0",
+        "string": "#ce9178",
+        "function": "#DCDCAA",
+        "comment": "#6A9955",
+        "type": "#4EC9B0"
+      }
+    },
+    {
+      "id": "vscode.fullstacksjs.fullstacksjs-vscode",
+      "name": "FullstacksJS Theme",
+      "version": "1.7.0",
+      "description": "FullstacksJS community Minimal VSCode and Cursor theme based on FlatRemix",
+      "author": "FullstacksJS",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.fullstacksjs.fullstacksjs-vscode",
+      "homepage": "https://github.com/fullstacksjs/vscode-theme",
+      "themes": 4,
+      "preview": {
+        "background": "#23252e",
+        "foreground": "#ffffff",
+        "accent": "#ffd86e",
+        "keyword": "#ff8888",
+        "string": "#c6ff90",
+        "function": "#ffa478",
+        "comment": "#ffffff",
+        "type": "#35eeff"
+      }
+    },
+    {
+      "id": "vscode.tettetrouse0t.geode-amethyst-theme",
+      "name": "Geode Amethyst",
+      "version": "1.0.0",
+      "description": "Crystalline beauty hidden in darkness — a theme forged in geological time. Inspired by amethyst geodes with their deep purple crystals.",
+      "author": "tettetrouse0t",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.tettetrouse0t.geode-amethyst-theme",
+      "homepage": "https://github.com/tettetrouse0t/geode-amethyst-theme",
+      "themes": 6,
+      "preview": {
+        "background": "#1a1b26",
+        "foreground": "#c0caf5",
+        "accent": "#9d7cd8",
+        "keyword": "#9D7CD8",
+        "string": "#73DACA",
+        "function": "#7AA2F7",
+        "comment": "#565F89",
+        "type": "#2AC3DE"
+      }
+    },
+    {
+      "id": "vscode.mateocerquetella.xcode-12-theme",
+      "name": "Xcode Theme",
+      "version": "5.2.0",
+      "description": "Xcode Theme, ported to VS Code",
+      "author": "mateocerquetella",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.mateocerquetella.xcode-12-theme",
+      "homepage": "https://github.com/MateoCerquetella/xcode-theme",
+      "themes": 8,
+      "preview": {
+        "background": "#292a30",
+        "foreground": "#dfdfe0",
+        "accent": "#35628b",
+        "keyword": "#FF7AB2",
+        "string": "#FC6A5D",
+        "function": "#dfdfe0",
+        "comment": "#A0D07D",
+        "type": "#E5CFFF"
+      }
+    },
+    {
+      "id": "vscode.esthorace.python-theme",
+      "name": "Esmerald",
+      "version": "2.8.5",
+      "description": "It's a beautiful theme",
+      "author": "esthorace",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.esthorace.python-theme",
+      "homepage": "https://github.com/esthorace/esmerald",
+      "themes": 2,
+      "preview": {
+        "background": "#0f1724",
+        "foreground": "#a4b1cd",
+        "accent": "#9fef00",
+        "keyword": "#d79bff",
+        "string": "#D2FF77",
+        "function": "#ffda96",
+        "comment": "#889eda",
+        "type": "#5DEED1"
+      }
+    },
+    {
+      "id": "vscode.sjsepan.sjsepan-matrixish",
+      "name": "sjsepan.matrixish",
+      "version": "0.4.1",
+      "description": "Matrix-like, but with borders and with matching colors in Activity- and Side-bars.",
+      "author": "sjsepan",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.sjsepan.sjsepan-matrixish",
+      "homepage": "https://gitlab.com/sjsepan/sjsepan-matrixish",
+      "themes": 5,
+      "preview": {
+        "background": "#000000",
+        "foreground": "#0fcf24",
+        "accent": "#097e16",
+        "keyword": "#88ff88",
+        "string": "#88ff88",
+        "function": "#00cc00",
+        "comment": "#006600",
+        "type": "#88ff88"
+      }
+    },
+    {
+      "id": "vscode.haudraufhaun.hyper-is-theme",
+      "name": "Hyper.is Theme",
+      "version": "0.1.1",
+      "description": "color theme based on the standard Hyperterm colors",
+      "author": "haudraufhaun",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.haudraufhaun.hyper-is-theme",
+      "homepage": "https://github.com/haudraufhaun/hyper-is-theme",
+      "themes": 2,
+      "preview": {
+        "background": "#000000",
+        "foreground": "#ffffff",
+        "accent": "#c839c5",
+        "keyword": "#68FDFE",
+        "string": "#67F86F",
+        "function": "#6A76FB",
+        "comment": "#C7C7C7",
+        "type": "#FFFA72"
+      }
+    },
+    {
+      "id": "vscode.alonsodomin.blueforest-theme",
+      "name": "BlueForest Theme",
+      "version": "0.3.2",
+      "description": "A dark, high contrast, blue theme",
+      "author": "alonsodomin",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.alonsodomin.blueforest-theme",
+      "homepage": "https://github.com/alonsodomin/blueforest-vscode-theme",
+      "themes": 1,
+      "preview": {
+        "background": "#141f2e",
+        "foreground": "#d0d0d0",
+        "accent": "#0099ff",
+        "keyword": "#0099FF",
+        "string": "#80ff80",
+        "function": "#a2cff5",
+        "comment": "#a0ffa0",
+        "type": "#808000"
+      }
+    },
+    {
+      "id": "vscode.azir-11.azir-vscode-theme",
+      "name": "Azir Theme",
+      "version": "1.2.1",
+      "description": "Azir theme for VS Code",
+      "author": "Azir-11",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.azir-11.azir-vscode-theme",
+      "homepage": "https://github.com/Azir-11/azir-theme",
+      "themes": 17,
+      "preview": {
+        "background": "#ffffff",
+        "foreground": "#1f2328",
+        "accent": "#0969da",
+        "keyword": "#946a00",
+        "string": "#004db3",
+        "function": "#946a00",
+        "comment": "#647182",
+        "type": "#2c8141"
+      }
+    },
+    {
+      "id": "vscode.huacat.pink-theme",
+      "name": "Huacat Pink Theme",
+      "version": "1.1.2",
+      "description": "A cool pink theme for VScode.",
+      "author": "huacat",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.huacat.pink-theme",
+      "homepage": "https://github.com/huacat1017/huacat.pink-theme",
+      "themes": 2,
+      "preview": {
+        "background": "#f5eaf5",
+        "foreground": "#72696f",
+        "accent": "#dd71b9",
+        "keyword": "#5782df",
+        "string": "#64afa9",
+        "function": "#a770db",
+        "comment": "#72696f",
+        "type": "#e2b213"
+      }
+    },
+    {
+      "id": "vscode.janw4ld.lambda-black",
+      "name": "Lambda Black",
+      "version": "0.2.20",
+      "description": "Default dark+ theme optimised for Haskell, groovy, C, python, nix & hcl syntax highlighting with a black background variant.",
+      "author": "janw4ld",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.janw4ld.lambda-black",
+      "homepage": "https://github.com/janw4ld/lambda-black",
+      "themes": 2,
+      "preview": {
+        "background": "#000000",
+        "foreground": "#d4d4d4",
+        "accent": "#007acc",
+        "keyword": "#c586c0",
+        "string": "#ce9178",
+        "function": "#dcdcaa",
+        "comment": "#7e6b5f",
+        "type": "#569cd6"
+      }
+    },
+    {
+      "id": "vscode.charcoal-mint-studio.theme-charcoal-mint",
+      "name": "Theme Charcoal Mint Co.",
+      "version": "1.0.2",
+      "description": "A refreshing dark theme with charcoal background and mint accents that reduces eye strain and brings natural freshness to your coding experience",
+      "author": "charcoal-mint-studio",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.charcoal-mint-studio.theme-charcoal-mint",
+      "homepage": "https://github.com/danganhtai959-droid/The-Charcoal-Mint-VS-Code",
+      "themes": 2,
+      "preview": {
+        "background": "#2c2f2c",
+        "foreground": "#f0f5f0",
+        "accent": "#98fb98",
+        "keyword": "#98fb98",
+        "string": "#9fe2bf",
+        "function": "#74c0fc",
+        "comment": "#9aa09a",
+        "type": "#da77f2"
+      }
+    },
+    {
+      "id": "vscode.usernamehw.prism",
+      "name": "Light Theme ( Prism )",
+      "version": "1.2.0",
+      "description": "Light theme for ... eyes or something.",
+      "author": "usernamehw",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.usernamehw.prism",
+      "homepage": "https://github.com/usernamehw/vscode-theme-prism",
+      "themes": 2,
+      "preview": {
+        "background": "#f8f6f5",
+        "foreground": "#494949",
+        "accent": "#9ba6b1",
+        "keyword": "#07a",
+        "string": "#690",
+        "function": "#d93556",
+        "comment": "#8d9aa6",
+        "type": "#708090"
+      }
+    },
+    {
+      "id": "vscode.raillyhugo.one-hunter",
+      "name": "One Hunter Theme",
+      "version": "1.4.1",
+      "description": "A VSCode theme inspired by Vercel Theme and One Dark Pro",
+      "author": "RaillyHugo",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.raillyhugo.one-hunter",
+      "homepage": "https://github.com/Railly/one-hunter-vscode",
+      "themes": 10,
+      "preview": {
+        "background": "#191d21",
+        "foreground": "#e0e0e0",
+        "accent": "#f4457d",
+        "keyword": "#F4457D",
+        "string": "#5BD1B9",
+        "function": "#43AAF9",
+        "comment": "#888888",
+        "type": "#F9C35A"
+      }
+    },
+    {
+      "id": "vscode.sndst00m.starfall-visual-studio-code",
+      "name": "Starfall",
+      "version": "0.5.4",
+      "description": "A cosmic matte-blue, elegant and colorful Visual Studio Code theme.",
+      "author": "sndst00m",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.sndst00m.starfall-visual-studio-code",
+      "homepage": "https://github.com/SNDST00M/starfall-visual-studio-code",
+      "themes": 4,
+      "preview": {
+        "background": "#1b2636",
+        "foreground": "#cacde2",
+        "accent": "#54bef2",
+        "keyword": "#67e8f9",
+        "string": "#c3e88d",
+        "function": "#54bef2",
+        "comment": "#4e5c7e",
+        "type": "#ffcb6b"
+      }
+    },
+    {
+      "id": "vscode.zhangcy.claude-themes-by-zhangcy",
+      "name": "Claude Themes by Zhangcy",
+      "version": "0.0.6",
+      "description": "Light and dark themes inspired by Claude",
+      "author": "Zhangcy",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "light",
+        "dark"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.zhangcy.claude-themes-by-zhangcy",
+      "homepage": "https://github.com/cyNew/claude-theme-vscode",
+      "themes": 4,
+      "preview": {
+        "background": "#faf8f1",
+        "foreground": "#3d3826",
+        "accent": "#cb6441",
+        "keyword": "#cb6441",
+        "string": "#547a3a",
+        "function": "#8b67c9",
+        "comment": "#85837d",
+        "type": "#2a7eb5"
+      }
+    },
+    {
+      "id": "vscode.expo.vscode-expo-theme",
+      "name": "Expo Theme",
+      "version": "1.4.2",
+      "description": "Expo-inspired editor and syntax theme.",
+      "author": "expo",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.expo.vscode-expo-theme",
+      "homepage": "https://github.com/expo/vscode-expo-theme",
+      "themes": 2,
+      "preview": {
+        "background": "#111113",
+        "foreground": "#d4d4d4",
+        "accent": "#0090ff",
+        "keyword": "#9a5cd0",
+        "string": "#ffca16",
+        "function": "#3b9eff",
+        "comment": "#d4d4d4",
+        "type": "#3dd68c"
+      }
+    },
+    {
+      "id": "vscode.roveliese.roveliese-vsc",
+      "name": "Roveliese for VS Code",
+      "version": "3.8.6",
+      "description": "Atmospheric rose theme for VS Code",
+      "author": "Roveliese",
+      "permissions": [],
+      "tags": [
+        "theme",
+        "dark",
+        "light"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.roveliese.roveliese-vsc",
+      "homepage": "https://github.com/roveliese/vscode",
+      "themes": 3,
+      "preview": {
+        "background": "#14141c",
+        "foreground": "#cdd6f4",
+        "accent": "#7c6a8a",
+        "keyword": "#72c1bd",
+        "string": "#cd82c9",
+        "function": "#de9f75",
+        "comment": "#e4e4e4",
+        "type": "#de9f75"
+      }
     }
   ]
 }

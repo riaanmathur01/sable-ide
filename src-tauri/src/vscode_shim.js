@@ -1236,19 +1236,25 @@ function __glob(pattern) {
 
 const __root = () => __sable.workspace.root;
 /** The same folder objects while the folder doesn't change (extensions compare them). */
-let __folderCache = { root: undefined, folders: undefined };
+let __folderCache = { key: undefined, folders: undefined };
 function __workspaceFolders() {
   const root = __root();
-  if (__folderCache.root !== root) {
-    __folderCache = { root, folders: root ? [{ uri: Uri.file(root), name: root.split("/").pop(), index: 0 }] : undefined };
+  // Every folder of a multi-root workspace, root first.
+  const paths = __sable.workspace.folders?.length ? __sable.workspace.folders : root ? [root] : [];
+  const key = paths.join("\n");
+  if (__folderCache.key !== key) {
+    __folderCache = {
+      key,
+      folders: paths.length ? paths.map((path, index) => ({ uri: Uri.file(path), name: path.split(/[/\\]/).pop(), index })) : undefined,
+    };
   }
   return __folderCache.folders;
 }
 /** Node's fs (Node runtime only). */
 let __node = null;
 const __insideRoot = (path) => {
-  const root = __root();
-  return !!root && (path === root || path.startsWith(`${root}/`));
+  const folders = __sable.workspace.folders?.length ? __sable.workspace.folders : [__root()].filter(Boolean);
+  return folders.some((root) => path === root || path.startsWith(`${root}/`));
 };
 const __relative = (path) => {
   const root = __root();
@@ -1999,12 +2005,16 @@ function __load(modules, cache, path) {
 // --- Activation -------------------------------------------------------------------------------------
 
 function __wireEvents(sable) {
-  // The open folder changing (Sable has one at a time).
-  let lastRoot = sable.workspace.root;
-  sable.workspace.onDidChangeRoot?.((root) => {
-    const folder = (path, index) => ({ uri: Uri.file(path), name: path.split("/").pop(), index });
-    __onDidChangeWorkspaceFolders.fire({ added: root ? [folder(root, 0)] : [], removed: lastRoot ? [folder(lastRoot, 0)] : [] });
-    lastRoot = root;
+  // Folders opened, added or removed (multi-root workspaces).
+  const currentFolders = () => (sable.workspace.folders?.length ? [...sable.workspace.folders] : sable.workspace.root ? [sable.workspace.root] : []);
+  let lastFolders = currentFolders();
+  sable.workspace.onDidChangeRoot?.(() => {
+    const folders = currentFolders();
+    const folder = (path, index) => ({ uri: Uri.file(path), name: path.split(/[/\\]/).pop(), index });
+    const added = folders.filter((path) => !lastFolders.includes(path)).map((path) => folder(path, folders.indexOf(path)));
+    const removed = lastFolders.filter((path) => !folders.includes(path)).map((path) => folder(path, lastFolders.indexOf(path)));
+    lastFolders = folders;
+    if (added.length || removed.length) __onDidChangeWorkspaceFolders.fire({ added, removed });
   });
   // Keep window.activeTextEditor current, and pass events on.
   sable.events.onDidChangeActiveEditor(async () => __onDidChangeActiveTextEditor.fire(await __refresh() ?? undefined));

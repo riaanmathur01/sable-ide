@@ -1,4 +1,4 @@
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "../events";
 import { aiCancel, aiComplete, aiStream, type AiProvider } from "../ipc";
 import { createAccumulator } from "./streaming";
 import type {

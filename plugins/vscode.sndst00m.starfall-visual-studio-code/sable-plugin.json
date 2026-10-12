@@ -1,0 +1,36 @@
+{
+  "author": "sndst00m",
+  "description": "A cosmic matte-blue, elegant and colorful Visual Studio Code theme.",
+  "homepage": "https://github.com/SNDST00M/starfall-visual-studio-code",
+  "id": "vscode.sndst00m.starfall-visual-studio-code",
+  "minSableVersion": "0.3.8",
+  "name": "Starfall",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-sndst00m-starfall-visual-studio-code-starfall",
+      "label": "Starfall",
+      "path": "themes/starfall.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-sndst00m-starfall-visual-studio-code-starfall-darker",
+      "label": "Starfall Darker",
+      "path": "themes/starfall-darker.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-sndst00m-starfall-visual-studio-code-starfall-ocean",
+      "label": "Starfall Ocean",
+      "path": "themes/starfall-ocean.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-sndst00m-starfall-visual-studio-code-starfall-palenight",
+      "label": "Starfall Palenight",
+      "path": "themes/starfall-palenight.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.5.4"
+}

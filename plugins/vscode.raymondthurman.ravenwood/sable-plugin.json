@@ -1,0 +1,72 @@
+{
+  "author": "RaymondThurman",
+  "description": "A refined emerald forest theme for VSCode",
+  "homepage": "https://github.com/raythurman2386/ravenwood-vscode",
+  "id": "vscode.raymondthurman.ravenwood",
+  "minSableVersion": "0.3.8",
+  "name": "Ravenwood",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-raymondthurman-ravenwood-ravenwood-dark",
+      "label": "Ravenwood Dark",
+      "path": "themes/ravenwood-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-raymondthurman-ravenwood-ravenwood-light",
+      "label": "Ravenwood Light",
+      "path": "themes/ravenwood-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-raymondthurman-ravenwood-ravenwood-asgard",
+      "label": "Ravenwood Asgard",
+      "path": "themes/ravenwood-asgard.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-raymondthurman-ravenwood-ravenwood-vanaheim",
+      "label": "Ravenwood Vanaheim",
+      "path": "themes/ravenwood-vanaheim.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-raymondthurman-ravenwood-ravenwood-alfheim",
+      "label": "Ravenwood Alfheim",
+      "path": "themes/ravenwood-alfheim.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-raymondthurman-ravenwood-ravenwood-svartalfheim",
+      "label": "Ravenwood Svartalfheim",
+      "path": "themes/ravenwood-svartalfheim.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-raymondthurman-ravenwood-ravenwood-nidavellir",
+      "label": "Ravenwood Nidavellir",
+      "path": "themes/ravenwood-nidavellir.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-raymondthurman-ravenwood-ravenwood-jotunheim",
+      "label": "Ravenwood Jotunheim",
+      "path": "themes/ravenwood-jotunheim.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-raymondthurman-ravenwood-ravenwood-muspelheim",
+      "label": "Ravenwood Muspelheim",
+      "path": "themes/ravenwood-muspelheim.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-raymondthurman-ravenwood-ravenwood-helheim",
+      "label": "Ravenwood Helheim",
+      "path": "themes/ravenwood-helheim.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.2.33"
+}

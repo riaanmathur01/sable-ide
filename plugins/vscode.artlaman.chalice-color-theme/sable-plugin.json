@@ -1,0 +1,18 @@
+{
+  "author": "artlaman",
+  "description": "Minimalistic color themes based on Alabaster theme",
+  "homepage": "https://github.com/artlaman/chalice-color-theme",
+  "id": "vscode.artlaman.chalice-color-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Chalice Color Themes",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-artlaman-chalice-color-theme-chalice-color-theme-light",
+      "label": "Light (Chalice)",
+      "path": "themes/chalice-color-theme-light.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "1.0.2"
+}

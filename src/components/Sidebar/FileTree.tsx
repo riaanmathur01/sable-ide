@@ -3,7 +3,8 @@ import { isRemoteActive } from "../../lib/backend";
 import { chooseAndUpload, downloadFromRemote } from "../../lib/transfer";
 import { ChevronDown, ChevronRight, Folder, FolderOpen } from "lucide-react";
 import { ask as confirmNative } from "@tauri-apps/plugin-dialog";
-import { useWorkspaceStore } from "../../store/workspaceStore";
+import { folderName, useWorkspaceStore } from "../../store/workspaceStore";
+import { openFolderInNewWindow, removeFolderFromWorkspace } from "../../lib/workspaceCommands";
 import { useTabsStore } from "../../store/tabsStore";
 import { useUiStore } from "../../store/uiStore";
 import { useDiagnosticsStore } from "../../store/diagnosticsStore";
@@ -32,6 +33,8 @@ const OVERSCAN_ROWS = 10;
 interface FlatRow {
   entry: FsEntry;
   depth: number;
+  /** A workspace folder's own row (multi-root workspaces). */
+  root?: boolean;
 }
 
 interface MenuState {
@@ -96,6 +99,7 @@ let compareSelection: string | null = null;
 
 export function FileTree() {
   const rootPath = useWorkspaceStore((state) => state.rootPath);
+  const folders = useWorkspaceStore((state) => state.folders);
   const childrenByPath = useWorkspaceStore((state) => state.childrenByPath);
   const expandedPaths = useWorkspaceStore((state) => state.expandedPaths);
   const toggleDirectory = useWorkspaceStore((state) => state.toggleDirectory);
@@ -141,9 +145,17 @@ export function FileTree() {
   const rows = useMemo(() => {
     if (!rootPath) return [];
     const output: FlatRow[] = [];
-    flattenVisibleRows(rootPath, childrenByPath, expandedPaths, 0, output);
+    if (folders.length > 1) {
+      // Multi-root: each folder is a top-level row, its tree beneath.
+      for (const folder of folders) {
+        output.push({ entry: { name: folderName(folder), path: folder, isDirectory: true }, depth: 0, root: true });
+        if (expandedPaths.has(folder)) flattenVisibleRows(folder, childrenByPath, expandedPaths, 1, output);
+      }
+    } else {
+      flattenVisibleRows(rootPath, childrenByPath, expandedPaths, 0, output);
+    }
     return output;
-  }, [rootPath, childrenByPath, expandedPaths]);
+  }, [rootPath, folders, childrenByPath, expandedPaths]);
 
   // A folder shows the error dot if any file inside it has errors, so
   // problems in collapsed folders are still visible. Errors are few, so
@@ -319,9 +331,20 @@ export function FileTree() {
   }
 
   function menuItemsFor(entry: FsEntry): ContextMenuItem[] {
+    const isRoot = folders.length > 1 && folders.includes(entry.path);
+    const local = !isRemoteActive();
+    if (isRoot) {
+      return [
+        { label: "New File", onSelect: () => startCreate("file", entry) },
+        { label: "New Folder", onSelect: () => startCreate("folder", entry) },
+        ...(local ? [{ label: "Open in New Window", onSelect: () => void openFolderInNewWindow(entry.path) }] : []),
+        { label: "Remove Folder from Workspace", onSelect: () => void removeFolderFromWorkspace(entry.path) },
+      ];
+    }
     return [
       { label: "New File", onSelect: () => startCreate("file", entry) },
       { label: "New Folder", onSelect: () => startCreate("folder", entry) },
+      ...(entry.isDirectory && local ? [{ label: "Open in New Window", onSelect: () => void openFolderInNewWindow(entry.path) }] : []),
       {
         label: "Rename",
         onSelect: () => {
@@ -409,11 +432,12 @@ export function FileTree() {
               transform: `translateY(${firstVisibleIndex * ROW_HEIGHT}px)`,
             }}
           >
-            {visibleRows.map(({ entry, depth }) => (
+            {visibleRows.map(({ entry, depth, root }) => (
               <TreeRow
                 key={entry.path}
                 entry={entry}
                 depth={depth}
+                root={root}
                 isExpanded={expandedPaths.has(entry.path)}
                 isRenaming={renamingPath === entry.path}
                 hasError={entryHasError(entry)}
@@ -440,7 +464,7 @@ export function FileTree() {
                   else openFile(entry.path);
                 }}
                 onDragStart={(event) => {
-                  if (event.button !== 0 || renamingPath === entry.path)
+                  if (event.button !== 0 || renamingPath === entry.path || root)
                     return;
                   setDrag({
                     entry,
@@ -483,6 +507,7 @@ export function FileTree() {
 interface TreeRowProps {
   entry: FsEntry;
   depth: number;
+  root?: boolean;
   isExpanded: boolean;
   isRenaming: boolean;
   hasError: boolean;
@@ -500,6 +525,7 @@ interface TreeRowProps {
 function TreeRow({
   entry,
   depth,
+  root,
   isExpanded,
   isRenaming,
   hasError,
@@ -529,7 +555,7 @@ function TreeRow({
 
   return (
     <div
-      className={isDropTarget ? "tree-row drop-target" : "tree-row"}
+      className={`tree-row${root ? " root" : ""}${isDropTarget ? " drop-target" : ""}`}
       style={{ paddingLeft: 8 + depth * 14 }}
       data-tree-path={entry.path}
       data-tree-dir={entry.isDirectory ? "1" : "0"}

@@ -23,7 +23,7 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use crate::events::{emit, Events};
 #[cfg(feature = "desktop")]
-use tauri::{AppHandle, State};
+use tauri::State;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
@@ -451,6 +451,22 @@ fn nested_cargo_manifests(root: &Path) -> Vec<String> {
     found
 }
 
+/// Every folder of a multi-root workspace as LSP `workspaceFolders`.
+fn with_folders(mut params: Value, folders: &[String]) -> Value {
+    if folders.len() > 1 {
+        params["workspaceFolders"] = Value::Array(
+            folders
+                .iter()
+                .map(|folder| {
+                    let name = std::path::Path::new(folder).file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
+                    json!({ "uri": path_to_uri(folder), "name": name })
+                })
+                .collect(),
+        );
+    }
+    params
+}
+
 fn base_initialize_params(root_path: &str) -> Value {
     let root_uri = path_to_uri(root_path);
     json!({
@@ -464,6 +480,8 @@ fn base_initialize_params(root_path: &str) -> Value {
                 // into whole-workspace analysis (diagnostics for every file,
                 // not just open ones).
                 "configuration": true,
+                // Folders are added and removed in multi-root workspaces.
+                "workspaceFolders": true,
                 // Servers may push edits (e.g. after running a quick-fix
                 // command); the frontend applies them.
                 "applyEdit": true,
@@ -682,15 +700,31 @@ fn server_request_result(method: &str, message: &Value) -> Value {
 #[cfg(feature = "desktop")]
 #[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn start_language_server(
-    app: AppHandle,
-    manager: State<'_, LspManager>,
+    window: tauri::WebviewWindow,
+    managers: State<'_, crate::windows::PerWindow<LspManager>>,
     extension: String,
     root_path: String,
+    workspace_folders: Option<Vec<String>>,
 ) -> Result<(), String> {
-    start(crate::events::for_app(&app), &manager, extension, root_path).await
+    start_with_folders(
+        crate::events::for_window(&window),
+        &managers.get(window.label()),
+        extension,
+        root_path,
+        workspace_folders.unwrap_or_default(),
+    )
+    .await
 }
 
-pub async fn start(events: Events, manager: &LspManager, extension: String, root_path: String) -> Result<(), String> {
+/// `start`, for a multi-root workspace: the server is told about every
+/// folder (`root_path` is the first).
+pub async fn start_with_folders(
+    events: Events,
+    manager: &LspManager,
+    extension: String,
+    root_path: String,
+    workspace_folders: Vec<String>,
+) -> Result<(), String> {
     let spec = server_for_extension(&extension, &root_path)
         .ok_or_else(|| format!("No language server configured for .{extension}"))?;
     let server_id = spec.id.clone();
@@ -711,7 +745,7 @@ pub async fn start(events: Events, manager: &LspManager, extension: String, root
 
     // From here, on any early return we must clear the `starting` flag.
     let result =
-        spawn_and_handshake(&events, &spec, &root_path).await;
+        spawn_and_handshake(&events, &spec, &root_path, &workspace_folders).await;
     match result {
         Ok((mut child, writer)) => {
             let mut state = manager.0.lock().await;
@@ -744,6 +778,7 @@ async fn spawn_and_handshake(
     events: &Events,
     spec: &ServerSpec,
     root_path: &str,
+    workspace_folders: &[String],
 ) -> Result<(Child, mpsc::UnboundedSender<String>), String> {
     emit(events, "lsp:status", json!({ "state": "starting", "server": spec.name, "id": spec.id }));
 
@@ -800,7 +835,7 @@ async fn spawn_and_handshake(
         "jsonrpc": "2.0",
         "id": INITIALIZE_ID,
         "method": "initialize",
-        "params": initialize_params(&root_path, &spec.id),
+        "params": with_folders(initialize_params(root_path, &spec.id), workspace_folders),
     });
     framing::write_message(&mut stdin, &initialize.to_string())
         .await
@@ -984,8 +1019,8 @@ fn startup_failure(spec: &ServerSpec, stderr_tail: &[String]) -> String {
 /// `didClose`). A no-op if that server isn't running.
 #[cfg(feature = "desktop")]
 #[cfg_attr(feature = "desktop", tauri::command)]
-pub async fn lsp_notify(manager: State<'_, LspManager>, extension: String, method: String, params: Value) -> Result<(), String> {
-    notify(&manager, extension, method, params).await
+pub async fn lsp_notify(window: tauri::WebviewWindow, managers: State<'_, crate::windows::PerWindow<LspManager>>, extension: String, method: String, params: Value) -> Result<(), String> {
+    notify(&managers.get(window.label()), extension, method, params).await
 }
 
 pub async fn notify(manager: &LspManager, extension: String, method: String, params: Value) -> Result<(), String> {
@@ -1015,13 +1050,14 @@ pub async fn notify(manager: &LspManager, extension: String, method: String, par
 #[cfg(feature = "desktop")]
 #[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn lsp_request(
-    manager: State<'_, LspManager>,
+    window: tauri::WebviewWindow,
+    managers: State<'_, crate::windows::PerWindow<LspManager>>,
     extension: String,
     method: String,
     params: Value,
     id: i64,
 ) -> Result<(), String> {
-    request(&manager, extension, method, params, id).await
+    request(&managers.get(window.label()), extension, method, params, id).await
 }
 
 pub async fn request(manager: &LspManager, extension: String, method: String, params: Value, id: i64) -> Result<(), String> {
@@ -1050,8 +1086,8 @@ pub async fn request(manager: &LspManager, extension: String, method: String, pa
 /// discarded when they finish (see `generation`).
 #[cfg(feature = "desktop")]
 #[cfg_attr(feature = "desktop", tauri::command)]
-pub async fn stop_language_servers(manager: State<'_, LspManager>) -> Result<(), String> {
-    stop_all(&manager).await
+pub async fn stop_language_servers(window: tauri::WebviewWindow, managers: State<'_, crate::windows::PerWindow<LspManager>>) -> Result<(), String> {
+    stop_all(&managers.get(window.label())).await
 }
 
 pub async fn stop_all(manager: &LspManager) -> Result<(), String> {
@@ -1081,8 +1117,8 @@ pub async fn stop_all(manager: &LspManager) -> Result<(), String> {
 /// via `workspace/configuration`) and re-resolves every import.
 #[cfg(feature = "desktop")]
 #[cfg_attr(feature = "desktop", tauri::command)]
-pub async fn lsp_set_python_path(manager: State<'_, LspManager>, path: Option<String>) -> Result<(), String> {
-    set_python_path(&manager, path).await
+pub async fn lsp_set_python_path(window: tauri::WebviewWindow, managers: State<'_, crate::windows::PerWindow<LspManager>>, path: Option<String>) -> Result<(), String> {
+    set_python_path(&managers.get(window.label()), path).await
 }
 
 pub async fn set_python_path(manager: &LspManager, path: Option<String>) -> Result<(), String> {

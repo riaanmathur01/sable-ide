@@ -1,0 +1,36 @@
+{
+  "author": "FullstacksJS",
+  "description": "FullstacksJS community Minimal VSCode and Cursor theme based on FlatRemix",
+  "homepage": "https://github.com/fullstacksjs/vscode-theme",
+  "id": "vscode.fullstacksjs.fullstacksjs-vscode",
+  "minSableVersion": "0.3.8",
+  "name": "FullstacksJS Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-fullstacksjs-fullstacksjs-vscode-fullstacksjs-legacy",
+      "label": "FullstacksJS (Legacy)",
+      "path": "themes/fullstacksjs-legacy.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-fullstacksjs-fullstacksjs-vscode-fullstacksjs-main",
+      "label": "FullstacksJS (Main)",
+      "path": "themes/fullstacksjs-main.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-fullstacksjs-fullstacksjs-vscode-fullstacksjs-dark",
+      "label": "FullstacksJS (Dark)",
+      "path": "themes/fullstacksjs-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-fullstacksjs-fullstacksjs-vscode-fullstacksjs-warm",
+      "label": "FullstacksJS (Warm)",
+      "path": "themes/fullstacksjs-warm.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.7.0"
+}

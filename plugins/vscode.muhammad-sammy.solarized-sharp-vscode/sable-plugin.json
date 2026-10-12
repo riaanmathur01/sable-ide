@@ -1,0 +1,24 @@
+{
+  "author": "muhammad-sammy",
+  "description": "Solarized Sharp color themes, from VS Code",
+  "homepage": "https://github.com/muhammadsammy/solarized-sharp-vscode",
+  "id": "vscode.muhammad-sammy.solarized-sharp-vscode",
+  "minSableVersion": "0.3.8",
+  "name": "Solarized Sharp",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-muhammad-sammy-solarized-sharp-vscode-solarized-sharp-dark",
+      "label": "Solarized Sharp Dark",
+      "path": "themes/solarized-sharp-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-muhammad-sammy-solarized-sharp-vscode-solarized-sharp-darker",
+      "label": "Solarized Sharp Darker",
+      "path": "themes/solarized-sharp-darker.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.0.4"
+}

@@ -1,0 +1,48 @@
+{
+  "author": "johnpapa",
+  "description": "Preferred dark/light themes by John Papa",
+  "homepage": "https://github.com/johnpapa/vscode-winteriscoming",
+  "id": "vscode.johnpapa.winteriscoming",
+  "minSableVersion": "0.3.8",
+  "name": "Winter is Coming Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-johnpapa-winteriscoming-winter-is-coming-dark-blue",
+      "label": "Winter is Coming (Dark Blue)",
+      "path": "themes/winter-is-coming-dark-blue.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-johnpapa-winteriscoming-winter-is-coming-dark-blue-no-italics",
+      "label": "Winter is Coming (Dark Blue - No Italics)",
+      "path": "themes/winter-is-coming-dark-blue-no-italics.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-johnpapa-winteriscoming-winter-is-coming-light",
+      "label": "Winter is Coming (Light)",
+      "path": "themes/winter-is-coming-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-johnpapa-winteriscoming-winter-is-coming-light-no-italics",
+      "label": "Winter is Coming (Light - No Italics)",
+      "path": "themes/winter-is-coming-light-no-italics.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-johnpapa-winteriscoming-winter-is-coming-dark-black",
+      "label": "Winter is Coming (Dark Black)",
+      "path": "themes/winter-is-coming-dark-black.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-johnpapa-winteriscoming-winter-is-coming-dark-black-no-italics",
+      "label": "Winter is Coming (Dark Black - No Italics)",
+      "path": "themes/winter-is-coming-dark-black-no-italics.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.5.0"
+}

@@ -1,0 +1,18 @@
+{
+  "author": "alonsodomin",
+  "description": "A dark, high contrast, blue theme",
+  "homepage": "https://github.com/alonsodomin/blueforest-vscode-theme",
+  "id": "vscode.alonsodomin.blueforest-theme",
+  "minSableVersion": "0.3.8",
+  "name": "BlueForest Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-alonsodomin-blueforest-theme-blueforest",
+      "label": "BlueForest",
+      "path": "themes/blueforest.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.3.2"
+}

@@ -1,0 +1,18 @@
+{
+  "author": "srcery-colors",
+  "description": "Srcery theme based on the srcery-colors themes",
+  "homepage": "https://github.com/srcery-colors/srcery-vscode",
+  "id": "vscode.srcery-colors.srcery-colors",
+  "minSableVersion": "0.3.8",
+  "name": "Srcery (official port)",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-srcery-colors-srcery-colors-srcery",
+      "label": "Srcery",
+      "path": "themes/srcery.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.4.0"
+}

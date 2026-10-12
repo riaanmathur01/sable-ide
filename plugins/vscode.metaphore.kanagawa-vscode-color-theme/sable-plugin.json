@@ -1,0 +1,30 @@
+{
+  "author": "metaphore",
+  "description": "A port of the Kanagawa Neovim color theme for Visual Studio Code, including all three flavors Wave, Dragon and Lotus.",
+  "homepage": "https://github.com/metapho-re/kanagawa-vscode-theme",
+  "id": "vscode.metaphore.kanagawa-vscode-color-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Kanagawa Flavors",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-metaphore-kanagawa-vscode-color-theme-kanagawa-wave",
+      "label": "Kanagawa Wave",
+      "path": "themes/kanagawa-wave.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-metaphore-kanagawa-vscode-color-theme-kanagawa-dragon",
+      "label": "Kanagawa Dragon",
+      "path": "themes/kanagawa-dragon.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-metaphore-kanagawa-vscode-color-theme-kanagawa-lotus",
+      "label": "Kanagawa Lotus",
+      "path": "themes/kanagawa-lotus.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "0.5.0"
+}

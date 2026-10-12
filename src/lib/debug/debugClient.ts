@@ -1,5 +1,5 @@
 import { invoke } from "../backend";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "../events";
 import { savedExceptionSelection, useDebugStore, type ExceptionFilter, type StackFrame } from "../../store/debugStore";
 import { useTerminalStore } from "../../store/terminalStore";
 

@@ -1,0 +1,18 @@
+{
+  "author": "astro-build",
+  "description": "A theme featuring cool blues, minty greens, and soft purples",
+  "homepage": "https://github.com/withastro/houston-vscode",
+  "id": "vscode.astro-build.houston",
+  "minSableVersion": "0.3.8",
+  "name": "Houston",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-astro-build-houston-houston",
+      "label": "Houston",
+      "path": "themes/houston.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.1.2"
+}

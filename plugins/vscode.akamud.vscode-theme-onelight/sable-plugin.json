@@ -1,0 +1,18 @@
+{
+  "author": "akamud",
+  "description": "One Light Theme based on Atom",
+  "homepage": "https://github.com/akamud/vscode-theme-onelight",
+  "id": "vscode.akamud.vscode-theme-onelight",
+  "minSableVersion": "0.3.8",
+  "name": "Atom One Light Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-akamud-vscode-theme-onelight-atom-one-light",
+      "label": "Atom One Light",
+      "path": "themes/atom-one-light.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "2.3.0"
+}

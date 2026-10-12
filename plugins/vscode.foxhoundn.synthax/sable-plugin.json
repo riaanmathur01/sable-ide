@@ -1,0 +1,18 @@
+{
+  "author": "foxhoundn",
+  "description": "🔮 Ride on the retro waves of future with this dark colorful theme for VS Code.",
+  "homepage": "https://github.com/Foxhoundn/synthax-code-theme",
+  "id": "vscode.foxhoundn.synthax",
+  "minSableVersion": "0.3.8",
+  "name": "Synthax",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-foxhoundn-synthax-synthax",
+      "label": "Synthax",
+      "path": "themes/synthax.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.1.13"
+}

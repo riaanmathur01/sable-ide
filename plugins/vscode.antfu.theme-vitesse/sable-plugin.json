@@ -1,0 +1,42 @@
+{
+  "author": "antfu",
+  "description": "Vitesse theme for VS Code",
+  "homepage": "https://github.com/antfu/vscode-theme-vitesse",
+  "id": "vscode.antfu.theme-vitesse",
+  "minSableVersion": "0.3.8",
+  "name": "Vitesse Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-antfu-theme-vitesse-vitesse-light",
+      "label": "Vitesse Light",
+      "path": "themes/vitesse-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-antfu-theme-vitesse-vitesse-dark",
+      "label": "Vitesse Dark",
+      "path": "themes/vitesse-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-antfu-theme-vitesse-vitesse-black",
+      "label": "Vitesse Black",
+      "path": "themes/vitesse-black.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-antfu-theme-vitesse-vitesse-light-soft",
+      "label": "Vitesse Light Soft",
+      "path": "themes/vitesse-light-soft.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-antfu-theme-vitesse-vitesse-dark-soft",
+      "label": "Vitesse Dark Soft",
+      "path": "themes/vitesse-dark-soft.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.0.1"
+}

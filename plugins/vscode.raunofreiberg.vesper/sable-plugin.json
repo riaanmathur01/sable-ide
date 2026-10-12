@@ -1,0 +1,18 @@
+{
+  "author": "raunofreiberg",
+  "description": "Peppermint and orange flavored dark theme for VSCode.",
+  "homepage": "https://github.com/raunofreiberg/vesper",
+  "id": "vscode.raunofreiberg.vesper",
+  "minSableVersion": "0.3.8",
+  "name": "Vesper",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-raunofreiberg-vesper-vesper",
+      "label": "Vesper",
+      "path": "themes/vesper.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.0.39"
+}

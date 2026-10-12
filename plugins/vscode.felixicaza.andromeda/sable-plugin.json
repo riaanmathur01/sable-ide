@@ -1,0 +1,36 @@
+{
+  "author": "FelixIcaza",
+  "description": "Dark theme with a taste of the universe",
+  "homepage": "https://github.com/FelixIcaza/Andromeda",
+  "id": "vscode.felixicaza.andromeda",
+  "minSableVersion": "0.3.8",
+  "name": "Andromeda Fork",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-felixicaza-andromeda-andromeda",
+      "label": "Andromeda",
+      "path": "themes/andromeda.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-felixicaza-andromeda-andromeda-bordered",
+      "label": "Andromeda Bordered",
+      "path": "themes/andromeda-bordered.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-felixicaza-andromeda-andromeda-italic-bordered",
+      "label": "Andromeda Italic Bordered",
+      "path": "themes/andromeda-italic-bordered.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-felixicaza-andromeda-andromeda-italic",
+      "label": "Andromeda Italic",
+      "path": "themes/andromeda-italic.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.7.1"
+}

@@ -1,0 +1,30 @@
+{
+  "author": "enkia",
+  "description": "A clean Visual Studio Code theme that celebrates the lights of Downtown Tokyo at night.",
+  "homepage": "https://github.com/enkia/tokyo-night-vscode-theme",
+  "id": "vscode.enkia.tokyo-night",
+  "minSableVersion": "0.3.8",
+  "name": "Tokyo Night",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-enkia-tokyo-night-tokyo-night",
+      "label": "Tokyo Night",
+      "path": "themes/tokyo-night.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-enkia-tokyo-night-tokyo-night-storm",
+      "label": "Tokyo Night Storm",
+      "path": "themes/tokyo-night-storm.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-enkia-tokyo-night-tokyo-night-light",
+      "label": "Tokyo Night Light",
+      "path": "themes/tokyo-night-light.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "1.1.2"
+}

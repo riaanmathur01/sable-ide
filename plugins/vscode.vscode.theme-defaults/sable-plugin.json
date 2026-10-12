@@ -1,0 +1,54 @@
+{
+  "author": "vscode",
+  "description": "The default Visual Studio light and dark themes",
+  "homepage": "https://github.com/eclipse-theia/vscode-builtin-extensions",
+  "id": "vscode.vscode.theme-defaults",
+  "minSableVersion": "0.3.8",
+  "name": "VS Code Default Themes",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-vscode-theme-defaults-default-dark",
+      "label": "Dark+",
+      "path": "themes/default-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-vscode-theme-defaults-default-dark-modern",
+      "label": "Dark Modern",
+      "path": "themes/default-dark-modern.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-vscode-theme-defaults-default-light",
+      "label": "Light+",
+      "path": "themes/default-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-vscode-theme-defaults-default-light-modern",
+      "label": "Light Modern",
+      "path": "themes/default-light-modern.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-vscode-theme-defaults-visual-studio-dark",
+      "label": "Dark (Visual Studio)",
+      "path": "themes/visual-studio-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-vscode-theme-defaults-visual-studio-light",
+      "label": "Light (Visual Studio)",
+      "path": "themes/visual-studio-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-vscode-theme-defaults-default-high-contrast",
+      "label": "Dark High Contrast",
+      "path": "themes/default-high-contrast.json",
+      "uiTheme": "hc-black"
+    }
+  ],
+  "version": "1.95.3"
+}

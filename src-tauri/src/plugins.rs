@@ -62,7 +62,8 @@ pub struct Manifest {
     pub description: String,
     #[serde(default)]
     pub author: String,
-    /// The ES module to run, relative to the plugin folder.
+    /// The ES module to run, relative to the plugin folder. Empty for a
+    /// plugin without code (only themes): its manifest has no "main".
     #[serde(default = "default_main")]
     pub main: String,
     #[serde(default)]
@@ -79,6 +80,25 @@ pub struct Manifest {
     /// Node), with the sandboxed worker as the fallback without Node.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub runtime: Option<String>,
+    /// Color themes (VS Code color-theme JSON files in the folder).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub themes: Vec<ThemeContribution>,
+}
+
+/// `{"id": "nord", "label": "Nord", "uiTheme": "vs-dark", "path": "themes/nord.json"}`
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ThemeContribution {
+    pub id: String,
+    pub label: String,
+    /// "vs-dark", "vs" (light), "hc-black" or "hc-light", as in VS Code.
+    #[serde(default = "default_ui_theme")]
+    pub ui_theme: String,
+    pub path: String,
+}
+
+fn default_ui_theme() -> String {
+    "vs-dark".into()
 }
 
 /// `{"command": "convert", "key": "ctrl+alt+c", "mac": "cmd+alt+c"}`
@@ -173,8 +193,14 @@ pub fn read_manifest(folder: &Path) -> Result<Manifest, String> {
     let file = folder.join(MANIFEST_FILE);
     let text = std::fs::read_to_string(&file)
         .map_err(|_| format!("No {MANIFEST_FILE} in {}", folder.display()))?;
-    let manifest: Manifest =
+    let raw: serde_json::Value =
         serde_json::from_str(&text).map_err(|error| format!("{MANIFEST_FILE} is invalid: {error}"))?;
+    let mut manifest: Manifest =
+        serde_json::from_value(raw.clone()).map_err(|error| format!("{MANIFEST_FILE} is invalid: {error}"))?;
+    // A plugin that only adds themes has no code to run.
+    if raw.get("main").is_none() && !manifest.themes.is_empty() {
+        manifest.main = String::new();
+    }
     validate(&manifest, folder)?;
     Ok(manifest)
 }
@@ -215,15 +241,33 @@ fn validate(manifest: &Manifest, folder: &Path) -> Result<(), String> {
             ));
         }
     }
-    let main = Path::new(&manifest.main);
-    let inside = main.is_relative() && main.components().all(|part| matches!(part, std::path::Component::Normal(_)));
-    if !inside || !(manifest.main.ends_with(".js") || manifest.main.ends_with(".mjs")) {
+    for theme in &manifest.themes {
+        if theme.id.trim().is_empty() || theme.label.trim().is_empty() {
+            return Err("Every theme needs an \"id\" and a \"label\"".into());
+        }
+        if !inside_folder(&theme.path) || !theme.path.ends_with(".json") {
+            return Err(format!("A theme's \"path\" must be a .json file inside the plugin folder (got \"{}\")", theme.path));
+        }
+        if !folder.join(&theme.path).is_file() {
+            return Err(format!("The theme file {} is missing", theme.path));
+        }
+    }
+    if manifest.main.is_empty() {
+        return Ok(());
+    }
+    if !inside_folder(&manifest.main) || !(manifest.main.ends_with(".js") || manifest.main.ends_with(".mjs")) {
         return Err(format!("\"main\" must be a .js file inside the plugin folder (got \"{}\")", manifest.main));
     }
-    if !folder.join(main).is_file() {
+    if !folder.join(&manifest.main).is_file() {
         return Err(format!("The plugin's main file {} is missing", manifest.main));
     }
     Ok(())
+}
+
+/// A relative path that stays inside the plugin folder.
+fn inside_folder(path: &str) -> bool {
+    let path = Path::new(path);
+    !path.as_os_str().is_empty() && path.is_relative() && path.components().all(|part| matches!(part, std::path::Component::Normal(_)))
 }
 
 fn info(manifest: Manifest, entry: &RegistryEntry) -> PluginInfo {
@@ -564,6 +608,22 @@ pub fn plugin_folder_root() -> Result<PathBuf, String> {
 pub fn plugin_folder(id: &str) -> Result<PathBuf, String> {
     let registry = read_registry()?;
     Ok(registry.plugins.get(id).ok_or_else(|| format!("No plugin {id}"))?.path.clone())
+}
+
+/// One of a plugin's theme files (VS Code color-theme JSON).
+#[tauri::command]
+pub fn plugin_read_theme(id: String, path: String) -> Result<String, String> {
+    let registry = read_registry()?;
+    let entry = registry.plugins.get(&id).ok_or_else(|| format!("No plugin {id}"))?;
+    let manifest = read_manifest(&entry.path)?;
+    if !manifest.themes.iter().any(|theme| theme.path == path) {
+        return Err(format!("{id} has no theme {path}"));
+    }
+    let file = entry.path.join(&path);
+    if std::fs::metadata(&file).map(|metadata| metadata.len()).unwrap_or(0) > MAX_SOURCE_BYTES {
+        return Err(format!("{path} is too large (over 10 MB)"));
+    }
+    std::fs::read_to_string(&file).map_err(|error| format!("Could not read {path}: {error}"))
 }
 
 /// A plugin's main module source (the frontend runs it in a worker).

@@ -1,0 +1,78 @@
+{
+  "author": "liviuschera",
+  "description": "Noctis is a collection of light & dark themes with a well balanced blend of warm and cold colors",
+  "homepage": "https://github.com/liviuschera/noctis",
+  "id": "vscode.liviuschera.noctis",
+  "minSableVersion": "0.3.8",
+  "name": "Noctis",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-liviuschera-noctis-noctis-lux",
+      "label": "Noctis Lux",
+      "path": "themes/noctis-lux.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-liviuschera-noctis-noctis-hibernus",
+      "label": "Noctis Hibernus",
+      "path": "themes/noctis-hibernus.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-liviuschera-noctis-noctis-lilac",
+      "label": "Noctis Lilac",
+      "path": "themes/noctis-lilac.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-liviuschera-noctis-noctis",
+      "label": "Noctis",
+      "path": "themes/noctis.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-liviuschera-noctis-noctis-azureus",
+      "label": "Noctis Azureus",
+      "path": "themes/noctis-azureus.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-liviuschera-noctis-noctis-bordo",
+      "label": "Noctis Bordo",
+      "path": "themes/noctis-bordo.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-liviuschera-noctis-noctis-obscuro",
+      "label": "Noctis Obscuro",
+      "path": "themes/noctis-obscuro.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-liviuschera-noctis-noctis-sereno",
+      "label": "Noctis Sereno",
+      "path": "themes/noctis-sereno.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-liviuschera-noctis-noctis-uva",
+      "label": "Noctis Uva",
+      "path": "themes/noctis-uva.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-liviuschera-noctis-noctis-viola",
+      "label": "Noctis Viola",
+      "path": "themes/noctis-viola.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-liviuschera-noctis-noctis-minimus",
+      "label": "Noctis Minimus",
+      "path": "themes/noctis-minimus.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "10.43.3"
+}

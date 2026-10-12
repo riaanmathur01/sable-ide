@@ -1,0 +1,18 @@
+{
+  "author": "Amerey",
+  "description": "Simple Black Theme",
+  "homepage": "https://github.com/Amereyeu/Black-plus-plus-vscodium",
+  "id": "vscode.amerey.blackplusplus",
+  "minSableVersion": "0.3.8",
+  "name": "Black++ Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-amerey-blackplusplus-black-yellow-fever",
+      "label": "Black++ Yellow Fever",
+      "path": "themes/black-yellow-fever.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.0.11"
+}

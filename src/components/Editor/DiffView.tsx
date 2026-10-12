@@ -3,7 +3,7 @@ import { Columns2, Minus, Plus, Rows2 } from "lucide-react";
 import type * as MonacoTypes from "monaco-editor";
 import { gitCommitFileDiff, gitFileDiff, readFile } from "../../lib/ipc";
 import { getModelValue } from "../../lib/editorRegistry";
-import { useWorkspaceStore } from "../../store/workspaceStore";
+import { folderOf, useWorkspaceStore } from "../../store/workspaceStore";
 import type { DiffSource } from "../../store/tabsStore";
 import { monaco } from "../../lib/monacoSetup";
 import { getSetting, useSettingsStore } from "../../store/settingsStore";
@@ -120,7 +120,8 @@ export default function DiffView({ source }: DiffViewProps) {
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const root = useWorkspaceStore.getState().rootPath;
+    // The repository of the folder the file is in (multi-root workspaces).
+    const root = folderOf(filePath) ?? useWorkspaceStore.getState().rootPath;
     if (!root) return;
 
     let originalModel: ReturnType<typeof monaco.editor.createModel> | null =

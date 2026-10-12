@@ -1,0 +1,66 @@
+{
+  "author": "GulajavaMinistudio",
+  "description": "Dark theme based on mixing swatch of Ayu Theme, Andromeda Theme, Monokai, Material Colors, Original Gruvbox Darktooth Colors, and Dracula Colors.",
+  "homepage": "https://github.com/GulajavaMinistudio/Mayukai-Theme",
+  "id": "vscode.gulajavaministudio.mayukaithemevsc",
+  "minSableVersion": "0.3.8",
+  "name": "Mayukai Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-gulajavaministudio-mayukaithemevsc-mayukai-mirage",
+      "label": "Mayukai Mirage",
+      "path": "themes/mayukai-mirage.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-gulajavaministudio-mayukaithemevsc-mayukai-semantic-mirage",
+      "label": "Mayukai Semantic Mirage",
+      "path": "themes/mayukai-semantic-mirage.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-gulajavaministudio-mayukaithemevsc-mayukai-mirage-gruvbox-darktooth",
+      "label": "Mayukai Mirage Gruvbox Darktooth",
+      "path": "themes/mayukai-mirage-gruvbox-darktooth.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-gulajavaministudio-mayukaithemevsc-mayukai-dark",
+      "label": "Mayukai Dark",
+      "path": "themes/mayukai-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-gulajavaministudio-mayukaithemevsc-mayukai-mono",
+      "label": "Mayukai Mono",
+      "path": "themes/mayukai-mono.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-gulajavaministudio-mayukaithemevsc-mayukai-alucard",
+      "label": "Mayukai Alucard",
+      "path": "themes/mayukai-alucard.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-gulajavaministudio-mayukaithemevsc-mayukai-sunset",
+      "label": "Mayukai Sunset",
+      "path": "themes/mayukai-sunset.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-gulajavaministudio-mayukaithemevsc-mayukai-reversal",
+      "label": "Mayukai Reversal",
+      "path": "themes/mayukai-reversal.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-gulajavaministudio-mayukaithemevsc-mayukai-midnight",
+      "label": "Mayukai Midnight",
+      "path": "themes/mayukai-midnight.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "3.3.0"
+}

@@ -1,0 +1,23 @@
+{
+  "author": "OnkarChougule99",
+  "description": "A beautiful, eye-friendly dark custom theme featuring custom semantic highlighting for a focused coding experience.",
+  "id": "vscode.onkarchougule99.stellar-dust",
+  "minSableVersion": "0.3.8",
+  "name": "Stellar Dust",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-onkarchougule99-stellar-dust-stellar-dust",
+      "label": "Stellar Dust",
+      "path": "themes/stellar-dust.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-onkarchougule99-stellar-dust-stellar-dust-italic",
+      "label": "Stellar Dust Italic",
+      "path": "themes/stellar-dust-italic.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "2.1.9"
+}

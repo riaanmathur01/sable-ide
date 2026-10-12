@@ -1,0 +1,36 @@
+{
+  "author": "nebula-themes",
+  "description": "A modern light, dark, violet and midnight theme pack for VS Code, Cursor and Antigravity, inspired by Omni.",
+  "homepage": "https://github.com/luismpenholato/nebula-aura-theme",
+  "id": "vscode.nebula-themes.nebula-aura-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Nebula Aura Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-nebula-themes-nebula-aura-theme-nebula-aura-light",
+      "label": "Nebula Aura Light",
+      "path": "themes/nebula-aura-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-nebula-themes-nebula-aura-theme-nebula-aura-dark",
+      "label": "Nebula Aura Dark",
+      "path": "themes/nebula-aura-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-nebula-themes-nebula-aura-theme-nebula-aura-violet",
+      "label": "Nebula Aura Violet",
+      "path": "themes/nebula-aura-violet.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-nebula-themes-nebula-aura-theme-nebula-aura-midnight",
+      "label": "Nebula Aura Midnight",
+      "path": "themes/nebula-aura-midnight.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.0.8"
+}

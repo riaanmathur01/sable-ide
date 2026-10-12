@@ -1,0 +1,24 @@
+{
+  "author": "esthorace",
+  "description": "It's a beautiful theme",
+  "homepage": "https://github.com/esthorace/esmerald",
+  "id": "vscode.esthorace.python-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Esmerald",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-esthorace-python-theme-esmerald",
+      "label": "Esmerald",
+      "path": "themes/esmerald.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-esthorace-python-theme-esmerald-light",
+      "label": "Esmerald Light",
+      "path": "themes/esmerald-light.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "2.8.5"
+}

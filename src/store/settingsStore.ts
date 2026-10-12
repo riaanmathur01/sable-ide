@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { loadSettings, saveSettings, settingsPath } from "../lib/ipc";
+import { broadcast } from "../lib/windows";
 import { useUiStore } from "./uiStore";
 import { cachedThemeId, type ThemeId } from "../lib/themes";
 
@@ -118,7 +119,7 @@ export const SETTINGS_SCHEMA: SettingSpec[] = [
   { key: "editor.wordWrap", section: "Editor", type: "enum", options: [{ value: "off", label: "Off" }, { value: "on", label: "Wrap at viewport" }], label: "Word Wrap", description: "Wrap long lines. ⌥Z toggles it.", default: "off" },
   { key: "editor.rulers", section: "Editor", type: "string", placeholder: "e.g. 80, 120", label: "Rulers", description: "Comma-separated columns at which to draw vertical rulers.", default: "" },
   // --- Editor: appearance ---------------------------------------------------
-  { key: "workbench.colorTheme", section: "Editor Appearance", type: "enum", options: [{ value: "sable-dark", label: "Sable Dark" }, { value: "jetbrains-darcula", label: "JetBrains Darcula" }, { value: "jetbrains-dark", label: "JetBrains Dark (New UI)" }, { value: "jetbrains-islands-dark", label: "JetBrains Islands Dark" }, { value: "catppuccin-latte", label: "Catppuccin Latte (light)" }, { value: "catppuccin-frappe", label: "Catppuccin Frappé" }, { value: "catppuccin-macchiato", label: "Catppuccin Macchiato" }, { value: "catppuccin-mocha", label: "Catppuccin Mocha" }], label: "Color Theme", description: "Colors for the whole app: editor syntax, panels, and terminal. The JetBrains themes use the exact colors of JetBrains' schemes, per language as in each JetBrains IDE; the Catppuccin flavours (Latte is light) use the official palette and match the JetBrains Catppuccin plugin.", default: "sable-dark" },
+  { key: "workbench.colorTheme", section: "Editor Appearance", type: "enum", options: [{ value: "sable-dark", label: "Sable Dark" }, { value: "jetbrains-darcula", label: "JetBrains Darcula" }, { value: "jetbrains-dark", label: "JetBrains Dark (New UI)" }, { value: "jetbrains-islands-dark", label: "JetBrains Islands Dark" }, { value: "catppuccin-latte", label: "Catppuccin Latte (light)" }, { value: "catppuccin-frappe", label: "Catppuccin Frappé" }, { value: "catppuccin-macchiato", label: "Catppuccin Macchiato" }, { value: "catppuccin-mocha", label: "Catppuccin Mocha" }], label: "Color Theme", description: "Colors for the whole app: editor syntax, panels, and terminal. The JetBrains themes use the exact colors of JetBrains' schemes, per language as in each JetBrains IDE; the Catppuccin flavours (Latte is light) use the official palette and match the JetBrains Catppuccin plugin. Theme plugins (Plugins → Marketplace, or a converted VS Code theme) add more.", default: "sable-dark" },
   { key: "remote.autoForwardPorts", section: "Remote", type: "boolean", label: "Forward Ports Automatically", description: "In a remote window, when a program on the remote starts listening on a port (a dev server, say), make it reachable at localhost here. Ports already open when you connect, and ports below 1024, aren't forwarded by themselves; forward any port from the Ports panel.", default: true },
   { key: "workbench.viewSwitcher", section: "Editor Appearance", type: "enum", options: [{ value: "activityBar", label: "Activity bar (VS Code style)" }, { value: "sidebarHeader", label: "Icons in the sidebar header" }, { value: "menu", label: "Hamburger menu" }], label: "View Switcher", description: "How you switch between Explorer, Search, Source Control, History, Run and Debug and Plugins: a vertical bar of icons at the left edge (like VS Code), a row of icons at the top of the sidebar, or one ☰ menu button.", default: "activityBar" },
   { key: "editor.lineNumbers", section: "Editor Appearance", type: "enum", options: [{ value: "on", label: "On" }, { value: "relative", label: "Relative" }, { value: "off", label: "Off" }], label: "Line Numbers", description: "How line numbers are shown.", default: "on" },
@@ -187,6 +188,8 @@ function validate(spec: SettingSpec, value: unknown): unknown {
     case "string":
       return typeof value === "string" ? value : undefined;
     case "enum":
+      // A plugin's theme is any id (it may not have loaded yet).
+      if (spec.key === "workbench.colorTheme") return typeof value === "string" && value ? value : undefined;
       return spec.options.some((option) => option.value === value)
         ? value
         : undefined;
@@ -217,9 +220,10 @@ function persist(values: Settings) {
       const value = values[spec.key];
       if (value !== spec.default) overrides[spec.key] = value;
     }
-    saveSettings(overrides).catch((error) =>
-      useUiStore.getState().setLastError(String(error)),
-    );
+    saveSettings(overrides)
+      // Other windows read it again.
+      .then(() => broadcast("sable:settings-changed"))
+      .catch((error) => useUiStore.getState().setLastError(String(error)));
   }, SAVE_DEBOUNCE_MS);
 }
 

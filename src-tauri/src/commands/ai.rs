@@ -16,7 +16,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Manager, State};
 
 const KEYCHAIN_SERVICE: &str = "com.riaanmathur.sable";
 const PROVIDERS: [&str; 3] = ["anthropic", "openai", "google"];
@@ -345,7 +345,7 @@ impl SseParser {
 /// aborts it mid-flight, so stopping actually stops the request.
 #[tauri::command]
 pub async fn ai_stream(
-    app: AppHandle,
+    window: tauri::WebviewWindow,
     state: State<'_, AiState>,
     provider: String,
     model: String,
@@ -370,6 +370,8 @@ pub async fn ai_stream(
     };
     let request = with_auth(state.client.post(&url), &provider, &key).json(&body);
     let events_id = stream_id.clone();
+    // To the window that asked (each window has its own agent chats).
+    let events = crate::events::for_window(&window);
 
     let task = tokio::spawn(async move {
         use futures_util::StreamExt;
@@ -385,12 +387,12 @@ pub async fn ai_stream(
         while let Some(chunk) = stream.next().await {
             let chunk = chunk.map_err(|error| format!("Stream interrupted: {error}"))?;
             for data in parser.feed(&chunk) {
-                let _ = app.emit("ai:stream", json!({ "streamId": events_id, "data": data }));
+                events("ai:stream", json!({ "streamId": events_id, "data": data }));
             }
         }
         // Events and the command's return travel separately; this marker
         // tells the frontend it has received every event.
-        let _ = app.emit("ai:stream", json!({ "streamId": events_id, "done": true }));
+        events("ai:stream", json!({ "streamId": events_id, "done": true }));
         Ok(())
     });
     state

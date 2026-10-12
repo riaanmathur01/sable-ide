@@ -15,7 +15,7 @@ import {
 import { useDebugStore } from "./debugStore";
 import { useTabsStore } from "./tabsStore";
 import { useUiStore } from "./uiStore";
-import { useWorkspaceStore } from "./workspaceStore";
+import { folderOf, useWorkspaceStore } from "./workspaceStore";
 import { useCoverageStore } from "./coverageStore";
 
 /**
@@ -171,7 +171,7 @@ export const useTestStore = create<TestState>((_set, get) => ({
       return;
     }
     // The project root of that runner (Go: the module, not the package).
-    const root = useWorkspaceStore.getState().rootPath ?? context.projectDir;
+    const root = folderOf(context.projectDir) ?? useWorkspaceStore.getState().rootPath ?? context.projectDir;
     await execute(
       { ...context, projectDir: context.framework === "go" ? root : context.projectDir },
       { project: true },

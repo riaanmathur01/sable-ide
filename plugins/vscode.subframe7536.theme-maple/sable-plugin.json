@@ -1,0 +1,24 @@
+{
+  "author": "subframe7536",
+  "description": "A colorful editor theme, support light or dark mode, with medium brightness and low saturation.",
+  "homepage": "https://github.com/subframe7536/vscode-theme-maple",
+  "id": "vscode.subframe7536.theme-maple",
+  "minSableVersion": "0.3.8",
+  "name": "Maple Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-subframe7536-theme-maple-maple-dark",
+      "label": "Maple Dark",
+      "path": "themes/maple-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-subframe7536-theme-maple-maple-light",
+      "label": "Maple Light",
+      "path": "themes/maple-light.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "1.0.0"
+}

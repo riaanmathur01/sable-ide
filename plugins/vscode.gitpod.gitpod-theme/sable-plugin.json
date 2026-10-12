@@ -1,0 +1,24 @@
+{
+  "author": "gitpod",
+  "description": "Gitpod Theme for VS Code",
+  "homepage": "https://github.com/gitpod-io/gitpod-vscode-theme",
+  "id": "vscode.gitpod.gitpod-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Gitpod Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-gitpod-gitpod-theme-gitpod-dark",
+      "label": "Gitpod Dark",
+      "path": "themes/gitpod-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-gitpod-gitpod-theme-gitpod-light",
+      "label": "Gitpod Light",
+      "path": "themes/gitpod-light.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "0.0.2"
+}

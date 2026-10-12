@@ -1,0 +1,24 @@
+{
+  "author": "expo",
+  "description": "Expo-inspired editor and syntax theme.",
+  "homepage": "https://github.com/expo/vscode-expo-theme",
+  "id": "vscode.expo.vscode-expo-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Expo Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-expo-vscode-expo-theme-expo-dark",
+      "label": "Expo Dark",
+      "path": "themes/expo-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-expo-vscode-expo-theme-expo-light",
+      "label": "Expo Light",
+      "path": "themes/expo-light.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "1.4.2"
+}

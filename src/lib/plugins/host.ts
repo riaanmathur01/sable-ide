@@ -1,7 +1,7 @@
 import type * as MonacoTypes from "monaco-editor";
 import { invoke } from "../backend";
 import { getVersion } from "@tauri-apps/api/app";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "../events";
 import { listWorkspaceFiles, runShell } from "../ipc";
 import { getEditor, pathFromUri, whenMonaco } from "../editorRegistry";
 import { readCurrentText, writeFileContents } from "../fileContents";
@@ -166,7 +166,9 @@ export class PluginRuntime {
       this.cleanups.push(onPluginEvent((name, payload) => this.dispatchEvent(name, payload)));
       this.cleanups.push(
         useWorkspaceStore.subscribe((state, previous) => {
-          if (state.rootPath !== previous.rootPath) this.post({ type: "root", root: state.rootPath });
+          if (state.rootPath !== previous.rootPath || state.folders !== previous.folders) {
+            this.post({ type: "root", root: state.rootPath, folders: state.folders });
+          }
         }),
       );
       sableVersion ??= getVersion().catch(() => "");
@@ -179,6 +181,7 @@ export class PluginRuntime {
         source,
         manifest: this.info.manifest,
         root: useWorkspaceStore.getState().rootPath,
+        folders: useWorkspaceStore.getState().folders,
         sableVersion: await sableVersion,
       });
       await activated;

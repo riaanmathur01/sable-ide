@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { listen } from "@tauri-apps/api/event";
+import { isMainWindow } from "../lib/windows";
+import { listen } from "../lib/events";
 import { invoke, invokeLocal, setRemoteActive } from "../lib/backend";
 import { getSetting } from "./settingsStore";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -77,7 +78,8 @@ interface RemoteState {
   /** Close the connection and the remote folder; back to local. */
   close: () => Promise<void>;
   /** Choose a folder on the remote and open it. */
-  openFolder: () => Promise<void>;
+  /** Choose a folder on the remote and open it (or add it to the workspace). */
+  openFolder: (options?: { add?: boolean }) => Promise<void>;
   /** The remote menu (status bar button). */
   showMenu: () => Promise<void>;
   pickSshHost: () => Promise<void>;
@@ -136,7 +138,8 @@ function recentRemotes(): RecentRemote[] {
 }
 
 function remember(target: RemoteTarget, folder: string) {
-  writeJson(LAST_REMOTE_KEY, { target, folder });
+  // Other windows remember theirs with the window (lib/windows.ts).
+  if (isMainWindow) writeJson(LAST_REMOTE_KEY, { target, folder });
   const recent = recentRemotes().filter((entry) => !(sameTarget(entry.target, target) && entry.folder === folder));
   writeJson(RECENT_REMOTES_KEY, [{ target, folder }, ...recent].slice(0, MAX_RECENT));
 }
@@ -339,7 +342,7 @@ export const useRemoteStore = create<RemoteState>((set, get) => ({
     useWorkspaceStore.getState().closeWorkspace();
   },
 
-  openFolder: async () => {
+  openFolder: async (options = {}) => {
     const { agent } = get();
     if (!agent) return;
     const ui = useUiStore.getState();
@@ -361,7 +364,8 @@ export const useRemoteStore = create<RemoteState>((set, get) => ({
         ...(!paths.isRoot(dir) ? [{ label: "..", detail: "up a folder" }] : []),
         ...folders.map((entry) => ({ label: `${entry.name}/` })),
       ];
-      const choice = await ui.openPickOrText(items, `Open a folder on ${get().label} — ${tidy(dir, agent.home)}`, "Go to %s");
+      const verb = options.add ? "Add a folder from" : "Open a folder on";
+      const choice = await ui.openPickOrText(items, `${verb} ${get().label} — ${tidy(dir, agent.home)}`, "Go to %s");
       if (choice === null) return;
       if (typeof choice === "string") {
         // A typed path: absolute, ~/…, or relative to here.
@@ -374,6 +378,10 @@ export const useRemoteStore = create<RemoteState>((set, get) => ({
       }
       if (choice === 0) {
         const { target } = get();
+        if (options.add) {
+          await useWorkspaceStore.getState().addFolder(dir);
+          return;
+        }
         await useWorkspaceStore.getState().openWorkspace(dir);
         if (target && useWorkspaceStore.getState().rootPath === dir) remember(target, dir);
         return;

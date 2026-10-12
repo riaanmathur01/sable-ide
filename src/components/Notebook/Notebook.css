@@ -1,0 +1,874 @@
+/* The notebook editor (.ipynb). Colors come from Sable's tokens only. */
+
+.nb-root {
+  --nb-cell-bg: color-mix(in srgb, var(--bg-panel) 72%, var(--bg-base));
+  --nb-gutter: 68px;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-base);
+  color: var(--text);
+  outline: none;
+  container-type: inline-size;
+}
+
+.nb-message {
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-muted);
+  padding: 24px;
+  text-align: center;
+  user-select: text;
+}
+
+/* --- Toolbar ------------------------------------------------------------------------- */
+
+.nb-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 36px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-base);
+  flex-shrink: 0;
+  /* The kernel menu hangs below. */
+  position: relative;
+  z-index: 10;
+}
+
+.nb-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.nb-toolbar-separator {
+  width: 1px;
+  height: 16px;
+  margin: 0 6px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.nb-toolbar-spacer {
+  flex: 1;
+}
+
+.nb-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 7px;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.nb-tool:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.nb-tool:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* --- Kernel picker ---------------------------------------------------------------------- */
+
+.nb-kernel {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.nb-kernel-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 26px;
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--bg-panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.nb-kernel-button:hover {
+  border-color: var(--text-muted);
+  background: var(--bg-elevated);
+}
+
+.nb-kernel-name {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nb-kernel-state {
+  color: var(--text-muted);
+}
+
+.nb-kernel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.nb-kernel-dot.idle {
+  background: var(--git-added);
+  opacity: 1;
+}
+
+.nb-kernel-dot.busy,
+.nb-kernel-dot.starting,
+.nb-kernel-dot.restarting {
+  background: var(--git-modified);
+  opacity: 1;
+  animation: nb-pulse 1s ease-in-out infinite;
+}
+
+.nb-kernel-dot.dead,
+.nb-kernel-dot.missing {
+  background: var(--danger);
+  opacity: 1;
+}
+
+.nb-kernel-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  width: 320px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.nb-kernel-menu-title {
+  padding: 4px 8px 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.nb-kernel-menu-note {
+  padding: 6px 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  user-select: text;
+}
+
+.nb-kernel-menu-note.error {
+  color: var(--danger);
+}
+
+.nb-kernel-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nb-kernel-option:hover {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.nb-kernel-check {
+  display: inline-flex;
+  width: 14px;
+  color: var(--accent);
+}
+
+.nb-kernel-option-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nb-kernel-option-detail {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.nb-kernel-menu-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+  padding: 8px 8px 4px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nb-kernel-menu-footer span {
+  opacity: 0.75;
+}
+
+/* The interpreter's path, cut at the start (the end says the most). */
+.nb-kernel-menu-footer .nb-kernel-menu-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+  font-family: var(--font-mono);
+  opacity: 1;
+}
+
+/* --- Banners ----------------------------------------------------------------------------- */
+
+.nb-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-base));
+  font-size: 12px;
+  flex-shrink: 0;
+  user-select: text;
+}
+
+.nb-banner > span {
+  flex: 1;
+}
+
+.nb-banner.error {
+  background: color-mix(in srgb, var(--danger) 10%, var(--bg-base));
+}
+
+.nb-banner code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.nb-button {
+  height: 26px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.nb-button:hover:not(:disabled) {
+  border-color: var(--text-muted);
+}
+
+.nb-button.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.nb-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* --- Cells ------------------------------------------------------------------------------ */
+
+.nb-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.nb-cells {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 10px 28px 160px 12px;
+}
+
+.nb-cell {
+  position: relative;
+  display: flex;
+  border-radius: 6px;
+}
+
+.nb-cell-gutter {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  width: var(--nb-gutter);
+  padding: 6px 10px 0 6px;
+  flex-shrink: 0;
+}
+
+/* The selection bar, left of the gutter. */
+.nb-cell::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background var(--transition-fast);
+}
+
+.nb-cell.selected::before {
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.nb-root.edit-mode .nb-cell.editing::before {
+  background: var(--accent);
+}
+
+.nb-cell.running::before {
+  background: var(--git-modified);
+  animation: nb-pulse 1.2s ease-in-out infinite;
+}
+
+.nb-cell-main {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 0;
+}
+
+.nb-cell-input {
+  position: relative;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  overflow: hidden;
+  transition: border-color var(--transition-fast);
+}
+
+.nb-cell-code .nb-cell-input,
+.nb-cell-raw .nb-cell-input,
+.nb-cell-markdown.editing .nb-cell-input {
+  border-color: var(--border);
+  background: var(--nb-cell-bg);
+}
+
+.nb-cell-markdown .nb-cell-input:has(.nb-cell-editor) {
+  border-color: var(--border);
+  background: var(--nb-cell-bg);
+}
+
+.nb-cell.selected .nb-cell-input {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.nb-root.edit-mode .nb-cell.editing .nb-cell-input {
+  border-color: var(--accent);
+}
+
+.nb-cell-kind {
+  position: absolute;
+  right: 8px;
+  bottom: 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Cell editors sit on the cell's own background, not the page's. */
+.nb-cell-editor {
+  width: 100%;
+  min-height: 20px;
+}
+
+.nb-cell-editor .monaco-editor,
+.nb-cell-editor .monaco-editor .margin,
+.nb-cell-editor .monaco-editor-background,
+.nb-cell-editor .monaco-editor .inputarea.ime-input {
+  background-color: var(--nb-cell-bg) !important;
+}
+
+.nb-cell-editor .monaco-editor .scroll-decoration {
+  box-shadow: none;
+}
+
+/* Rendered Markdown. */
+.nb-markdown.markdown-body {
+  height: auto;
+  overflow: visible;
+  padding: 6px 14px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.nb-markdown.markdown-body > * {
+  max-width: none;
+}
+
+.nb-markdown.markdown-body > :last-child {
+  margin-bottom: 0;
+}
+
+.nb-markdown.markdown-body h1 {
+  font-size: 1.75em;
+}
+
+.nb-markdown-empty {
+  padding: 10px 14px;
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 13px;
+}
+
+/* Run button and [n]. */
+.nb-run-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+}
+
+.nb-cell:hover .nb-run-button,
+.nb-cell.selected .nb-run-button,
+.nb-run-button.active {
+  opacity: 1;
+}
+
+.nb-run-button:hover {
+  background: var(--bg-elevated);
+  color: var(--accent);
+}
+
+.nb-run-button.active {
+  color: var(--git-modified);
+}
+
+/* Running: a ring turning around the stop square. */
+.nb-run-ring {
+  position: absolute;
+  inset: 3px;
+  border: 1.5px solid color-mix(in srgb, var(--git-modified) 25%, transparent);
+  border-top-color: var(--git-modified);
+  border-radius: 50%;
+  animation: nb-spin 0.8s linear infinite;
+}
+
+.nb-exec-count {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+.nb-cell.running .nb-exec-count,
+.nb-cell.queued .nb-exec-count {
+  color: var(--git-modified);
+  opacity: 1;
+}
+
+/* "✓ 1.2 s" under the code. */
+.nb-cell-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 4px 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.nb-cell-status-mark {
+  font-size: 11px;
+}
+
+.nb-cell-status.ok .nb-cell-status-mark {
+  color: var(--git-added);
+}
+
+.nb-cell-status.error .nb-cell-status-mark {
+  color: var(--danger);
+}
+
+.nb-cell-status.running {
+  color: var(--git-modified);
+}
+
+/* Cell actions, at the selected cell's top right. */
+.nb-cell-toolbar {
+  position: absolute;
+  top: -11px;
+  right: 10px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.nb-cell-toolbar button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.nb-cell-toolbar button:hover:not(:disabled) {
+  background: var(--bg-panel);
+  color: var(--text);
+}
+
+.nb-cell-toolbar button.danger:hover {
+  color: var(--danger);
+}
+
+.nb-cell-toolbar button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.nb-type-toggle {
+  font-family: var(--font-mono) !important;
+}
+
+/* Add-cell bar between cells, shown on hover. */
+.nb-insert {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 14px;
+  padding-left: var(--nb-gutter);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.nb-insert:hover {
+  opacity: 1;
+}
+
+.nb-insert-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.nb-insert button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg-base);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.nb-insert button:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* --- Outputs ---------------------------------------------------------------------------- */
+
+.nb-outputs {
+  position: relative;
+  display: flex;
+  margin-top: 4px;
+}
+
+.nb-outputs-gutter {
+  position: absolute;
+  left: calc(-1 * var(--nb-gutter) + 10px);
+  top: 0;
+  bottom: 0;
+  width: calc(var(--nb-gutter) - 22px);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.nb-outputs-gutter:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.nb-outputs-collapsed {
+  padding: 4px 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: italic;
+  cursor: pointer;
+}
+
+.nb-outputs-main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.nb-outputs-body {
+  overflow-x: auto;
+  padding: 2px 0;
+  user-select: text;
+}
+
+.nb-outputs-body.scrolled {
+  overflow-y: auto;
+  border-radius: 4px;
+  box-shadow: inset 0 -12px 12px -12px rgba(0, 0, 0, 0.35);
+}
+
+.nb-outputs-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: 1px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-elevated);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.nb-outputs-main:hover .nb-outputs-actions {
+  opacity: 1;
+}
+
+.nb-outputs-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.nb-outputs-actions button:hover {
+  background: var(--bg-panel);
+  color: var(--text);
+}
+
+.nb-output + .nb-output {
+  margin-top: 2px;
+}
+
+.nb-output-text {
+  margin: 0;
+  padding: 3px 6px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+  -webkit-font-smoothing: auto;
+}
+
+.nb-stderr {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--danger) 9%, transparent);
+}
+
+.nb-error {
+  border-left: 2px solid var(--danger);
+  border-radius: 0 4px 4px 0;
+  background: color-mix(in srgb, var(--danger) 7%, transparent);
+}
+
+.nb-output-note {
+  padding: 4px 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.nb-output-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 4px 6px;
+  border-radius: 3px;
+}
+
+.nb-output-frame {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+}
+
+.nb-output-html,
+.nb-output-markdown {
+  padding: 4px 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-x: auto;
+}
+
+.nb-output-markdown.markdown-body {
+  height: auto;
+  overflow: visible;
+}
+
+.nb-output-html table {
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.nb-output-html th,
+.nb-output-html td {
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.nb-output-html thead th {
+  border-bottom-color: var(--text-muted);
+  font-weight: 600;
+}
+
+.nb-output-html tbody tr:nth-child(odd) {
+  background: var(--nb-cell-bg);
+}
+
+.nb-output-html tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.nb-output-latex {
+  color: var(--text-muted);
+}
+
+/* input() */
+.nb-stdin {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 6px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+.nb-stdin-prompt {
+  white-space: pre;
+}
+
+.nb-stdin input {
+  flex: 1;
+  max-width: 420px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--bg-panel);
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+
+/* Narrow editor groups: icon-only toolbar, shorter kernel name. */
+@container (max-width: 820px) {
+  .nb-tool span,
+  .nb-kernel-state {
+    display: none;
+  }
+
+  .nb-kernel-name {
+    max-width: 120px;
+  }
+
+  .nb-cells {
+    padding-right: 12px;
+  }
+}
+
+@container (max-width: 560px) {
+  .nb-toolbar-separator,
+  .nb-tool[data-optional] {
+    display: none;
+  }
+}
+
+@keyframes nb-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes nb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

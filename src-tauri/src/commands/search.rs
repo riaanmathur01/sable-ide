@@ -20,7 +20,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use crate::events::{emit, Events};
 #[cfg(feature = "desktop")]
-use tauri::{AppHandle, State};
+use tauri::State;
 
 /// Stop after this many matches — a too-broad query on a big repo should
 /// not flood the UI.
@@ -132,20 +132,23 @@ fn build_matcher(query: &str, options: SearchOptions) -> Result<RegexMatcher, St
 #[cfg(feature = "desktop")]
 #[cfg_attr(feature = "desktop", tauri::command)]
 pub fn search_workspace(
-    app: AppHandle,
-    state: State<SearchState>,
+    window: tauri::WebviewWindow,
+    states: State<crate::windows::PerWindow<SearchState>>,
     root: String,
     query: String,
     search_id: u64,
     options: Option<SearchOptions>,
+    roots: Option<Vec<String>>,
 ) -> Result<(), String> {
-    search(crate::events::for_app(&app), &state, root, query, search_id, options)
+    // Every folder of a multi-root workspace, or just `root`.
+    let roots = roots.filter(|roots| !roots.is_empty()).unwrap_or_else(|| vec![root]);
+    search(crate::events::for_window(&window), &states.get(window.label()), roots, query, search_id, options)
 }
 
 pub fn search(
     events: Events,
     state: &SearchState,
-    root: String,
+    roots: Vec<String>,
     query: String,
     search_id: u64,
     options: Option<SearchOptions>,
@@ -242,7 +245,7 @@ pub fn search(
         let name_sender = match_sender.clone();
         let name_generation = generation.clone();
         let name_total = total_matches.clone();
-        let name_root = root.clone();
+        let name_roots = roots.clone();
         let name_matcher = matcher.clone();
         std::thread::spawn(move || {
             const NO_DESCEND: &[&str] = &[
@@ -254,7 +257,7 @@ pub fn search(
                 "venv",
             ];
             const MAX_ENTRIES: usize = 100_000;
-            let mut pending = vec![std::path::PathBuf::from(&name_root)];
+            let mut pending: Vec<std::path::PathBuf> = name_roots.iter().map(std::path::PathBuf::from).collect();
             let mut visited = 0usize;
             while let Some(directory) = pending.pop() {
                 if name_generation.load(Ordering::Relaxed) != search_id
@@ -307,7 +310,11 @@ pub fn search(
 
     // Content walker thread pool: gitignore-aware parallel traversal.
     std::thread::spawn(move || {
-        let walker = WalkBuilder::new(&root).build_parallel();
+        let mut builder = WalkBuilder::new(&roots[0]);
+        for root in &roots[1..] {
+            builder.add(root);
+        }
+        let walker = builder.build_parallel();
         walker.run(|| {
             let matcher = matcher.clone();
             let match_sender = match_sender.clone();

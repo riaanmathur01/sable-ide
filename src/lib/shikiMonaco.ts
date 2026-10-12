@@ -10,7 +10,7 @@ import {
   type StateStack,
 } from "@shikijs/vscode-textmate";
 import type * as MonacoTypes from "monaco-editor";
-import { semanticRules, themeById, type ThemeDefinition, type ThemeId } from "./themes";
+import { onThemeRegistryChange, semanticRules, themeById, type ThemeDefinition, type ThemeId } from "./themes";
 
 /**
  * TextMate-grammar highlighting for Monaco, via Shiki — the same
@@ -248,14 +248,17 @@ export function installShikiHighlighting(monaco: Monaco, initialTheme: ThemeId) 
 
   /** Themes are prepared for Shiki when first used (building all of
    *  them up front cost the first file open ~100 ms). */
-  const loadedThemes = new Set<string>();
-  const themeLoads = new Map<string, Promise<void>>();
+  // Keyed by id, holding the definition prepared: a plugin theme that's
+  // updated (or replaces its cached copy at startup) is prepared again.
+  const loadedThemes = new Map<string, ThemeDefinition>();
+  const themeLoads = new Map<ThemeDefinition, Promise<void>>();
+  const isLoaded = (id: string) => loadedThemes.get(themeById(id).id) === themeById(id);
   function loadTheme(id: string): Promise<void> {
     const theme = themeById(id);
-    if (loadedThemes.has(theme.id)) return Promise.resolve();
-    if (!themeLoads.has(theme.id)) {
+    if (loadedThemes.get(theme.id) === theme) return Promise.resolve();
+    if (!themeLoads.has(theme)) {
       themeLoads.set(
-        theme.id,
+        theme,
         (async () => {
           const base = theme.baseTokenColors
             ? ((await BASE_TOKEN_COLORS[theme.baseTokenColors]()) as { default: ThemeRegistrationRaw }).default
@@ -263,11 +266,11 @@ export function installShikiHighlighting(monaco: Monaco, initialTheme: ThemeId) 
           const registration = buildTextmateTheme(theme, base);
           const ready = await initialized;
           await ready.loadTheme(registration);
-          loadedThemes.add(theme.id);
+          loadedThemes.set(theme.id, theme);
         })(),
       );
     }
-    return themeLoads.get(theme.id)!;
+    return themeLoads.get(theme)!;
   }
 
   function apply(id: string) {
@@ -283,7 +286,7 @@ export function installShikiHighlighting(monaco: Monaco, initialTheme: ThemeId) 
   const originalSetTheme = monaco.editor.setTheme.bind(monaco.editor);
   monaco.editor.setTheme = (id: string) => {
     requestedTheme = id;
-    if (loadedThemes.has(themeById(id).id)) {
+    if (isLoaded(id)) {
       apply(id);
       return;
     }
@@ -340,6 +343,11 @@ export function installShikiHighlighting(monaco: Monaco, initialTheme: ThemeId) 
     return highlighter;
   })();
   void loadTheme(requestedTheme).then(() => monaco.editor.setTheme(requestedTheme));
+
+  // A plugin added (or changed) the theme in use: show it.
+  onThemeRegistryChange(() => {
+    if (!isLoaded(requestedTheme)) monaco.editor.setTheme(requestedTheme);
+  });
 
   addGrammar = async (languageId, grammar) => {
     const ready = await initialized;

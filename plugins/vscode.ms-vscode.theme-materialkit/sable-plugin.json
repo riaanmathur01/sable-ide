@@ -1,0 +1,30 @@
+{
+  "author": "ms-vscode",
+  "description": "Material themes for VS Code. Based on the TextMate themes.",
+  "homepage": "https://github.com/Microsoft/vscode-themes",
+  "id": "vscode.ms-vscode.theme-materialkit",
+  "minSableVersion": "0.3.8",
+  "name": "Material Theme Kit",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-ms-vscode-theme-materialkit-material",
+      "label": "Material",
+      "path": "themes/material.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-ms-vscode-theme-materialkit-material-night-eighties",
+      "label": "Material Night Eighties",
+      "path": "themes/material-night-eighties.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-ms-vscode-theme-materialkit-material-night",
+      "label": "Material Night",
+      "path": "themes/material-night.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "0.1.4"
+}

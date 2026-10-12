@@ -641,12 +641,12 @@ impl DebugEvents for NoEvents {
 #[cfg(feature = "desktop")]
 #[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn start_attach(
-    app: AppHandle,
-    manager: State<'_, DebugManager>,
+    window: tauri::WebviewWindow,
+    managers: State<'_, crate::windows::PerWindow<DebugManager>>,
     target: AttachTarget,
     breakpoints: Breakpoints,
 ) -> Result<(), String> {
-    attach(Arc::new(app), &manager, target, breakpoints).await
+    attach(Arc::new(SinkEvents(crate::events::for_window(&window))), &managers.get(window.label()), target, breakpoints).await
 }
 
 pub async fn attach(events: Arc<dyn DebugEvents>, manager: &DebugManager, target: AttachTarget, breakpoints: Breakpoints) -> Result<(), String> {
@@ -1180,15 +1180,15 @@ impl DebugSession {
 #[cfg_attr(feature = "desktop", tauri::command)]
 #[allow(clippy::too_many_arguments)]
 pub async fn start_debug(
-    app: AppHandle,
-    manager: State<'_, DebugManager>,
+    window: tauri::WebviewWindow,
+    managers: State<'_, crate::windows::PerWindow<DebugManager>>,
     program: String,
     cwd: String,
     python: Option<String>,
     breakpoints: Breakpoints,
     options: Option<RunOptions>,
 ) -> Result<(), String> {
-    launch(Arc::new(app), &manager, program, cwd, python, breakpoints, options).await
+    launch(Arc::new(SinkEvents(crate::events::for_window(&window))), &managers.get(window.label()), program, cwd, python, breakpoints, options).await
 }
 
 pub async fn launch(
@@ -1216,13 +1216,13 @@ pub async fn launch(
 #[cfg(feature = "desktop")]
 #[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn start_java_debug(
-    app: AppHandle,
-    manager: State<'_, DebugManager>,
+    window: tauri::WebviewWindow,
+    managers: State<'_, crate::windows::PerWindow<DebugManager>>,
     port: u16,
     launch: Value,
     breakpoints: Breakpoints,
 ) -> Result<(), String> {
-    launch_java(Arc::new(app), &manager, port, launch, breakpoints).await
+    launch_java(Arc::new(SinkEvents(crate::events::for_window(&window))), &managers.get(window.label()), port, launch, breakpoints).await
 }
 
 pub async fn launch_java(events: Arc<dyn DebugEvents>, manager: &DebugManager, port: u16, launch: Value, breakpoints: Breakpoints) -> Result<(), String> {
@@ -1238,12 +1238,13 @@ pub async fn launch_java(events: Arc<dyn DebugEvents>, manager: &DebugManager, p
 #[cfg(feature = "desktop")]
 #[cfg_attr(feature = "desktop", tauri::command)]
 pub async fn debug_terminal_started(
-    manager: State<'_, DebugManager>,
+    window: tauri::WebviewWindow,
+    managers: State<'_, crate::windows::PerWindow<DebugManager>>,
     id: u64,
     process_id: Option<u32>,
     error: Option<String>,
 ) -> Result<(), String> {
-    terminal_started(&manager, id, process_id, error).await
+    terminal_started(&managers.get(window.label()), id, process_id, error).await
 }
 
 pub async fn terminal_started(manager: &DebugManager, id: u64, process_id: Option<u32>, error: Option<String>) -> Result<(), String> {
@@ -1259,8 +1260,8 @@ pub async fn terminal_started(manager: &DebugManager, id: u64, process_id: Optio
 /// the handshake seqs above.
 #[cfg(feature = "desktop")]
 #[cfg_attr(feature = "desktop", tauri::command)]
-pub async fn debug_request(manager: State<'_, DebugManager>, seq: i64, command: String, arguments: Value) -> Result<(), String> {
-    send_request(&manager, seq, command, arguments).await
+pub async fn debug_request(window: tauri::WebviewWindow, managers: State<'_, crate::windows::PerWindow<DebugManager>>, seq: i64, command: String, arguments: Value) -> Result<(), String> {
+    send_request(&managers.get(window.label()), seq, command, arguments).await
 }
 
 pub async fn send_request(manager: &DebugManager, seq: i64, command: String, arguments: Value) -> Result<(), String> {
@@ -1272,8 +1273,8 @@ pub async fn send_request(manager: &DebugManager, seq: i64, command: String, arg
 /// Stop debugging: disconnect + terminate the debuggee, then the adapter.
 #[cfg(feature = "desktop")]
 #[cfg_attr(feature = "desktop", tauri::command)]
-pub async fn debug_stop(manager: State<'_, DebugManager>) -> Result<(), String> {
-    stop(&manager).await
+pub async fn debug_stop(window: tauri::WebviewWindow, managers: State<'_, crate::windows::PerWindow<DebugManager>>) -> Result<(), String> {
+    stop(&managers.get(window.label())).await
 }
 
 pub async fn stop(manager: &DebugManager) -> Result<(), String> {

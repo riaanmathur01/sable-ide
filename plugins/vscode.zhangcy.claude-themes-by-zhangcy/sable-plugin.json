@@ -1,0 +1,36 @@
+{
+  "author": "Zhangcy",
+  "description": "Light and dark themes inspired by Claude",
+  "homepage": "https://github.com/cyNew/claude-theme-vscode",
+  "id": "vscode.zhangcy.claude-themes-by-zhangcy",
+  "minSableVersion": "0.3.8",
+  "name": "Claude Themes by Zhangcy",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-zhangcy-claude-themes-by-zhangcy-claude-light",
+      "label": "Claude Light",
+      "path": "themes/claude-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-zhangcy-claude-themes-by-zhangcy-claude-light-experimental",
+      "label": "Claude Light (Experimental)",
+      "path": "themes/claude-light-experimental.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-zhangcy-claude-themes-by-zhangcy-claude-dark",
+      "label": "Claude Dark",
+      "path": "themes/claude-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-zhangcy-claude-themes-by-zhangcy-claude-dark-experimental",
+      "label": "Claude Dark (Experimental)",
+      "path": "themes/claude-dark-experimental.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.0.6"
+}

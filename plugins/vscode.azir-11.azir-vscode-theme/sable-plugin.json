@@ -1,0 +1,114 @@
+{
+  "author": "Azir-11",
+  "description": "Azir theme for VS Code",
+  "homepage": "https://github.com/Azir-11/azir-theme",
+  "id": "vscode.azir-11.azir-vscode-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Azir Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-azir-11-azir-vscode-theme-azir-light-default",
+      "label": "Azir Light Default",
+      "path": "themes/azir-light-default.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-azir-11-azir-vscode-theme-azir-light-high-contrast",
+      "label": "Azir Light High Contrast",
+      "path": "themes/azir-light-high-contrast.json",
+      "uiTheme": "hc-light"
+    },
+    {
+      "id": "vscode-azir-11-azir-vscode-theme-azir-dark-default",
+      "label": "Azir Dark Default",
+      "path": "themes/azir-dark-default.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-azir-11-azir-vscode-theme-azir-dark-dimmed",
+      "label": "Azir Dark Dimmed(暗灰)",
+      "path": "themes/azir-dark-dimmed.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-azir-11-azir-vscode-theme-azir-dark-high-contrast",
+      "label": "Azir Dark High Contrast",
+      "path": "themes/azir-dark-high-contrast.json",
+      "uiTheme": "hc-black"
+    },
+    {
+      "id": "vscode-azir-11-azir-vscode-theme-azir-buddha-vira-carbon",
+      "label": "Azir Buddha Vira Carbon",
+      "path": "themes/azir-buddha-vira-carbon.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-azir-11-azir-vscode-theme-azir-buddha-vira-carbon-high-contrast",
+      "label": "Azir Buddha Vira Carbon High Contrast",
+      "path": "themes/azir-buddha-vira-carbon-high-contrast.json",
+      "uiTheme": "hc-black"
+    },
+    {
+      "id": "vscode-azir-11-azir-vscode-theme-azir-buddha-vira-deepforest",
+      "label": "Azir Buddha Vira Deepforest",
+      "path": "themes/azir-buddha-vira-deepforest.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-azir-11-azir-vscode-theme-azir-buddha-vira-deepforest-high-contrast",
+      "label": "Azir Buddha Vira Deepforest High Contrast",
+      "path": "themes/azir-buddha-vira-deepforest-high-contrast.json",
+      "uiTheme": "hc-black"
+    },
+    {
+      "id": "vscode-azir-11-azir-vscode-theme-azir-buddha-vira-graphene",
+      "label": "Azir Buddha Vira Graphene",
+      "path": "themes/azir-buddha-vira-graphene.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-azir-11-azir-vscode-theme-azir-buddha-vira-graphene-high-contrast",
+      "label": "Azir Buddha Vira Graphene High Contrast",
+      "path": "themes/azir-buddha-vira-graphene-high-contrast.json",
+      "uiTheme": "hc-black"
+    },
+    {
+      "id": "vscode-azir-11-azir-vscode-theme-azir-buddha-vira-ocean",
+      "label": "Azir Buddha Vira Ocean",
+      "path": "themes/azir-buddha-vira-ocean.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-azir-11-azir-vscode-theme-azir-buddha-vira-ocean-high-contrast",
+      "label": "Azir Buddha Vira Ocean High Contrast",
+      "path": "themes/azir-buddha-vira-ocean-high-contrast.json",
+      "uiTheme": "hc-black"
+    },
+    {
+      "id": "vscode-azir-11-azir-vscode-theme-azir-buddha-vira-palenight",
+      "label": "Azir Buddha Vira Palenight",
+      "path": "themes/azir-buddha-vira-palenight.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-azir-11-azir-vscode-theme-azir-buddha-vira-palenight-high-contrast",
+      "label": "Azir Buddha Vira Palenight High Contrast",
+      "path": "themes/azir-buddha-vira-palenight-high-contrast.json",
+      "uiTheme": "hc-black"
+    },
+    {
+      "id": "vscode-azir-11-azir-vscode-theme-azir-buddha-vira-teal",
+      "label": "Azir Buddha Vira Teal",
+      "path": "themes/azir-buddha-vira-teal.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-azir-11-azir-vscode-theme-azir-buddha-vira-teal-high-contrast",
+      "label": "Azir Buddha Vira Teal High Contrast",
+      "path": "themes/azir-buddha-vira-teal-high-contrast.json",
+      "uiTheme": "hc-black"
+    }
+  ],
+  "version": "1.2.1"
+}

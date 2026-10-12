@@ -124,3 +124,11 @@
   min-width: 0;
   margin-right: 4px;
 }
+
+/* A workspace folder's row (multi-root workspaces). */
+.tree-row.root .tree-row-name {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 11px;
+}

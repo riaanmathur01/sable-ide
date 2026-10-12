@@ -1,0 +1,66 @@
+{
+  "author": "GitHub",
+  "description": "GitHub theme for VS Code",
+  "homepage": "https://github.com/primer/github-vscode-theme",
+  "id": "vscode.github.github-vscode-theme",
+  "minSableVersion": "0.3.8",
+  "name": "GitHub Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-github-github-vscode-theme-github-light-default",
+      "label": "GitHub Light Default",
+      "path": "themes/github-light-default.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-github-github-vscode-theme-github-light-high-contrast",
+      "label": "GitHub Light High Contrast",
+      "path": "themes/github-light-high-contrast.json",
+      "uiTheme": "hc-light"
+    },
+    {
+      "id": "vscode-github-github-vscode-theme-github-light-colorblind-beta",
+      "label": "GitHub Light Colorblind (Beta)",
+      "path": "themes/github-light-colorblind-beta.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-github-github-vscode-theme-github-dark-default",
+      "label": "GitHub Dark Default",
+      "path": "themes/github-dark-default.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-github-github-vscode-theme-github-dark-high-contrast",
+      "label": "GitHub Dark High Contrast",
+      "path": "themes/github-dark-high-contrast.json",
+      "uiTheme": "hc-black"
+    },
+    {
+      "id": "vscode-github-github-vscode-theme-github-dark-colorblind-beta",
+      "label": "GitHub Dark Colorblind (Beta)",
+      "path": "themes/github-dark-colorblind-beta.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-github-github-vscode-theme-github-dark-dimmed",
+      "label": "GitHub Dark Dimmed",
+      "path": "themes/github-dark-dimmed.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-github-github-vscode-theme-github-light",
+      "label": "GitHub Light",
+      "path": "themes/github-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-github-github-vscode-theme-github-dark",
+      "label": "GitHub Dark",
+      "path": "themes/github-dark.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "6.3.5"
+}

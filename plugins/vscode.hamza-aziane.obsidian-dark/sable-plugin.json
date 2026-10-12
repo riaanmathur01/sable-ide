@@ -1,0 +1,18 @@
+{
+  "author": "Hamza-Aziane",
+  "description": "Elegant yet practical dark theme",
+  "homepage": "https://github.com/Hamza-Aziane/obsidian-dark",
+  "id": "vscode.hamza-aziane.obsidian-dark",
+  "minSableVersion": "0.3.8",
+  "name": "Obsidian Dark",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-hamza-aziane-obsidian-dark-obsidian-dark",
+      "label": "Obsidian Dark",
+      "path": "themes/obsidian-dark.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.0.0"
+}

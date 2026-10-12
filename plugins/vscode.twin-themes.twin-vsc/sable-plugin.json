@@ -1,0 +1,36 @@
+{
+  "author": "twin-themes",
+  "description": "A pair of sibling dark themes for VSCode & VSCodium.",
+  "homepage": "https://github.com/twin-themes/vscode",
+  "id": "vscode.twin-themes.twin-vsc",
+  "minSableVersion": "0.3.8",
+  "name": "Twin Themes",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-twin-themes-twin-vsc-twin-black",
+      "label": "Twin Black",
+      "path": "themes/twin-black.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-twin-themes-twin-vsc-twin-black-flat",
+      "label": "Twin Black Flat",
+      "path": "themes/twin-black-flat.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-twin-themes-twin-vsc-twin-blue",
+      "label": "Twin Blue",
+      "path": "themes/twin-blue.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-twin-themes-twin-vsc-twin-blue-flat",
+      "label": "Twin Blue Flat",
+      "path": "themes/twin-blue-flat.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.0.5"
+}

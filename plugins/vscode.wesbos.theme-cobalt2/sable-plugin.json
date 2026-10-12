@@ -1,0 +1,18 @@
+{
+  "author": "wesbos",
+  "description": "🔥 Official theme by Wes Bos.",
+  "homepage": "https://github.com/wesbos/cobalt2-vscode",
+  "id": "vscode.wesbos.theme-cobalt2",
+  "minSableVersion": "0.3.8",
+  "name": "Cobalt2 Theme Official",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-wesbos-theme-cobalt2-cobalt2",
+      "label": "Cobalt2",
+      "path": "themes/cobalt2.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "2.4.3"
+}

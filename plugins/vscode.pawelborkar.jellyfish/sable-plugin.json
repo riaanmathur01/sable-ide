@@ -1,0 +1,18 @@
+{
+  "author": "PawelBorkar",
+  "description": "JellyFish: Theme your code editor will love.",
+  "homepage": "https://github.com/pawelborkar/vscode-jellyfish",
+  "id": "vscode.pawelborkar.jellyfish",
+  "minSableVersion": "0.3.8",
+  "name": "JellyFish Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-pawelborkar-jellyfish-jellyfish",
+      "label": "JellyFish",
+      "path": "themes/jellyfish.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.0.4"
+}

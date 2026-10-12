@@ -6,6 +6,8 @@ import { createDirectory, pathExists, writeFile } from "../lib/ipc";
 import { PluginRuntime, type PluginCommand, type PluginStatusItem } from "../lib/plugins/host";
 import { onPluginEvent } from "../lib/plugins/events";
 import { scaffoldFiles } from "../lib/plugins/scaffold";
+import { syncPluginThemes, themeId } from "../lib/pluginThemes";
+import { broadcast } from "../lib/windows";
 import { matchesKey, parseKeybinding, type ParsedKey } from "../lib/plugins/keybindings";
 import {
   PERMISSION_DESCRIPTIONS,
@@ -27,6 +29,18 @@ import { getSetting } from "./settingsStore";
 
 const MAX_LOG_LINES = 300;
 
+/** Switch to one of a newly installed plugin's themes? */
+async function offerThemes(manifest: PluginInfo["manifest"]) {
+  const themes = manifest.themes ?? [];
+  const choice = await useUiStore.getState().openPick(
+    [...themes.map((theme) => ({ label: theme.label, detail: theme.uiTheme === "vs" || theme.uiTheme === "hc-light" ? "light" : "dark" })), { label: "Keep the current theme" }],
+    `Use a theme from ${manifest.name}?`,
+  );
+  if (choice === null || choice >= themes.length) return;
+  const { useSettingsStore } = await import("./settingsStore");
+  useSettingsStore.getState().set("workbench.colorTheme", themeId(themes[choice].id));
+}
+
 /** One plugin in the marketplace's catalogue. */
 export interface MarketplaceEntry {
   id: string;
@@ -41,6 +55,30 @@ export interface MarketplaceEntry {
   homepage?: string;
   /** Its README's address (default: worked out from a GitHub `url`). */
   readme?: string;
+  /** A theme plugin: how many themes, and its first theme's colors. */
+  themes?: number;
+  preview?: ThemePreview;
+}
+
+/** A theme's colors for a Marketplace card's sample. */
+export interface ThemePreview {
+  background: string;
+  foreground: string;
+  accent: string;
+  keyword: string;
+  string: string;
+  function: string;
+  comment: string;
+  type: string;
+}
+
+const isColor = (value: unknown): value is string => typeof value === "string" && /^#[0-9a-fA-F]{3,8}$/.test(value);
+
+function parsePreview(raw: unknown): ThemePreview | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const preview = raw as Record<string, unknown>;
+  const keys = ["background", "foreground", "accent", "keyword", "string", "function", "comment", "type"] as const;
+  return keys.every((key) => isColor(preview[key])) ? (preview as unknown as ThemePreview) : undefined;
 }
 
 /** The catalogue's plugins; malformed entries are left out. */
@@ -62,6 +100,8 @@ function parseCatalogue(raw: unknown): MarketplaceEntry[] {
       url: text(entry.url),
       homepage: text(entry.homepage) || undefined,
       readme: text(entry.readme) || undefined,
+      themes: typeof entry.themes === "number" ? entry.themes : undefined,
+      preview: parsePreview(entry.preview),
     }));
 }
 
@@ -105,6 +145,11 @@ interface PluginState_ {
 
   /** Read the installed plugins and start the enabled ones (at launch). */
   load: () => Promise<void>;
+  /** Read the installed plugins and register their themes (at launch,
+   *  before plugins' code runs). */
+  loadThemes: () => Promise<void>;
+  /** Another window installed, removed or switched plugins: follow. */
+  syncInstalled: () => Promise<void>;
   /** Inspect, ask, install. `link`: run it from its folder (development). */
   installFromFolder: (path: string, link?: boolean) => Promise<boolean>;
   installFromUrl: (url: string) => Promise<boolean>;
@@ -157,6 +202,11 @@ export const usePluginStore = create<PluginState_>((set, get) => {
   async function startPlugin(info: PluginInfo) {
     await stopPlugin(info.manifest.id);
     const id = info.manifest.id;
+    // A plugin without code (only themes) has nothing to run.
+    if (!info.manifest.main) {
+      set((state) => ({ states: { ...state.states, [id]: "running" }, errors: { ...state.errors, [id]: "" } }));
+      return;
+    }
     set((state) => ({ errors: { ...state.errors, [id]: "" }, logs: { ...state.logs, [id]: [] } }));
     const runtime = new PluginRuntime(info, {
       state: (pluginState, error) =>
@@ -200,6 +250,7 @@ export const usePluginStore = create<PluginState_>((set, get) => {
     // Plugins live on this computer, even in a remote window.
     for (const plugin of plugins) addLocalRoot(plugin.path);
     set({ plugins });
+    await syncPluginThemes(plugins);
     return plugins;
   }
 
@@ -207,10 +258,14 @@ export const usePluginStore = create<PluginState_>((set, get) => {
   async function confirmAndInstall(inspected: InspectedPlugin, link: boolean, source: string | null): Promise<boolean> {
     const { manifest, installedVersion } = inspected;
     const verb = installedVersion ? (installedVersion === manifest.version ? "Reinstall" : `Update (from ${installedVersion}) to`) : "Install";
+    const themesOnly = !manifest.main && (manifest.themes?.length ?? 0) > 0;
+    const themeCount = manifest.themes?.length ?? 0;
     const agreed = await confirmNative(
       `${verb} ${manifest.name} ${manifest.version}${manifest.author ? ` by ${manifest.author}` : ""}?\n\n` +
-        `${manifest.description ? `${manifest.description}\n\n` : ""}It will be able to:\n${describePermissions(manifest.permissions)}` +
-        `\n\nOnly install plugins you trust.`,
+        `${manifest.description ? `${manifest.description}\n\n` : ""}` +
+        (themesOnly
+          ? `It adds ${themeCount} color theme${themeCount === 1 ? "" : "s"} and runs no code.`
+          : `It will be able to:\n${describePermissions(manifest.permissions)}\n\nOnly install plugins you trust.`),
       { title: link ? "Load Plugin for Development" : "Install Plugin", kind: "warning" },
     );
     if (!agreed) {
@@ -220,7 +275,10 @@ export const usePluginStore = create<PluginState_>((set, get) => {
     const info = await invoke<PluginInfo>("plugin_install", { path: inspected.path, link, source });
     await refreshList();
     if (info.enabled) await startPlugin(info);
+    broadcast("sable:plugins-changed");
     useUiStore.getState().showStatus(`${manifest.name} ${installedVersion ? "updated" : "installed"}`);
+    // A new theme plugin: try one of its themes now.
+    if (!installedVersion && manifest.themes?.length) void offerThemes(manifest);
     return true;
   }
 
@@ -301,6 +359,36 @@ export const usePluginStore = create<PluginState_>((set, get) => {
         }
       })()),
 
+    syncInstalled: async () => {
+      try {
+        const before = new Map(get().plugins.map((plugin) => [plugin.manifest.id, plugin]));
+        const plugins = await refreshList();
+        for (const plugin of plugins) {
+          const id = plugin.manifest.id;
+          const old = before.get(id);
+          if (!plugin.enabled) {
+            if (runtimes.has(id)) await stopPlugin(id);
+            continue;
+          }
+          const changed = old?.manifest.version !== plugin.manifest.version || old?.path !== plugin.path || !old?.enabled;
+          if (!runtimes.has(id) || changed) await startPlugin(plugin);
+        }
+        for (const id of before.keys()) {
+          if (!plugins.some((plugin) => plugin.manifest.id === id)) await stopPlugin(id);
+        }
+      } catch (error) {
+        report(error);
+      }
+    },
+
+    loadThemes: async () => {
+      try {
+        await refreshList();
+      } catch (error) {
+        report(error);
+      }
+    },
+
     installFromFolder: (path, link = false) =>
       guarded(async () => {
         const inspected = await invoke<InspectedPlugin>("plugin_inspect", { source: { kind: "folder", path } });
@@ -335,6 +423,7 @@ export const usePluginStore = create<PluginState_>((set, get) => {
         await stopPlugin(id);
         await invoke("plugin_uninstall", { id });
         await refreshList();
+        broadcast("sable:plugins-changed");
         set((state) => {
           const { [id]: _state, ...states } = state.states;
           const { [id]: _logs, ...logs } = state.logs;
@@ -350,11 +439,14 @@ export const usePluginStore = create<PluginState_>((set, get) => {
         const info = plugins.find((plugin) => plugin.manifest.id === id);
         if (enabled && info) await startPlugin(info);
         if (!enabled) await stopPlugin(id);
+        broadcast("sable:plugins-changed");
       }, undefined),
 
     reload: async (id) => {
       try {
         const plugins = await refreshList();
+        // Theme files may have changed without a new version.
+        await syncPluginThemes(plugins, { force: id });
         const info = plugins.find((plugin) => plugin.manifest.id === id);
         if (info?.enabled) await startPlugin(info);
       } catch (error) {
@@ -363,7 +455,11 @@ export const usePluginStore = create<PluginState_>((set, get) => {
     },
 
     reloadAll: async () => {
+      // Wait for a launch still in progress, stop everything, start again
+      // (a new load: the launch's is done and would start nothing).
+      await loading;
       for (const id of [...runtimes.keys()]) await stopPlugin(id);
+      loading = null;
       await get().load();
       useUiStore.getState().showStatus("Plugins reloaded");
     },

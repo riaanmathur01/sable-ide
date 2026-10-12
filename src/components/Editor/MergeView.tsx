@@ -7,7 +7,7 @@ import { monaco } from "../../lib/monacoSetup";
 import { ensureModel } from "../../lib/lsp/monacoLsp";
 import { parseConflicts, resolveAll, type Resolution } from "../../lib/git/conflicts";
 import { diffLines } from "../../lib/git/hunks";
-import { useWorkspaceStore } from "../../store/workspaceStore";
+import { folderOf, useWorkspaceStore } from "../../store/workspaceStore";
 import { useTabsStore } from "../../store/tabsStore";
 import { useGitStore } from "../../store/gitStore";
 import { getSetting, useSettingsStore } from "../../store/settingsStore";
@@ -79,7 +79,7 @@ export default function MergeView({ filePath }: { filePath: string }) {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
-    const root = useWorkspaceStore.getState().rootPath;
+    const root = folderOf(filePath) ?? useWorkspaceStore.getState().rootPath;
     if (!root || !oursRef.current || !resultRef.current || !theirsRef.current) return;
     let disposed = false;
     const disposables: { dispose(): void }[] = [];

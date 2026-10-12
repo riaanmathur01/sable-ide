@@ -1,0 +1,24 @@
+{
+  "author": "silofy",
+  "description": "A Visual Studio Code theme built for hackers BY hackers",
+  "homepage": "https://github.com/silofy/hackthebox",
+  "id": "vscode.silofy.hackthebox",
+  "minSableVersion": "0.3.8",
+  "name": "HackTheBox",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-silofy-hackthebox-hack-the-box",
+      "label": "Hack The Box",
+      "path": "themes/hack-the-box.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-silofy-hackthebox-hack-the-box-lite",
+      "label": "Hack The Box-Lite",
+      "path": "themes/hack-the-box-lite.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.2.9"
+}

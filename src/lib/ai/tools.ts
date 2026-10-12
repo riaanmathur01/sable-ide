@@ -12,6 +12,7 @@ import { readCurrentText, writeFileContents } from "../fileContents";
 import { useTabsStore } from "../../store/tabsStore";
 import { useBreakpointsStore } from "../../store/breakpointsStore";
 import { useGitStore } from "../../store/gitStore";
+import { folderOf } from "../../store/workspaceStore";
 import { getSetting } from "../../store/settingsStore";
 import type { ToolCall, ToolDefinition } from "./types";
 
@@ -315,6 +316,10 @@ export function resolveWorkspacePath(root: string, input: string): string {
  * the link. Returns the in-workspace path (as the editor names it).
  */
 export async function confinedPath(root: string, input: string): Promise<string> {
+  // An absolute path in another folder of a multi-root workspace is
+  // confined to that folder instead.
+  const folder = /^([/\\]|[A-Za-z]:[/\\])/.test(input.trim()) ? folderOf(input.trim()) : null;
+  if (folder && folder !== root) root = folder;
   const path = resolveWorkspacePath(root, input);
   const normalize = (value: string) => value.replace(/\\/g, "/").replace(/\/+$/, "");
   const [realRoot, realTarget] = (await Promise.all([realPath(root), realPath(path)])).map(normalize);

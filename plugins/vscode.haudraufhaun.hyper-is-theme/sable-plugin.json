@@ -1,0 +1,24 @@
+{
+  "author": "haudraufhaun",
+  "description": "color theme based on the standard Hyperterm colors",
+  "homepage": "https://github.com/haudraufhaun/hyper-is-theme",
+  "id": "vscode.haudraufhaun.hyper-is-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Hyper.is Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-haudraufhaun-hyper-is-theme-hyper-is-theme",
+      "label": "Hyper.is Theme",
+      "path": "themes/hyper-is-theme.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-haudraufhaun-hyper-is-theme-hyper-is-theme-hyperyellow",
+      "label": "Hyper.is Theme - hyperyellow",
+      "path": "themes/hyper-is-theme-hyperyellow.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.1.1"
+}

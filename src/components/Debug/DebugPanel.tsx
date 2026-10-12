@@ -9,7 +9,7 @@ import {
 import { useBreakpointsStore } from "../../store/breakpointsStore";
 import { useWatchStore } from "../../store/watchStore";
 import { useTabsStore } from "../../store/tabsStore";
-import { useWorkspaceStore } from "../../store/workspaceStore";
+import { useWorkspaceStore, workspaceRelativePath } from "../../store/workspaceStore";
 import { loadVariables, type DebugVariable } from "../../lib/debug/debugClient";
 import { revealPosition } from "../../lib/editorRegistry";
 import { DebugToolbar } from "./DebugToolbar";
@@ -17,6 +17,8 @@ import "./Debug.css";
 
 /** Workspace-relative display path. */
 function displayPath(path: string, root: string | null): string {
+  // Multi-root: relative to the file's own folder, named first.
+  if (useWorkspaceStore.getState().folders.length > 1) return workspaceRelativePath(path);
   return root && path.startsWith(root)
     ? path.slice(root.length).replace(/^[/\\]/, "")
     : path;

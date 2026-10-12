@@ -14,7 +14,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::Mutex;
-use tauri::AppHandle;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::mpsc;
@@ -57,8 +56,14 @@ fn runtime_dir() -> Result<PathBuf, String> {
 }
 
 /// Start plugin `id` in Node; returns the instance its events carry.
-pub async fn start(events: Events, id: String) -> Result<u64, String> {
-    stop(&id).await;
+/// The running hosts' key: one per window and plugin (each window runs
+/// its own plugins, as VS Code does).
+fn key(owner: &str, id: &str) -> String {
+    format!("{owner}\u{0}{id}")
+}
+
+pub async fn start(events: Events, id: String, owner: &str) -> Result<u64, String> {
+    stop(owner, &id).await;
     let instance = INSTANCES.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     let node = node().ok_or("Node.js isn't installed")?;
     let folder = crate::plugins::plugin_folder(&id)?;
@@ -122,12 +127,12 @@ pub async fn start(events: Events, id: String) -> Result<u64, String> {
         .lock()
         .unwrap()
         .get_or_insert_with(HashMap::new)
-        .insert(id, std::sync::Arc::new(NodePlugin { stdin: sender, child: tokio::sync::Mutex::new(child) }));
+        .insert(key(owner, &id), std::sync::Arc::new(NodePlugin { stdin: sender, child: tokio::sync::Mutex::new(child) }));
     Ok(instance)
 }
 
-pub async fn stop(id: &str) {
-    let running = RUNNING.lock().unwrap().get_or_insert_with(HashMap::new).remove(id);
+pub async fn stop(owner: &str, id: &str) {
+    let running = RUNNING.lock().unwrap().get_or_insert_with(HashMap::new).remove(&key(owner, id));
     if let Some(plugin) = running {
         drop(plugin.stdin.clone());
         let mut child = plugin.child.lock().await;
@@ -135,21 +140,41 @@ pub async fn stop(id: &str) {
     }
 }
 
-#[tauri::command]
-pub async fn plugin_node_start(app: AppHandle, id: String) -> Result<u64, String> {
-    start(crate::events::for_app(&app), id).await
+/// Stop every plugin a window was running (it closed).
+pub fn stop_window(owner: &str) {
+    let prefix = format!("{owner}\u{0}");
+    let stopped: Vec<std::sync::Arc<NodePlugin>> = {
+        let mut running = RUNNING.lock().unwrap();
+        let running = running.get_or_insert_with(HashMap::new);
+        let keys: Vec<String> = running.keys().filter(|key| key.starts_with(&prefix)).cloned().collect();
+        keys.iter().filter_map(|key| running.remove(key)).collect()
+    };
+    for plugin in stopped {
+        tauri::async_runtime::spawn(async move {
+            let _ = plugin.child.lock().await.kill().await;
+        });
+    }
 }
 
 #[tauri::command]
-pub fn plugin_node_send(id: String, message: String) -> Result<(), String> {
+pub async fn plugin_node_start(window: tauri::WebviewWindow, id: String) -> Result<u64, String> {
+    start(crate::events::for_window(&window), id, window.label()).await
+}
+
+pub fn send(owner: &str, id: &str, message: String) -> Result<(), String> {
     let running = RUNNING.lock().unwrap();
-    let plugin = running.as_ref().and_then(|running| running.get(&id)).ok_or_else(|| format!("{id} isn't running"))?;
+    let plugin = running.as_ref().and_then(|running| running.get(&key(owner, id))).ok_or_else(|| format!("{id} isn't running"))?;
     plugin.stdin.send(message).map_err(|_| format!("{id} stopped"))
 }
 
 #[tauri::command]
-pub async fn plugin_node_stop(id: String) -> Result<(), String> {
-    stop(&id).await;
+pub fn plugin_node_send(window: tauri::WebviewWindow, id: String, message: String) -> Result<(), String> {
+    send(window.label(), &id, message)
+}
+
+#[tauri::command]
+pub async fn plugin_node_stop(window: tauri::WebviewWindow, id: String) -> Result<(), String> {
+    stop(window.label(), &id).await;
     Ok(())
 }
 
@@ -205,8 +230,8 @@ mod tests {
                 sink.lock().unwrap().push(payload["message"].clone());
             }
         });
-        start(events, manifest.id.clone()).await.unwrap();
-        let send = |message: Value| plugin_node_send(manifest.id.clone(), message.to_string()).unwrap();
+        start(events, manifest.id.clone(), "main").await.unwrap();
+        let send = |message: Value| send("main", &manifest.id, message.to_string()).unwrap();
         // The worker bootstrap, minimal: it just has to drive the same protocol.
         send(json!({ "type": "bootstrap", "source": TEST_BOOTSTRAP }));
         send(json!({ "type": "init", "source": "", "manifest": manifest, "root": base, "sableVersion": "0.3.7" }));
@@ -256,7 +281,7 @@ mod tests {
             }
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         }
-        stop(&manifest.id).await;
+        stop("main", &manifest.id).await;
         assert!(activated, "the extension didn't activate");
         assert_eq!(message_shown.as_deref(), Some("hello file from node"));
         let _ = std::fs::remove_dir_all(&base);

@@ -13,7 +13,7 @@ import {
   type Problem,
 } from "../../store/problemsStore";
 import { useTabsStore } from "../../store/tabsStore";
-import { useWorkspaceStore } from "../../store/workspaceStore";
+import { useWorkspaceStore, workspaceRelativePath } from "../../store/workspaceStore";
 import { useUiStore } from "../../store/uiStore";
 import { useAgentStore } from "../../store/agentStore";
 import { revealPosition } from "../../lib/editorRegistry";
@@ -21,6 +21,8 @@ import { iconForFile } from "../../lib/fileIcons";
 import "./ProblemsPanel.css";
 
 function relativePath(path: string, root: string | null): string {
+  // Multi-root: relative to the file's own folder, named first.
+  if (useWorkspaceStore.getState().folders.length > 1) return workspaceRelativePath(path);
   return root && path.startsWith(root)
     ? path.slice(root.length).replace(/^[/\\]/, "")
     : path;

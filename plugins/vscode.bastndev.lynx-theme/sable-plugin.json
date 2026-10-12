@@ -1,0 +1,60 @@
+{
+  "author": "bastndev",
+  "description": "8 stunning themes + 3 icon packs for VS Code, Cursor, Windsurf & more. Dark, Light, Night, Ghibli, Fury, Kiro, NVIM & Blur. Reduce eye strain and boost your coding productivity.",
+  "homepage": "https://github.com/bastndev/Lynx-Theme-Pro",
+  "id": "vscode.bastndev.lynx-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Lynx Theme Pro + (Icons)",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-bastndev-lynx-theme-1-dark-lynx-theme",
+      "label": "1. DARKㅤㅤ(Lynx Theme)",
+      "path": "themes/1-dark-lynx-theme.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-bastndev-lynx-theme-2-light-lynx-theme",
+      "label": "2. LIGHT ㅤ (Lynx Theme)",
+      "path": "themes/2-light-lynx-theme.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-bastndev-lynx-theme-3-night-lynx-theme",
+      "label": "3. NIGHT ㅤ(Lynx Theme)",
+      "path": "themes/3-night-lynx-theme.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-bastndev-lynx-theme-4-ghibli-lynx-theme",
+      "label": "4. GHIBLI ㅤ(Lynx Theme)",
+      "path": "themes/4-ghibli-lynx-theme.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-bastndev-lynx-theme-5-fury-lynx-theme",
+      "label": "5. FURY ㅤ (Lynx Theme)",
+      "path": "themes/5-fury-lynx-theme.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-bastndev-lynx-theme-6-kiro-lynx-theme",
+      "label": "6. KIROㅤㅤ(Lynx Theme)",
+      "path": "themes/6-kiro-lynx-theme.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-bastndev-lynx-theme-7-nvim-lynx-theme",
+      "label": "7. NVIMㅤㅤ(Lynx Theme)",
+      "path": "themes/7-nvim-lynx-theme.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-bastndev-lynx-theme-8-liquid-lynx-theme",
+      "label": "8. LIQUIDㅤㅤ(Lynx Theme) 🧪",
+      "path": "themes/8-liquid-lynx-theme.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "5.3.6"
+}

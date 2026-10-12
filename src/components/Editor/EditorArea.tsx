@@ -23,6 +23,7 @@ const MarkdownPreview = preloadable(() => import("./MarkdownPreview"));
 const SettingsView = preloadable(() => import("../Settings/SettingsView"));
 const PluginDetailsView = preloadable(() => import("../Plugins/PluginDetailsView"));
 const PluginWebviewTab = preloadable(() => import("../Plugins/PluginWebviewTab"));
+const NotebookView = preloadable(() => import("../Notebook/NotebookView"));
 
 const MIN_GROUP_WIDTH = 220;
 
@@ -138,7 +139,8 @@ function EditorGroupView({
   const previewActive = activeTab?.kind === "preview";
   const pluginActive = activeTab?.kind === "plugin";
   const webviewActive = activeTab?.kind === "webview";
-  const fileActive = !diffActive && !settingsActive && !mergeActive && !historyActive && !previewActive && !pluginActive && !webviewActive;
+  const notebookActive = activeTab?.kind === "notebook";
+  const fileActive = !diffActive && !settingsActive && !mergeActive && !historyActive && !previewActive && !pluginActive && !webviewActive && !notebookActive;
   const hasFileTab = group.tabs.some((tab) => tab.kind === "file");
 
   return (
@@ -151,6 +153,19 @@ function EditorGroupView({
               <MonacoPane groupId={group.id} />
             </Suspense>
           </div>
+        )}
+        {/* Notebooks stay mounted while their tab is open (cell editors,
+            scroll position); only the active one shows. */}
+        {group.tabs.map(
+          (tab) =>
+            tab.kind === "notebook" &&
+            tab.notebookFile && (
+              <div key={tab.path} className="editor-layer" style={{ display: tab.path === activeTab?.path ? "block" : "none" }}>
+                <Suspense fallback={null}>
+                  <NotebookView path={tab.notebookFile} active={tab.path === activeTab?.path && isFocused} />
+                </Suspense>
+              </div>
+            ),
         )}
         {diffActive && activeTab.diff && (
           <div className="editor-layer">

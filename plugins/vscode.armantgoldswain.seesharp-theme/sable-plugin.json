@@ -1,0 +1,72 @@
+{
+  "author": "ArmantGoldswain",
+  "description": "A colourful vibrant syntax theme for C# specifically",
+  "homepage": "https://github.com/ArmantG/seesharp-theme",
+  "id": "vscode.armantgoldswain.seesharp-theme",
+  "minSableVersion": "0.3.8",
+  "name": "SeeSharp Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-armantgoldswain-seesharp-theme-seesharp-theme-dark",
+      "label": "SeeSharp Theme - Dark",
+      "path": "themes/seesharp-theme-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-armantgoldswain-seesharp-theme-seesharp-theme-grey",
+      "label": "SeeSharp Theme - Grey",
+      "path": "themes/seesharp-theme-grey.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-armantgoldswain-seesharp-theme-seesharp-theme-blue",
+      "label": "SeeSharp Theme - Blue",
+      "path": "themes/seesharp-theme-blue.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-armantgoldswain-seesharp-theme-seesharp-theme-cobalt-blue",
+      "label": "SeeSharp Theme - Cobalt Blue",
+      "path": "themes/seesharp-theme-cobalt-blue.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-armantgoldswain-seesharp-theme-seesharp-theme-syntax-only",
+      "label": "SeeSharp Theme - Syntax Only",
+      "path": "themes/seesharp-theme-syntax-only.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-armantgoldswain-seesharp-theme-seesharp-theme-solarized",
+      "label": "SeeSharp Theme - Solarized",
+      "path": "themes/seesharp-theme-solarized.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-armantgoldswain-seesharp-theme-seesharp-theme-oceanic-dark",
+      "label": "SeeSharp Theme - Oceanic Dark",
+      "path": "themes/seesharp-theme-oceanic-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-armantgoldswain-seesharp-theme-seesharp-theme-solarized-v2",
+      "label": "SeeSharp Theme - Solarized V2",
+      "path": "themes/seesharp-theme-solarized-v2.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-armantgoldswain-seesharp-theme-seesharp-theme-tailwind",
+      "label": "SeeSharp Theme - Tailwind",
+      "path": "themes/seesharp-theme-tailwind.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-armantgoldswain-seesharp-theme-seesharp-theme-material-high-contrast",
+      "label": "SeeSharp Theme-Material High Contrast",
+      "path": "themes/seesharp-theme-material-high-contrast.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "5.1.10"
+}

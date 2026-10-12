@@ -1,0 +1,24 @@
+{
+  "author": "wildberries-theme",
+  "description": "A dark theme for purple lovers",
+  "homepage": "https://github.com/gbgabo/wildberries",
+  "id": "vscode.wildberries-theme.wildberries",
+  "minSableVersion": "0.3.8",
+  "name": "Wildberries",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-wildberries-theme-wildberries-wildberries",
+      "label": "Wildberries",
+      "path": "themes/wildberries.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-wildberries-theme-wildberries-wildberries-darker",
+      "label": "Wildberries Darker",
+      "path": "themes/wildberries-darker.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.0.1"
+}

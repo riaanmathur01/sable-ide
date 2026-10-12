@@ -161,6 +161,12 @@ function platformName(): string {
   return "Linux";
 }
 
+/** A multi-root workspace's other folders (absolute paths reach them). */
+function otherFolders(root: string): string {
+  const others = useWorkspaceStore.getState().folders.filter((folder) => folder !== root);
+  return others.length ? `\n- Other folders in this workspace (use absolute paths for them): ${others.join(", ")}` : "";
+}
+
 function systemPrompt(root: string): string {
   const git = useGitStore.getState();
   const gitLine = git.isRepo
@@ -170,7 +176,7 @@ function systemPrompt(root: string): string {
   return `You are Sable Agent, an AI coding agent built into the Sable code editor. You work directly in the user's open project: you can read, search, create, edit and delete files, and run shell, git and GitHub CLI commands through your tools.
 
 Environment
-- Workspace root: ${root} (relative paths resolve against it; you cannot access files outside it)
+- Workspace root: ${root} (relative paths resolve against it; you cannot access files outside the workspace)${otherFolders(root)}
 - OS: ${platformName()}
 - Date: ${new Date().toDateString()}
 - ${gitLine}

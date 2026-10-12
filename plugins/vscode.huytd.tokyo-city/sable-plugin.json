@@ -1,0 +1,36 @@
+{
+  "author": "huytd",
+  "description": "Tokyo City theme, a mixture of City Lights and Tokyo Night",
+  "homepage": "https://github.com/huytd/vscode-tokyo-city",
+  "id": "vscode.huytd.tokyo-city",
+  "minSableVersion": "0.3.8",
+  "name": "Tokyo City",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-huytd-tokyo-city-tokyo-city",
+      "label": "Tokyo City",
+      "path": "themes/tokyo-city.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-huytd-tokyo-city-tokyo-city-no-italic",
+      "label": "Tokyo City No Italic",
+      "path": "themes/tokyo-city-no-italic.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-huytd-tokyo-city-tokyo-city-darker",
+      "label": "Tokyo City Darker",
+      "path": "themes/tokyo-city-darker.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-huytd-tokyo-city-tokyo-city-lighter",
+      "label": "Tokyo City Lighter",
+      "path": "themes/tokyo-city-lighter.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "0.2.4"
+}

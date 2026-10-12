@@ -7,8 +7,7 @@ import {
   type CommitFile,
   type CommitInfo,
 } from "../../lib/ipc";
-import { useWorkspaceStore } from "../../store/workspaceStore";
-import { useGitStore } from "../../store/gitStore";
+import { repositoryRoot, useGitStore } from "../../store/gitStore";
 import { useTabsStore } from "../../store/tabsStore";
 import { iconForFile } from "../../lib/fileIcons";
 import { ask as confirmNative } from "@tauri-apps/plugin-dialog";
@@ -124,7 +123,7 @@ export function HistoryPanel() {
   }
 
   async function loadMore(skip: number) {
-    const root = useWorkspaceStore.getState().rootPath;
+    const root = repositoryRoot();
     if (!root || loading) return;
     setLoading(true);
     try {
@@ -156,7 +155,7 @@ export function HistoryPanel() {
     }
     setExpanded(hash);
     if (!filesByHash[hash]) {
-      const root = useWorkspaceStore.getState().rootPath;
+      const root = repositoryRoot();
       if (!root) return;
       try {
         const files = await gitCommitFiles(root, hash);

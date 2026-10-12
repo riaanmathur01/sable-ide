@@ -1,0 +1,36 @@
+{
+  "author": "wicked-labs",
+  "description": "Elegant, minimal, and clean color palette to give your eyes rest on different interfaces.",
+  "homepage": "https://github.com/Serendipity-Theme/vs-code",
+  "id": "vscode.wicked-labs.wvsc-serendipity",
+  "minSableVersion": "0.3.8",
+  "name": "Serendipity",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-wicked-labs-wvsc-serendipity-serendipity-morning",
+      "label": "Serendipity Morning",
+      "path": "themes/serendipity-morning.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-wicked-labs-wvsc-serendipity-serendipity-midnight",
+      "label": "Serendipity Midnight",
+      "path": "themes/serendipity-midnight.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-wicked-labs-wvsc-serendipity-serendipity-sunset",
+      "label": "Serendipity Sunset",
+      "path": "themes/serendipity-sunset.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-wicked-labs-wvsc-serendipity-serendipity-midnight-electric",
+      "label": "Serendipity Midnight Electric",
+      "path": "themes/serendipity-midnight-electric.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.67.0"
+}

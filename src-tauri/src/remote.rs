@@ -23,7 +23,7 @@ use std::process::Stdio;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tauri::{AppHandle, Manager};
+use tauri::Manager;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::{mpsc, oneshot};
@@ -392,11 +392,13 @@ struct Connection {
     session: u64,
 }
 
-static CONNECTION: Mutex<Option<Arc<Connection>>> = Mutex::new(None);
+/// Each window's connection, by window label (a window is local or on
+/// one remote; several windows can be on different remotes).
+static CONNECTIONS: Mutex<Option<HashMap<String, Arc<Connection>>>> = Mutex::new(None);
 static SESSIONS: AtomicU64 = AtomicU64::new(1);
 
-fn current() -> Option<Arc<Connection>> {
-    CONNECTION.lock().unwrap().clone()
+fn current(owner: &str) -> Option<Arc<Connection>> {
+    CONNECTIONS.lock().unwrap().get_or_insert_with(HashMap::new).get(owner).cloned()
 }
 
 /// What the frontend learns about a connection.
@@ -419,15 +421,16 @@ fn status(events: &Events, state: &str, target: &Target, message: Option<String>
 /// Connect to `target` (installing the agent if needed); this replaces
 /// any previous connection.
 #[tauri::command]
-pub async fn remote_connect(app: AppHandle, target: Target) -> Result<RemoteInfo, String> {
-    let cache = app.path().app_data_dir().map_err(|error| error.to_string())?.join("agents");
-    connect(crate::events::for_app(&app), &cache, target).await
+pub async fn remote_connect(window: tauri::WebviewWindow, target: Target) -> Result<RemoteInfo, String> {
+    let cache = window.path().app_data_dir().map_err(|error| error.to_string())?.join("agents");
+    connect(crate::events::for_window(&window), &cache, target, window.label()).await
 }
 
-/// `remote_connect`, with events sent to `events` and downloaded agents
-/// kept in `cache`.
-pub async fn connect(events: Events, cache: &std::path::Path, target: Target) -> Result<RemoteInfo, String> {
-    disconnect().await;
+/// `remote_connect` for the window `owner`, with events sent to `events`
+/// and downloaded agents kept in `cache`.
+pub async fn connect(events: Events, cache: &std::path::Path, target: Target, owner: &str) -> Result<RemoteInfo, String> {
+    disconnect(owner).await;
+    let owner = owner.to_string();
     *ASKPASS_EVENTS.lock().unwrap() = Some(events.clone());
     let progress = |message: &str| status(&events, "connecting", &target, Some(message.to_string()));
     progress(&format!("Connecting to {}…", target.name()));
@@ -514,7 +517,7 @@ pub async fn connect(events: Events, cache: &std::path::Path, target: Target) ->
         child: tokio::sync::Mutex::new(Some(child)),
         session,
     });
-    *CONNECTION.lock().unwrap() = Some(connection);
+    CONNECTIONS.lock().unwrap().get_or_insert_with(HashMap::new).insert(owner.clone(), connection);
 
     // Replies resolve calls; events go to the window as if local.
     let reader_events = events.clone();
@@ -552,10 +555,10 @@ pub async fn connect(events: Events, cache: &std::path::Path, target: Target) ->
         for (_, sender) in pending.lock().unwrap().drain() {
             let _ = sender.send(Err(format!("Lost the connection to {}", reader_target.name())));
         }
-        let mut connection = CONNECTION.lock().unwrap();
-        if connection.as_ref().is_some_and(|current| current.session == session) {
-            *connection = None;
-            drop(connection);
+        let mut connections = CONNECTIONS.lock().unwrap();
+        let connections = connections.get_or_insert_with(HashMap::new);
+        if connections.get(&owner).is_some_and(|current| current.session == session) {
+            connections.remove(&owner);
             status(&reader_events, "disconnected", &reader_target, Some(reason));
         }
     });
@@ -579,9 +582,10 @@ fn gunzip(bytes: &[u8]) -> Result<Vec<u8>, String> {
     Ok(unpacked)
 }
 
-async fn disconnect() {
-    stop_all_forwards();
-    let connection = CONNECTION.lock().unwrap().take();
+/// Close the window `owner`'s connection, if it has one.
+pub async fn disconnect(owner: &str) {
+    stop_all_forwards(owner);
+    let connection = CONNECTIONS.lock().unwrap().get_or_insert_with(HashMap::new).remove(owner);
     if let Some(connection) = connection {
         // Closing stdin ends the agent (and its servers and terminals).
         if let Some(mut child) = connection.child.lock().await.take() {
@@ -595,29 +599,34 @@ async fn disconnect() {
 
 /// Close the remote connection (the window goes back to local).
 #[tauri::command]
-pub async fn remote_disconnect(app: AppHandle) -> Result<(), String> {
-    let target = current().map(|connection| connection.target.clone());
-    disconnect().await;
+pub async fn remote_disconnect(window: tauri::WebviewWindow) -> Result<(), String> {
+    let target = current(window.label()).map(|connection| connection.target.clone());
+    disconnect(window.label()).await;
     if let Some(target) = target {
-        status(&crate::events::for_app(&app), "closed", &target, None);
+        status(&crate::events::for_window(&window), "closed", &target, None);
     }
     Ok(())
 }
 
-/// The connection, if any.
+/// The window's connection, if any.
 #[tauri::command]
-pub fn remote_info() -> Option<RemoteInfo> {
-    current().map(|connection| RemoteInfo {
+pub fn remote_info(window: tauri::WebviewWindow) -> Option<RemoteInfo> {
+    current(window.label()).map(|connection| RemoteInfo {
         target: connection.target.clone(),
         label: connection.target.label(),
         agent: connection.info.clone(),
     })
 }
 
-/// Run a workspace command on the remote.
+/// Run a workspace command on the window's remote.
 #[tauri::command]
-pub async fn remote_call(cmd: String, args: Value) -> Result<Value, String> {
-    let connection = current().ok_or("Not connected to a remote")?;
+pub async fn remote_call(window: tauri::WebviewWindow, cmd: String, args: Value) -> Result<Value, String> {
+    call(window.label(), cmd, args).await
+}
+
+/// Run a command on the remote of the window `owner`.
+pub async fn call(owner: &str, cmd: String, args: Value) -> Result<Value, String> {
+    let connection = current(owner).ok_or("Not connected to a remote")?;
     let id = connection.next_id.fetch_add(1, Ordering::SeqCst);
     let (sender, receiver) = oneshot::channel();
     connection.pending.lock().unwrap().insert(id, sender);
@@ -758,7 +767,8 @@ struct Forward {
     listener: tokio::task::JoinHandle<()>,
 }
 
-static FORWARDS: Mutex<Option<HashMap<u16, Forward>>> = Mutex::new(None);
+/// Forwarded ports, by window and remote port.
+static FORWARDS: Mutex<Option<HashMap<(String, u16), Forward>>> = Mutex::new(None);
 /// Open tunnels: id → where the remote's bytes go (None: it closed).
 static TUNNELS: Mutex<Option<HashMap<u64, mpsc::UnboundedSender<Option<Vec<u8>>>>>> = Mutex::new(None);
 static TUNNEL_IDS: AtomicU64 = AtomicU64::new(1);
@@ -791,20 +801,20 @@ fn tunnel_event(event: &str, payload: &Value) -> bool {
 }
 
 /// Send to the agent without waiting for (or wanting) a reply.
-fn send_unanswered(cmd: &str, args: Value) {
-    if let Some(connection) = current() {
+fn send_unanswered(owner: &str, cmd: &str, args: Value) {
+    if let Some(connection) = current(owner) {
         let _ = connection.writer.send(json!({ "cmd": cmd, "args": args }).to_string());
     }
 }
 
 /// Relay one local connection to `remote_port` on the remote.
-async fn relay(stream: tokio::net::TcpStream, remote_port: u16) {
+async fn relay(owner: String, stream: tokio::net::TcpStream, remote_port: u16) {
     use base64::Engine;
     use tokio::io::AsyncReadExt;
     let id = TUNNEL_IDS.fetch_add(1, Ordering::SeqCst);
     let (sender, mut incoming) = mpsc::unbounded_channel::<Option<Vec<u8>>>();
     TUNNELS.lock().unwrap().get_or_insert_with(HashMap::new).insert(id, sender);
-    if remote_call("tunnel_open".into(), json!({ "id": id, "port": remote_port })).await.is_err() {
+    if call(&owner, "tunnel_open".into(), json!({ "id": id, "port": remote_port })).await.is_err() {
         TUNNELS.lock().unwrap().get_or_insert_with(HashMap::new).remove(&id);
         return;
     }
@@ -825,25 +835,26 @@ async fn relay(stream: tokio::net::TcpStream, remote_port: u16) {
         match reader.read(&mut buffer).await {
             Ok(0) | Err(_) => break,
             Ok(count) => send_unanswered(
+                &owner,
                 "tunnel_write",
                 json!({ "id": id, "data": base64::engine::general_purpose::STANDARD.encode(&buffer[..count]) }),
             ),
         }
     }
-    let _ = remote_call("tunnel_close".into(), json!({ "id": id })).await;
+    let _ = call(&owner, "tunnel_close".into(), json!({ "id": id })).await;
     let _ = to_local.await;
     TUNNELS.lock().unwrap().get_or_insert_with(HashMap::new).remove(&id);
 }
 
-fn stop_all_forwards() {
-    if let Some(forwards) = FORWARDS.lock().unwrap().take() {
-        for forward in forwards.into_values() {
+/// Stop the window `owner`'s forwards (their open tunnels end with the
+/// agent).
+fn stop_all_forwards(owner: &str) {
+    let mut forwards = FORWARDS.lock().unwrap();
+    let forwards = forwards.get_or_insert_with(HashMap::new);
+    let ports: Vec<(String, u16)> = forwards.keys().filter(|(window, _)| window == owner).cloned().collect();
+    for key in ports {
+        if let Some(forward) = forwards.remove(&key) {
             forward.listener.abort();
-        }
-    }
-    if let Some(tunnels) = TUNNELS.lock().unwrap().take() {
-        for sender in tunnels.into_values() {
-            let _ = sender.send(None);
         }
     }
 }
@@ -858,9 +869,14 @@ pub struct ForwardedPort {
 /// Forward `remote_port` to localhost (the same port number if it's free
 /// here, else `local_port` or any free one). Returns the local port.
 #[tauri::command]
-pub async fn remote_forward_port(remote_port: u16, local_port: Option<u16>) -> Result<u16, String> {
-    current().ok_or("Not connected to a remote")?;
-    if let Some(forward) = FORWARDS.lock().unwrap().get_or_insert_with(HashMap::new).get(&remote_port) {
+pub async fn remote_forward_port(window: tauri::WebviewWindow, remote_port: u16, local_port: Option<u16>) -> Result<u16, String> {
+    forward_port(window.label(), remote_port, local_port).await
+}
+
+pub async fn forward_port(owner: &str, remote_port: u16, local_port: Option<u16>) -> Result<u16, String> {
+    let owner = owner.to_string();
+    current(&owner).ok_or("Not connected to a remote")?;
+    if let Some(forward) = FORWARDS.lock().unwrap().get_or_insert_with(HashMap::new).get(&(owner.clone(), remote_port)) {
         return Ok(forward.local_port);
     }
     let mut listener = None;
@@ -872,37 +888,43 @@ pub async fn remote_forward_port(remote_port: u16, local_port: Option<u16>) -> R
     }
     let listener = listener.ok_or_else(|| format!("Couldn't listen on a local port for {remote_port}"))?;
     let local = listener.local_addr().map_err(|error| error.to_string())?.port();
+    let relay_owner = owner.clone();
     let task = tokio::spawn(async move {
         loop {
             let Ok((stream, _)) = listener.accept().await else { break };
-            tokio::spawn(relay(stream, remote_port));
+            tokio::spawn(relay(relay_owner.clone(), stream, remote_port));
         }
     });
     FORWARDS
         .lock()
         .unwrap()
         .get_or_insert_with(HashMap::new)
-        .insert(remote_port, Forward { local_port: local, listener: task });
+        .insert((owner, remote_port), Forward { local_port: local, listener: task });
     Ok(local)
 }
 
 /// Stop forwarding `remote_port`.
 #[tauri::command]
-pub fn remote_stop_forward(remote_port: u16) {
-    if let Some(forward) = FORWARDS.lock().unwrap().get_or_insert_with(HashMap::new).remove(&remote_port) {
+pub fn remote_stop_forward(window: tauri::WebviewWindow, remote_port: u16) {
+    if let Some(forward) = FORWARDS.lock().unwrap().get_or_insert_with(HashMap::new).remove(&(window.label().to_string(), remote_port)) {
         forward.listener.abort();
     }
 }
 
 /// The ports being forwarded.
 #[tauri::command]
-pub fn remote_forwards() -> Vec<ForwardedPort> {
+pub fn remote_forwards(window: tauri::WebviewWindow) -> Vec<ForwardedPort> {
+    forwards(window.label())
+}
+
+pub fn forwards(owner: &str) -> Vec<ForwardedPort> {
     let mut list: Vec<ForwardedPort> = FORWARDS
         .lock()
         .unwrap()
         .get_or_insert_with(HashMap::new)
         .iter()
-        .map(|(&remote_port, forward)| ForwardedPort { remote_port, local_port: forward.local_port })
+        .filter(|((window, _), _)| window == owner)
+        .map(|((_, remote_port), forward)| ForwardedPort { remote_port: *remote_port, local_port: forward.local_port })
         .collect();
     list.sort_by_key(|forward| forward.remote_port);
     list
@@ -1162,7 +1184,7 @@ mod tests {
         let events: Events = Arc::new(move |name, payload| sink.lock().unwrap().push((name.to_string(), payload)));
         let target = Target::Ssh { host: "test-box".into() };
 
-        let info = connect(events.clone(), &base.join("cache"), target.clone()).await.unwrap();
+        let info = connect(events.clone(), &base.join("cache"), target.clone(), "test").await.unwrap();
         assert_eq!(info.label, "SSH: test-box");
         assert_eq!(info.agent.home, home.to_string_lossy());
         assert!(home.join(format!(".sable-server/bin/{VERSION}/sable-agent")).exists());
@@ -1173,28 +1195,28 @@ mod tests {
 
         // Calls.
         let file = project.join("hello.rs").to_string_lossy().into_owned();
-        remote_call("write_file".into(), json!({ "path": file, "contents": "fn main() {}" })).await.unwrap();
-        assert_eq!(remote_call("read_file".into(), json!({ "path": file })).await.unwrap(), json!("fn main() {}"));
-        let listing = remote_call("read_directory".into(), json!({ "path": project })).await.unwrap();
+        call("test", "write_file".into(), json!({ "path": file, "contents": "fn main() {}" })).await.unwrap();
+        assert_eq!(call("test", "read_file".into(), json!({ "path": file })).await.unwrap(), json!("fn main() {}"));
+        let listing = call("test", "read_directory".into(), json!({ "path": project })).await.unwrap();
         assert_eq!(listing.as_array().unwrap().len(), 2);
-        assert!(remote_call("read_file".into(), json!({ "path": "/no/such/file" })).await.is_err());
-        let unknown = remote_call("plugin_list".into(), json!({})).await.unwrap_err();
+        assert!(call("test", "read_file".into(), json!({ "path": "/no/such/file" })).await.is_err());
+        let unknown = call("test", "plugin_list".into(), json!({})).await.unwrap_err();
         assert!(unknown.contains("doesn't support"), "{unknown}");
 
         // Streams: a terminal, and a search.
-        remote_call("create_terminal".into(), json!({ "id": "t1", "cols": 80, "rows": 24, "cwd": project })).await.unwrap();
-        remote_call("write_terminal".into(), json!({ "id": "t1", "data": "echo from-the-remote-$((6*7))\n" })).await.unwrap();
+        call("test", "create_terminal".into(), json!({ "id": "t1", "cols": 80, "rows": 24, "cwd": project })).await.unwrap();
+        call("test", "write_terminal".into(), json!({ "id": "t1", "data": "echo from-the-remote-$((6*7))\n" })).await.unwrap();
         assert!(
             wait_for(&seen, |name, payload| name == "terminal:output" && payload["data"].as_str().unwrap_or("").contains("from-the-remote-42")).await,
             "no terminal output"
         );
-        remote_call("kill_terminal".into(), json!({ "id": "t1" })).await.unwrap();
-        remote_call("search_workspace".into(), json!({ "root": project, "query": "needle", "searchId": 5, "options": null })).await.unwrap();
+        call("test", "kill_terminal".into(), json!({ "id": "t1" })).await.unwrap();
+        call("test", "search_workspace".into(), json!({ "root": project, "query": "needle", "searchId": 5, "options": null })).await.unwrap();
         assert!(wait_for(&seen, |name, payload| name == "search:done" && payload["searchId"] == 5 && payload["total"] == 1).await);
 
         // Debugging runs there too (here: no session yet).
-        assert!(remote_call("java_debug_installed".into(), json!({})).await.unwrap().is_boolean());
-        let no_session = remote_call("debug_request".into(), json!({ "seq": 1, "command": "threads", "arguments": {} })).await.unwrap_err();
+        assert!(call("test", "java_debug_installed".into(), json!({})).await.unwrap().is_boolean());
+        let no_session = call("test", "debug_request".into(), json!({ "seq": 1, "command": "threads", "arguments": {} })).await.unwrap_err();
         assert!(no_session.contains("No debug session"), "{no_session}");
 
         // Forwarding a port: an echo server stands in for a dev server.
@@ -1213,14 +1235,14 @@ mod tests {
                 });
             }
         });
-        remote_call("ports_watch".into(), json!({})).await.unwrap();
+        call("test", "ports_watch".into(), json!({})).await.unwrap();
         assert!(
             wait_for(&seen, |name, payload| name == "ports:changed"
                 && payload.as_array().is_some_and(|ports| ports.iter().any(|port| port["port"] == echo_port)))
             .await,
             "the agent didn't report the listening port"
         );
-        let local = remote_forward_port(echo_port, None).await.unwrap();
+        let local = forward_port("test", echo_port, None).await.unwrap();
         assert_ne!(local, echo_port, "the remote's port is taken here (same machine), so another is used");
         {
             use tokio::io::AsyncReadExt;
@@ -1236,23 +1258,23 @@ mod tests {
             client.read_exact(&mut echoed).await.unwrap();
             assert!(echoed == big, "large transfer corrupted");
         }
-        assert_eq!(remote_forwards().len(), 1);
-        remote_stop_forward(echo_port);
-        assert!(remote_forwards().is_empty());
+        assert_eq!(forwards("test").len(), 1);
+        FORWARDS.lock().unwrap().get_or_insert_with(HashMap::new).remove(&("test".to_string(), echo_port)).map(|forward| forward.listener.abort());
+        assert!(forwards("test").is_empty());
         assert!(!seen.lock().unwrap().iter().any(|(name, _)| name.starts_with("tunnel:")), "tunnel traffic leaked to the window");
 
         // Reconnecting uses the installed agent.
         seen.lock().unwrap().clear();
-        connect(events.clone(), &base.join("cache"), target.clone()).await.unwrap();
+        connect(events.clone(), &base.join("cache"), target.clone(), "test").await.unwrap();
         assert!(!messages(&seen).iter().any(|message| message.starts_with("Installing")), "{:?}", messages(&seen));
-        assert!(remote_info().is_some());
-        disconnect().await;
-        assert!(remote_info().is_none());
-        assert!(remote_call("read_file".into(), json!({ "path": file })).await.is_err());
+        assert!(current("test").is_some());
+        disconnect("test").await;
+        assert!(current("test").is_none());
+        assert!(call("test", "read_file".into(), json!({ "path": file })).await.is_err());
 
         // A host that refuses the login says why.
         std::fs::write(&fake_ssh, "#!/bin/sh\necho 'me@test-box: Permission denied (publickey,password).' >&2\nexit 255\n").unwrap();
-        let refused = connect(events, &base.join("cache"), target).await.unwrap_err();
+        let refused = connect(events, &base.join("cache"), target, "test").await.unwrap_err();
         assert!(refused.contains("ssh-copy-id"), "{refused}");
         let _ = std::fs::remove_dir_all(&base);
     }

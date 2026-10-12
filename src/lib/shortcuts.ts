@@ -10,12 +10,15 @@ import { useTestStore } from "../store/testStore";
 import { getEditor } from "./editorRegistry";
 import { runActiveFile } from "./runFile";
 import { openFolderDialog } from "./openFolder";
+import { addFolderToWorkspace, closeWindow, newWindow } from "./workspaceCommands";
 import { refactor, refactorThis } from "./refactor";
 import { readFile, writeFile } from "./ipc";
 import { formatKey, isMac, matchesKey, parseKey, type ParsedKey } from "./plugins/keybindings";
 import { onPluginEvent } from "./plugins/events";
 import { vimOwnsKey } from "./vim";
 import { paletteRunner } from "./paletteRunner";
+import { parseJsonc } from "./jsonc";
+import { broadcast } from "./windows";
 
 /**
  * Keyboard shortcuts: Sable's commands with their default keys, and your
@@ -75,6 +78,9 @@ export const COMMANDS: ShortcutCommand[] = [
   { id: "workbench.action.terminal.new", title: "New terminal", keys: ["ctrl+shift+`"], run: () => useTerminalStore.getState().newTerminal() },
   { id: "workbench.action.toggleSidebarVisibility", title: "Toggle sidebar", keys: ["mod+b"], run: () => ui().toggleSidebar() },
   { id: "workbench.action.files.openFolder", title: "Open folder", keys: ["mod+o"], run: () => openFolderDialog() },
+  { id: "workbench.action.newWindow", title: "New window", keys: ["mod+shift+n"], run: () => void newWindow() },
+  { id: "workbench.action.closeWindow", title: "Close window", keys: ["mod+shift+w"], run: () => void closeWindow() },
+  { id: "workbench.action.addRootFolder", title: "Add folder to workspace", keys: [], run: () => void addFolderToWorkspace() },
   { id: "workbench.action.closeActiveEditor", title: "Close tab", keys: ["mod+w"], run: () => tabs().activePath && tabs().closeTab(tabs().activePath!) },
   { id: "workbench.action.splitEditorRight", title: "Split editor right", keys: ["mod+\\"], run: () => tabs().splitRight() },
   { id: "workbench.action.focusPreviousGroup", title: "Focus previous editor group", keys: ["mod+alt+left"], when: isSplit, whenLabel: "split", run: () => tabs().focusAdjacentGroup(-1) },
@@ -177,56 +183,7 @@ export interface UserBinding {
   args?: unknown;
 }
 
-/** JSON with comments and trailing commas (keybindings.json). */
-export function parseJsonc(text: string): unknown {
-  // Two passes: comments out (a comment can sit after a trailing comma),
-  // then commas before ] or } out — never touching strings.
-  const pass = (input: string, step: (input: string, index: number) => [string, number] | null) => {
-    let out = "";
-    let inString = false;
-    for (let index = 0; index < input.length; index++) {
-      const char = input[index];
-      if (inString) {
-        out += char;
-        if (char === "\\") out += input[++index] ?? "";
-        else if (char === '"') inString = false;
-        continue;
-      }
-      if (char === '"') {
-        inString = true;
-        out += char;
-        continue;
-      }
-      const replaced = step(input, index);
-      if (replaced) {
-        out += replaced[0];
-        index = replaced[1];
-      } else {
-        out += char;
-      }
-    }
-    return out;
-  };
-  const noComments = pass(text, (input, index) => {
-    if (input[index] === "/" && input[index + 1] === "/") {
-      let end = index;
-      while (end < input.length && input[end] !== "\n") end++;
-      return ["", end - 1];
-    }
-    if (input[index] === "/" && input[index + 1] === "*") {
-      let end = index + 2;
-      while (end < input.length && !(input[end] === "*" && input[end + 1] === "/")) end++;
-      return [" ", end + 1];
-    }
-    return null;
-  });
-  const noTrailingCommas = pass(noComments, (input, index) => {
-    if (input[index] !== ",") return null;
-    const next = input.slice(index + 1).match(/^\s*(.)/)?.[1];
-    return next === "]" || next === "}" ? ["", index] : null;
-  });
-  return JSON.parse(noTrailingCommas.trim() || "[]");
-}
+export { parseJsonc } from "./jsonc";
 
 interface ShortcutState {
   user: UserBinding[];
@@ -289,6 +246,7 @@ export const useShortcutStore = create<ShortcutState>((set, get) => ({
     await writeFile(path, `${FILE_HEADER}${JSON.stringify(user, null, 2)}\n`);
     set({ user, error: null, filePath: path });
     applyEditorBindings();
+    broadcast("sable:keybindings-changed");
   },
 }));
 
@@ -434,5 +392,8 @@ function monacoKeybinding(monaco: MonacoLike, raw: string): number | null {
 
 // Saving keybindings.json in Sable applies it.
 onPluginEvent((name, { path }) => {
-  if (name === "didSave" && path && path === useShortcutStore.getState().filePath) void useShortcutStore.getState().load();
+  if (name === "didSave" && path && path === useShortcutStore.getState().filePath) {
+    void useShortcutStore.getState().load();
+    broadcast("sable:keybindings-changed");
+  }
 });

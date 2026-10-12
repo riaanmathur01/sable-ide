@@ -1,0 +1,96 @@
+{
+  "author": "beem",
+  "description": "Distraction-free monochrome coding theme",
+  "homepage": "https://codeberg.org/beem/monochromator",
+  "id": "vscode.beem.monochromator",
+  "minSableVersion": "0.3.8",
+  "name": "Monochromator",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-beem-monochromator-monochromator-dark",
+      "label": "Monochromator Dark",
+      "path": "themes/monochromator-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-beem-monochromator-monochromator-dark-amber",
+      "label": "Monochromator Dark Amber",
+      "path": "themes/monochromator-dark-amber.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-beem-monochromator-monochromator-dark-amethyst",
+      "label": "Monochromator Dark Amethyst",
+      "path": "themes/monochromator-dark-amethyst.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-beem-monochromator-monochromator-dark-aquamarine",
+      "label": "Monochromator Dark Aquamarine",
+      "path": "themes/monochromator-dark-aquamarine.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-beem-monochromator-monochromator-dark-emerald",
+      "label": "Monochromator Dark Emerald",
+      "path": "themes/monochromator-dark-emerald.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-beem-monochromator-monochromator-dark-ruby",
+      "label": "Monochromator Dark Ruby",
+      "path": "themes/monochromator-dark-ruby.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-beem-monochromator-monochromator-dark-sulfur",
+      "label": "Monochromator Dark Sulfur",
+      "path": "themes/monochromator-dark-sulfur.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-beem-monochromator-monochromator-light",
+      "label": "Monochromator Light",
+      "path": "themes/monochromator-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-beem-monochromator-monochromator-light-amber",
+      "label": "Monochromator Light Amber",
+      "path": "themes/monochromator-light-amber.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-beem-monochromator-monochromator-light-amethyst",
+      "label": "Monochromator Light Amethyst",
+      "path": "themes/monochromator-light-amethyst.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-beem-monochromator-monochromator-light-aquamarine",
+      "label": "Monochromator Light Aquamarine",
+      "path": "themes/monochromator-light-aquamarine.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-beem-monochromator-monochromator-light-emerald",
+      "label": "Monochromator Light Emerald",
+      "path": "themes/monochromator-light-emerald.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-beem-monochromator-monochromator-light-ruby",
+      "label": "Monochromator Light Ruby",
+      "path": "themes/monochromator-light-ruby.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-beem-monochromator-monochromator-light-sulfur",
+      "label": "Monochromator Light Sulfur",
+      "path": "themes/monochromator-light-sulfur.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "0.35.0"
+}

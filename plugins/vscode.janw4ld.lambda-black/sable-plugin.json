@@ -1,0 +1,24 @@
+{
+  "author": "janw4ld",
+  "description": "Default dark+ theme optimised for Haskell, groovy, C, python, nix & hcl syntax highlighting with a black background variant.",
+  "homepage": "https://github.com/janw4ld/lambda-black",
+  "id": "vscode.janw4ld.lambda-black",
+  "minSableVersion": "0.3.8",
+  "name": "Lambda Black",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-janw4ld-lambda-black-lambda-black",
+      "label": "Lambda Black",
+      "path": "themes/lambda-black.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-janw4ld-lambda-black-lambda-dark",
+      "label": "Lambda Dark+",
+      "path": "themes/lambda-dark.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.2.20"
+}

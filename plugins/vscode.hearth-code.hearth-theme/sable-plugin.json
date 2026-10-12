@@ -1,0 +1,36 @@
+{
+  "author": "hearth-code",
+  "description": "Warmth or structure, with meaning kept clear across Dark and Light. Includes calibrated Ember and Moss themes plus the built-in Theme Forge.",
+  "homepage": "https://github.com/hearth-code/HearthTheme",
+  "id": "vscode.hearth-code.hearth-theme",
+  "minSableVersion": "0.3.8",
+  "name": "HearthCode Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-hearth-code-hearth-theme-hearthcode-moss-dark",
+      "label": "HearthCode Moss Dark",
+      "path": "themes/hearthcode-moss-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-hearth-code-hearth-theme-hearthcode-moss-light",
+      "label": "HearthCode Moss Light",
+      "path": "themes/hearthcode-moss-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-hearth-code-hearth-theme-hearthcode-ember-dark",
+      "label": "HearthCode Ember Dark",
+      "path": "themes/hearthcode-ember-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-hearth-code-hearth-theme-hearthcode-ember-light",
+      "label": "HearthCode Ember Light",
+      "path": "themes/hearthcode-ember-light.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "3.7.7"
+}

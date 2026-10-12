@@ -1,0 +1,60 @@
+{
+  "author": "mateocerquetella",
+  "description": "Xcode Theme, ported to VS Code",
+  "homepage": "https://github.com/MateoCerquetella/xcode-theme",
+  "id": "vscode.mateocerquetella.xcode-12-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Xcode Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-mateocerquetella-xcode-12-theme-xcode-classic-dark",
+      "label": "Xcode Classic (Dark)",
+      "path": "themes/xcode-classic-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-mateocerquetella-xcode-12-theme-xcode-classic-light",
+      "label": "Xcode Classic (Light)",
+      "path": "themes/xcode-classic-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-mateocerquetella-xcode-12-theme-xcode-low-key-light",
+      "label": "Xcode Low Key (Light)",
+      "path": "themes/xcode-low-key-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-mateocerquetella-xcode-12-theme-xcode-spartan-light",
+      "label": "Xcode Spartan (Light)",
+      "path": "themes/xcode-spartan-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-mateocerquetella-xcode-12-theme-xcode-civic-dark",
+      "label": "Xcode Civic (Dark)",
+      "path": "themes/xcode-civic-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-mateocerquetella-xcode-12-theme-xcode-default-dark",
+      "label": "Xcode Default (Dark)",
+      "path": "themes/xcode-default-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-mateocerquetella-xcode-12-theme-xcode-default-dark-customized-version",
+      "label": "Xcode Default (Dark Customized Version)",
+      "path": "themes/xcode-default-dark-customized-version.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-mateocerquetella-xcode-12-theme-xcode-midnight-dark",
+      "label": "Xcode Midnight (Dark)",
+      "path": "themes/xcode-midnight-dark.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "5.2.0"
+}

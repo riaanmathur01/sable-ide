@@ -1,0 +1,30 @@
+{
+  "author": "khan",
+  "description": "Fork of the One Monokai theme",
+  "homepage": "https://github.com/kmnhan/vscode-two-monokai",
+  "id": "vscode.khan.two-monokai",
+  "minSableVersion": "0.3.8",
+  "name": "Two Monokai Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-khan-two-monokai-two-monokai",
+      "label": "Two Monokai",
+      "path": "themes/two-monokai.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-khan-two-monokai-two-monokai-darker",
+      "label": "Two Monokai Darker",
+      "path": "themes/two-monokai-darker.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-khan-two-monokai-two-monokai-flat",
+      "label": "Two Monokai Flat",
+      "path": "themes/two-monokai-flat.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.1.3"
+}

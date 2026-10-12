@@ -12,7 +12,7 @@ import {
   SquareTerminal,
 } from "lucide-react";
 import { useUiStore } from "../../store/uiStore";
-import { useWorkspaceStore } from "../../store/workspaceStore";
+import { folderOf, useWorkspaceStore, workspaceRelativePath } from "../../store/workspaceStore";
 import { useTabsStore } from "../../store/tabsStore";
 import { useGitStore } from "../../store/gitStore";
 import { useInterpreterStore } from "../../store/interpreterStore";
@@ -175,8 +175,8 @@ export function StatusBar() {
 
   // Path of the file currently in the editor, relative to the workspace.
   const currentFilePath =
-    lastFilePath && rootPath && lastFilePath.startsWith(rootPath)
-      ? lastFilePath.slice(rootPath.length).replace(/^[/\\]/, "")
+    lastFilePath && rootPath && folderOf(lastFilePath)
+      ? workspaceRelativePath(lastFilePath)
       : lastFilePath;
   const selected = interpreters.find((i) => i.path === selectedPath);
   const interpreterLabel =

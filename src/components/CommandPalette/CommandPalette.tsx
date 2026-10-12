@@ -9,13 +9,22 @@ import {
   type SymbolEntry,
 } from "../../lib/lsp/navigation";
 import { useTabsStore } from "../../store/tabsStore";
-import { useWorkspaceStore } from "../../store/workspaceStore";
+import { useWorkspaceStore, workspaceRelativePath } from "../../store/workspaceStore";
 import { useGitStore } from "../../store/gitStore";
 import { useTerminalStore } from "../../store/terminalStore";
 import { listWorkspaceFiles, pathExists, writeFile } from "../../lib/ipc";
 import { fuzzyScore } from "../../lib/fuzzy";
 import { runActiveFile } from "../../lib/runFile";
 import { openFolderDialog } from "../../lib/openFolder";
+import {
+  addFolderToWorkspace,
+  closeWindow,
+  newWindow,
+  openFolderInNewWindow,
+  openWorkspaceFromFile,
+  removeFolderFromWorkspace,
+  saveWorkspaceAs,
+} from "../../lib/workspaceCommands";
 import { useRemoteStore } from "../../store/remoteStore";
 import { keybindingsPath, setPaletteRunner } from "../../lib/shortcuts";
 import { useDebugStore } from "../../store/debugStore";
@@ -37,7 +46,8 @@ import { useTasksStore } from "../../store/tasksStore";
 import { usePluginStore } from "../../store/pluginStore";
 import { useCoverageStore } from "../../store/coverageStore";
 import { toggleInlineCompletions } from "../../lib/ai/inlineCompletions";
-import { THEMES } from "../../lib/themes";
+import { allThemes } from "../../lib/themes";
+import { isNotebookPath, notebookHooks, type NotebookCommand } from "../../lib/notebook/hooks";
 import {
   restartLanguageServers,
   setUpPythonSemanticHighlighting,
@@ -77,8 +87,7 @@ const PLACEHOLDERS: Record<PaletteMode, string> = {
 };
 
 function relativeTo(path: string): string {
-  const root = useWorkspaceStore.getState().rootPath ?? "";
-  return path.startsWith(root) ? path.slice(root.length).replace(/^[/\\]/, "") : path;
+  return workspaceRelativePath(path);
 }
 
 function fileItem(path: string, section?: string): PaletteItem {
@@ -153,10 +162,11 @@ function PaletteInner({ mode, onClose }: { mode: PaletteMode; onClose: () => voi
   // The workspace's files (quick open, Search Everywhere).
   useEffect(() => {
     if (mode !== "files" && mode !== "everywhere" && mode !== "compareWith") return;
-    const root = useWorkspaceStore.getState().rootPath;
-    if (!root) return;
-    listWorkspaceFiles(root)
-      .then(setFiles)
+    // Every folder's, in a multi-root workspace.
+    const { folders } = useWorkspaceStore.getState();
+    if (!folders.length) return;
+    Promise.all(folders.map((folder) => listWorkspaceFiles(folder).catch(() => [] as string[])))
+      .then((lists) => setFiles(lists.flat()))
       .catch(() => setFiles([]));
   }, [mode]);
 
@@ -294,7 +304,12 @@ function PaletteInner({ mode, onClose }: { mode: PaletteMode; onClose: () => voi
   // flips between two files).
   useEffect(() => {
     const switchBack = mode === "recentFiles" && !query && recentFiles[0] === currentPath && results.length > 1;
-    setSelected(switchBack ? 1 : 0);
+    const target = switchBack ? 1 : 0;
+    // Only when it changes: a same-value update still re-renders (and
+    // bails out without a commit), and each keystroke adding one tripped
+    // React's nested-update limit when typing a long path quickly.
+    if (selected !== target) setSelected(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, mode, results.length, recentFiles, currentPath]);
   useEffect(() => {
     const node = listRef.current?.querySelector(`[data-index="${selected}"]`) as HTMLElement | null;
@@ -382,6 +397,33 @@ function PaletteInner({ mode, onClose }: { mode: PaletteMode; onClose: () => voi
   );
 }
 
+/** Notebook commands: for the notebook in front, or to reopen a .ipynb as a notebook. */
+function notebookCommands(): PaletteItem[] {
+  const { tabs, activePath } = useTabsStore.getState();
+  const active = tabs.find((tab) => tab.path === activePath);
+  if (active?.kind === "file" && isNotebookPath(active.path)) {
+    return [{ id: "notebook-open-editor", label: "Notebook: Open in Notebook Editor", run: () => void useTabsStore.getState().openFile(active.path) }];
+  }
+  const file = active?.kind === "notebook" ? active.notebookFile : undefined;
+  if (!file) return [];
+  const command = (id: NotebookCommand, label: string, detail?: string): PaletteItem => ({
+    id: `notebook-${id}`,
+    label,
+    detail,
+    run: () => notebookHooks.command?.(file, id),
+  });
+  return [
+    { id: "notebook-open-text", label: "Notebook: Open as Text", run: () => void useTabsStore.getState().openFile(file, { asText: true }) },
+    command("runAll", "Notebook: Run All Cells"),
+    command("runCell", "Notebook: Run Selected Cell", "⌘↵"),
+    command("interrupt", "Notebook: Interrupt Kernel", "I I"),
+    command("restart", "Notebook: Restart Kernel", "0 0"),
+    command("restartRunAll", "Notebook: Restart Kernel and Run All"),
+    command("clearOutputs", "Notebook: Clear All Outputs"),
+    command("selectKernel", "Notebook: Select Kernel…"),
+  ];
+}
+
 /** Flip a boolean setting. */
 function toggleSetting(key: SettingKey) {
   const { values, set } = useSettingsStore.getState();
@@ -442,7 +484,7 @@ function buildCommands(): PaletteItem[] {
         ui.focusAgent();
       },
     },
-    ...Object.values(THEMES).map((theme) => ({
+    ...allThemes().map((theme) => ({
       id: `theme-${theme.id}`,
       label: `Color Theme: ${theme.label}`,
       detail: settings.values["workbench.colorTheme"] === theme.id ? "current" : undefined,
@@ -568,6 +610,7 @@ function buildCommands(): PaletteItem[] {
         if (file) useTabsStore.getState().openPreview(file, false);
       },
     },
+    ...notebookCommands(),
     { id: "inline-completions", label: "AI: Toggle Inline Completions", run: toggleInlineCompletions },
     {
       id: "debug-attach",
@@ -924,6 +967,15 @@ function buildCommands(): PaletteItem[] {
       detail: "⌘O",
       run: () => void openFolderDialog(),
     },
+    { id: "new-window", label: "File: New Window", detail: "⇧⌘N", run: () => void newWindow() },
+    { id: "open-folder-new-window", label: "File: Open Folder in New Window…", run: () => void openFolderInNewWindow() },
+    { id: "close-window", label: "File: Close Window", detail: "⇧⌘W", run: () => void closeWindow() },
+    { id: "add-root-folder", label: "Workspaces: Add Folder to Workspace…", run: () => void addFolderToWorkspace() },
+    ...(useWorkspaceStore.getState().folders.length > 1
+      ? [{ id: "remove-root-folder", label: "Workspaces: Remove Folder from Workspace…", run: () => void removeFolderFromWorkspace() }]
+      : []),
+    { id: "open-workspace-file", label: "File: Open Workspace from File…", run: () => void openWorkspaceFromFile() },
+    { id: "save-workspace-as", label: "File: Save Workspace As…", run: () => void saveWorkspaceAs() },
     {
       id: "close-tab",
       label: "Close Tab",

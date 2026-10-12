@@ -1,0 +1,36 @@
+{
+  "author": "travis",
+  "description": "A minimalist theme suite for focus. Includes Simple Dark & Light Soft (Eye-friendly) modes.",
+  "homepage": "https://github.com/HondryTravis/simple-dark",
+  "id": "vscode.travis.simple-dark",
+  "minSableVersion": "0.3.8",
+  "name": "Simple Dark",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-travis-simple-dark-simple-dark",
+      "label": "Simple Dark",
+      "path": "themes/simple-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-travis-simple-dark-simple-dark-soft",
+      "label": "Simple Dark Soft",
+      "path": "themes/simple-dark-soft.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-travis-simple-dark-simple-light",
+      "label": "Simple Light",
+      "path": "themes/simple-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-travis-simple-dark-simple-light-soft",
+      "label": "Simple Light Soft",
+      "path": "themes/simple-light-soft.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "1.6.3"
+}

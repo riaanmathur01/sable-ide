@@ -37,6 +37,21 @@ plugin in a subfolder, or a link to a `.zip` / `.tar.gz`. The entry's
 the permissions before installing, and an **Update** button when the
 listed version is newer than theirs.
 
+## Color themes
+
+The theme plugins here (the `vscode.*` folders with a `themes/` folder)
+are VS Code color-theme extensions from [Open VSX](https://open-vsx.org),
+converted by Sable's own converter (**Plugins → Create → Convert a VS Code
+extension**) with their code, if any, left out. Only extensions with a
+permissive license (MIT, ISC, Apache-2.0, BSD, CC0, Unlicense) are
+included, and each folder keeps its license file and the original
+README. Their themes belong to their authors.
+
+A theme plugin's entry may add `"themes"` (how many) and `"preview"`: the
+colors of a small code sample on its Marketplace card
+(`background`, `foreground`, `accent`, `keyword`, `string`, `function`,
+`comment`, `type`), and is tagged `theme` to list it under Color Themes.
+
 ## Your own marketplace
 
 The marketplace is just this JSON file. To run your own (for a team, say),

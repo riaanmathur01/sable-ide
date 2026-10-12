@@ -1,0 +1,36 @@
+{
+  "author": "stackmason1",
+  "description": "A synesthetic coding experience — where code becomes music and colors become sound. Retro-neon theme inspired by 80s synthwave.",
+  "homepage": "https://github.com/stackmason1/synesthesia-theme/",
+  "id": "vscode.stackmason1.synesthesia-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Synesthesia Synthwave",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-stackmason1-synesthesia-theme-synesthesia-synthwave",
+      "label": "Synesthesia Synthwave",
+      "path": "themes/synesthesia-synthwave.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-stackmason1-synesthesia-theme-synesthesia-synthwave-dawn",
+      "label": "Synesthesia Synthwave Dawn",
+      "path": "themes/synesthesia-synthwave-dawn.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-stackmason1-synesthesia-theme-synesthesia-synthwave-dusk",
+      "label": "Synesthesia Synthwave Dusk",
+      "path": "themes/synesthesia-synthwave-dusk.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-stackmason1-synesthesia-theme-synesthesia-synthwave-midnight",
+      "label": "Synesthesia Synthwave Midnight",
+      "path": "themes/synesthesia-synthwave-midnight.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.0.0"
+}

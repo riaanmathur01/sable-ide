@@ -1,0 +1,18 @@
+{
+  "author": "vscode",
+  "description": "Tomorrow night blue theme for Visual Studio Code",
+  "homepage": "https://github.com/eclipse-theia/vscode-builtin-extensions",
+  "id": "vscode.vscode.theme-tomorrow-night-blue",
+  "minSableVersion": "0.3.8",
+  "name": "VS Code Tomorrow Night Blue",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-vscode-theme-tomorrow-night-blue-tomorrow-night-blue",
+      "label": "Tomorrow Night Blue",
+      "path": "themes/tomorrow-night-blue.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.95.3"
+}

@@ -1,0 +1,24 @@
+{
+  "author": "sainnhe",
+  "description": "Comfortable & Pleasant Color Scheme for Visual Studio Code",
+  "homepage": "https://github.com/sainnhe/everforest-vscode",
+  "id": "vscode.sainnhe.everforest",
+  "minSableVersion": "0.3.8",
+  "name": "Everforest",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-sainnhe-everforest-everforest-dark",
+      "label": "Everforest Dark",
+      "path": "themes/everforest-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-sainnhe-everforest-everforest-light",
+      "label": "Everforest Light",
+      "path": "themes/everforest-light.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "0.3.0"
+}

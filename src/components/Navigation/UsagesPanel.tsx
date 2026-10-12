@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { goTo, useNavigationStore, type Usage } from "../../store/navigationStore";
-import { useWorkspaceStore } from "../../store/workspaceStore";
+import { useWorkspaceStore, workspaceRelativePath } from "../../store/workspaceStore";
 import { iconForFile } from "../../lib/fileIcons";
 import "../Problems/ProblemsPanel.css";
 import "./Navigation.css";
 
 export function relativePath(path: string, root: string | null): string {
+  // Multi-root: relative to the file's own folder, named first.
+  if (useWorkspaceStore.getState().folders.length > 1) return workspaceRelativePath(path);
   return root && path.startsWith(root) ? path.slice(root.length).replace(/^[/\\]/, "") : path;
 }
 

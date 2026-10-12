@@ -1,0 +1,60 @@
+{
+  "author": "bpat86",
+  "description": "A mellow yet colorful Visual Studio Code theme built around vibrant shades of pink, purple, and blue.",
+  "homepage": "https://github.com/bpat86/nightcall-vscode-theme",
+  "id": "vscode.bpat86.nightcall",
+  "minSableVersion": "0.3.8",
+  "name": "Nightcall",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-bpat86-nightcall-nightcall",
+      "label": "Nightcall",
+      "path": "themes/nightcall.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-bpat86-nightcall-nightcall-no-italics",
+      "label": "Nightcall (No Italics)",
+      "path": "themes/nightcall-no-italics.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-bpat86-nightcall-nightcall-borderless",
+      "label": "Nightcall (Borderless)",
+      "path": "themes/nightcall-borderless.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-bpat86-nightcall-nightcall-muted",
+      "label": "Nightcall Muted",
+      "path": "themes/nightcall-muted.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-bpat86-nightcall-nightcall-muted-no-italics",
+      "label": "Nightcall Muted (No Italics)",
+      "path": "themes/nightcall-muted-no-italics.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-bpat86-nightcall-nightcall-muted-borderless",
+      "label": "Nightcall Muted (Borderless)",
+      "path": "themes/nightcall-muted-borderless.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-bpat86-nightcall-nightcall-classic",
+      "label": "Nightcall Classic",
+      "path": "themes/nightcall-classic.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-bpat86-nightcall-nightcall-classic-no-italics",
+      "label": "Nightcall Classic (No Italics)",
+      "path": "themes/nightcall-classic-no-italics.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "2.2.3"
+}

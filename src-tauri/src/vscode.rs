@@ -243,14 +243,17 @@ pub fn convert(root: &Path, out: &Path) -> Result<Manifest, String> {
     }
     let display_name = Some(text("displayName")).filter(|value| !value.is_empty()).unwrap_or_else(|| name.clone());
     let version = plain_version(&text("version"));
+    let themes = crate::vscode_theme::contributed_themes(root, &package, &plugin_id(&publisher, &name));
 
-    let entry_field = package
-        .get("browser")
-        .and_then(Value::as_str)
-        .or_else(|| package.get("main").and_then(Value::as_str))
-        .ok_or_else(|| {
-            format!("{display_name} has no code to run (it only adds themes, grammars or snippets, which Sable doesn't import yet)")
-        })?;
+    let entry_field = package.get("browser").and_then(Value::as_str).or_else(|| package.get("main").and_then(Value::as_str));
+    let Some(entry_field) = entry_field else {
+        if themes.is_empty() {
+            return Err(format!(
+                "{display_name} has no code to run and no color themes (it only adds grammars, snippets or icons, which Sable doesn't import yet)"
+            ));
+        }
+        return convert_themes(root, out, &package, &nls, themes);
+    };
     let entry = entry_module(root, entry_field).ok_or_else(|| format!("{display_name}'s code ({entry_field}) isn't in the package"))?;
     // `main` is what VS Code on the desktop runs, in Node: Sable does the
     // same when Node.js is installed (the extension folder kept as is,
@@ -381,10 +384,12 @@ pub fn convert(root: &Path, out: &Path) -> Result<Manifest, String> {
         homepage: repository,
         keybindings,
         runtime: node_entry.as_ref().map(|_| "node".to_string()),
+        themes: themes.iter().map(|(contribution, _)| contribution.clone()).collect(),
     };
 
     std::fs::create_dir_all(out).map_err(|error| error.to_string())?;
     std::fs::write(out.join("main.js"), bundle).map_err(|error| error.to_string())?;
+    write_themes(out, &themes)?;
     if let Some(node_entry) = &node_entry {
         // The extension as shipped, for the Node host (src/plugin_node.rs).
         copy_extension(root, &out.join("extension"))?;
@@ -398,15 +403,7 @@ pub fn convert(root: &Path, out: &Path) -> Result<Manifest, String> {
         serde_json::to_string_pretty(&manifest).map_err(|error| error.to_string())?,
     )
     .map_err(|error| error.to_string())?;
-    // Licenses travel with the code.
-    if let Ok(entries) = std::fs::read_dir(root) {
-        for entry in entries.flatten() {
-            let file = entry.file_name().to_string_lossy().into_owned();
-            if file.to_uppercase().starts_with("LICENSE") || file.to_uppercase().starts_with("LICENCE") {
-                let _ = std::fs::copy(entry.path(), out.join(&file));
-            }
-        }
-    }
+    copy_licenses(root, out);
     let command_list: String = commands
         .values()
         .filter_map(Value::as_str)
@@ -415,11 +412,87 @@ pub fn convert(root: &Path, out: &Path) -> Result<Manifest, String> {
     let original = std::fs::read_to_string(root.join("README.md")).unwrap_or_default();
     let readme = format!(
         "> Converted from the VS Code extension **{publisher}.{name}** {} by Sable. \
-         It runs through Sable's VS Code compatibility layer: commands, editing, settings, completions, hovers, formatters and diagnostics work; \
-         views, webviews, decorations and anything needing Node don't.\n\n{}{}",
+         It runs through Sable's VS Code compatibility layer{}.\n\n{}{}",
         text("version"),
+        if node_entry.is_some() { ", in Node.js as in VS Code" } else { ", in Sable's sandbox" },
         if command_list.is_empty() { String::new() } else { format!("Commands (⇧⌘P):\n\n{command_list}\n") },
         original
+    );
+    std::fs::write(out.join("README.md"), readme).map_err(|error| error.to_string())?;
+    Ok(manifest)
+}
+
+/// Licenses travel with what's converted.
+fn copy_licenses(root: &Path, out: &Path) {
+    if let Ok(entries) = std::fs::read_dir(root) {
+        for entry in entries.flatten() {
+            let file = entry.file_name().to_string_lossy().into_owned();
+            if file.to_uppercase().starts_with("LICENSE") || file.to_uppercase().starts_with("LICENCE") {
+                let _ = std::fs::copy(entry.path(), out.join(&file));
+            }
+        }
+    }
+}
+
+fn write_themes(out: &Path, themes: &[(crate::plugins::ThemeContribution, Value)]) -> Result<(), String> {
+    for (contribution, theme) in themes {
+        let file = out.join(&contribution.path);
+        if let Some(parent) = file.parent() {
+            std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        }
+        std::fs::write(&file, serde_json::to_string_pretty(theme).map_err(|error| error.to_string())?).map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
+/// A theme extension (no code): a plugin of its themes alone.
+fn convert_themes(
+    root: &Path,
+    out: &Path,
+    package: &Value,
+    nls: &Value,
+    themes: Vec<(crate::plugins::ThemeContribution, Value)>,
+) -> Result<Manifest, String> {
+    let text = |key: &str| package.get(key).and_then(Value::as_str).map(|value| localize(value, nls)).unwrap_or_default();
+    let (publisher, name) = (text("publisher"), text("name"));
+    let display_name = Some(text("displayName")).filter(|value| !value.is_empty()).unwrap_or_else(|| name.clone());
+    let description = text("description");
+    let repository = match package.get("repository") {
+        Some(Value::String(url)) => Some(url.clone()),
+        Some(Value::Object(repository)) => repository.get("url").and_then(Value::as_str).map(str::to_string),
+        _ => None,
+    }
+    .map(|url| url.trim_start_matches("git+").trim_end_matches(".git").to_string())
+    .filter(|url| url.starts_with("https://"));
+    let manifest = Manifest {
+        id: plugin_id(&publisher, &name),
+        name: display_name.clone(),
+        version: plain_version(&text("version")),
+        description: if description.is_empty() { format!("{display_name} color themes, from VS Code") } else { description },
+        author: publisher.clone(),
+        main: String::new(),
+        permissions: Vec::new(),
+        min_sable_version: Some(env!("CARGO_PKG_VERSION").to_string()),
+        homepage: repository,
+        keybindings: Vec::new(),
+        runtime: None,
+        themes: themes.iter().map(|(contribution, _)| contribution.clone()).collect(),
+    };
+    std::fs::create_dir_all(out).map_err(|error| error.to_string())?;
+    write_themes(out, &themes)?;
+    // No "main": the manifest says it has no code.
+    let mut written = serde_json::to_value(&manifest).map_err(|error| error.to_string())?;
+    written.as_object_mut().map(|object| object.remove("main"));
+    std::fs::write(out.join(crate::plugins::MANIFEST_FILE), serde_json::to_string_pretty(&written).map_err(|error| error.to_string())?)
+        .map_err(|error| error.to_string())?;
+    copy_licenses(root, out);
+    let theme_list: String = themes.iter().map(|(contribution, _)| format!("- {}\n", contribution.label)).collect();
+    let original = std::fs::read_to_string(root.join("README.md")).unwrap_or_default();
+    let readme = format!(
+        "> Converted from the VS Code extension **{publisher}.{name}** {} by Sable. \
+         Choose a theme in Settings → Editor Appearance → Color Theme, or with \"Color Theme: …\" in the command palette (⇧⌘P).\n\n\
+         Themes:\n\n{theme_list}\n{original}",
+        text("version"),
     );
     std::fs::write(out.join("README.md"), readme).map_err(|error| error.to_string())?;
     Ok(manifest)

@@ -121,7 +121,7 @@ export const useSearchStore = create<SearchStoreState>((set, get) => {
         error: null,
       });
       try {
-        await searchWorkspace(rootPath, query, searchId, options());
+        await searchWorkspace(rootPath, query, searchId, options(), useWorkspaceStore.getState().folders);
       } catch (error) {
         // Most likely an invalid regex while typing — show it inline.
         set({ isSearching: false, error: String(error) });
@@ -140,11 +140,12 @@ export const useSearchStore = create<SearchStoreState>((set, get) => {
 
     replaceAll: () =>
       guarded(async () => {
-        const root = useWorkspaceStore.getState().rootPath;
+        const { folders } = useWorkspaceStore.getState();
         const { query, replacement } = get();
-        if (!root || !query) return;
-        // Every matching file — not just the (capped) result list.
-        const files = await filesWithMatches(root, query, options());
+        if (!folders.length || !query) return;
+        // Every matching file — not just the (capped) result list — in
+        // every folder of the workspace.
+        const files = (await Promise.all(folders.map((folder) => filesWithMatches(folder, query, options())))).flat();
         if (files.length === 0) return;
         const confirmed = await confirmNative(
           `Replace all matches of “${query}” with “${replacement}” in ${files.length} file${files.length === 1 ? "" : "s"}?`,

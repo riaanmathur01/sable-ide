@@ -31,7 +31,10 @@ import {
 import { jetbrainsTokenColors, styleOf, textColor } from "./jetbrains/tokenColors";
 import { jetbrainsTokenType } from "./lsp/semanticTokens";
 
-export type ThemeId =
+/** A built-in theme's id, or a plugin theme's (any string). */
+export type ThemeId = BuiltinThemeId | (string & {});
+
+export type BuiltinThemeId =
   | "sable-dark"
   | "jetbrains-darcula"
   | "jetbrains-dark"
@@ -98,6 +101,8 @@ export type SemanticStyles = Record<
 export interface ThemeDefinition {
   id: ThemeId;
   label: string;
+  /** The plugin that added it (absent for built-in themes). */
+  pluginId?: string;
   /** Light themes get light native controls and Monaco's light base. */
   type?: "dark" | "light";
   ui: Record<string, string>;
@@ -799,7 +804,7 @@ const JETBRAINS_ISLANDS_DARK: ThemeDefinition = {
   terminal: { ...JETBRAINS_DARK.terminal, selectionBackground: "#2a4371" },
 };
 
-export const THEMES: Record<ThemeId, ThemeDefinition> = {
+export const THEMES: Record<BuiltinThemeId, ThemeDefinition> = {
   "sable-dark": SABLE,
   "jetbrains-darcula": DARCULA,
   "jetbrains-dark": JETBRAINS_DARK,
@@ -810,13 +815,67 @@ export const THEMES: Record<ThemeId, ThemeDefinition> = {
   "catppuccin-mocha": CATPPUCCIN_MOCHA,
 };
 
+// --- Plugin themes ---------------------------------------------------------------
+
+/** Themes added by plugins, by id. */
+const pluginThemes = new Map<string, ThemeDefinition>();
+const registryListeners = new Set<() => void>();
+let registryVersion = 0;
+
+/** Every theme: the built-in ones, then plugins' (by label). */
+export function allThemes(): ThemeDefinition[] {
+  return [
+    ...Object.values(THEMES),
+    ...[...pluginThemes.values()].sort((a, b) => a.label.localeCompare(b.label)),
+  ];
+}
+
+/** Changes whenever a plugin adds or removes themes. */
+export function themeRegistryVersion(): number {
+  return registryVersion;
+}
+
+export function onThemeRegistryChange(listener: () => void): () => void {
+  registryListeners.add(listener);
+  return () => registryListeners.delete(listener);
+}
+
+/** Replace the themes `pluginId` adds (an empty list removes them).
+ *  Ids taken by a built-in theme are skipped. */
+export function setPluginThemes(pluginId: string, themes: ThemeDefinition[]): void {
+  const before = [...pluginThemes.values()].filter((theme) => theme.pluginId === pluginId);
+  if (before.length === 0 && themes.length === 0) return;
+  for (const theme of before) pluginThemes.delete(theme.id);
+  for (const theme of themes) {
+    if (theme.id in THEMES) continue;
+    pluginThemes.set(theme.id, { ...theme, pluginId });
+  }
+  registryVersion++;
+  for (const listener of registryListeners) listener();
+}
+
+/** Whether a theme with this id exists right now. */
+export function hasTheme(id: string): boolean {
+  return id in THEMES || pluginThemes.has(id);
+}
+
 export function themeById(id: string): ThemeDefinition {
-  return THEMES[id as ThemeId] ?? SABLE;
+  return THEMES[id as BuiltinThemeId] ?? pluginThemes.get(id) ?? SABLE;
 }
 
 /** Remembered so the next launch paints the right colors before
  *  settings.json has loaded (no flash of the default theme). */
 const THEME_CACHE_KEY = "sable.colorTheme";
+/** The last plugin theme used, whole, so it paints before plugins load. */
+const PLUGIN_THEME_CACHE_KEY = "sable.pluginTheme";
+
+// Restore the cached plugin theme at startup (before anything asks).
+try {
+  const cached = JSON.parse(localStorage.getItem(PLUGIN_THEME_CACHE_KEY) ?? "null") as ThemeDefinition | null;
+  if (cached?.id && cached.pluginId && !(cached.id in THEMES)) pluginThemes.set(cached.id, cached);
+} catch {
+  /* nothing cached, or storage unavailable */
+}
 
 /** Apply a theme's UI tokens to the document (CSS variables). */
 export function applyUiTheme(id: string): void {
@@ -834,6 +893,7 @@ export function applyUiTheme(id: string): void {
     .catch(() => {});
   try {
     localStorage.setItem(THEME_CACHE_KEY, theme.id);
+    if (theme.pluginId) localStorage.setItem(PLUGIN_THEME_CACHE_KEY, JSON.stringify(theme));
   } catch {
     /* storage unavailable — only costs a flash on next launch */
   }

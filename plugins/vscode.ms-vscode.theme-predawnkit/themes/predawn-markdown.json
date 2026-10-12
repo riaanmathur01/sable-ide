@@ -1,0 +1,81 @@
+{
+  "colors": {
+    "editor.background": "#282828",
+    "editor.findMatchHighlightBackground": "#F18260",
+    "editor.foreground": "#DDD",
+    "editor.lineHighlightBackground": "#252525",
+    "editor.selectionBackground": "#4C4C4C",
+    "editorCursor.foreground": "#F18260",
+    "editorIndentGuide.activeBackground1": "#F1826050",
+    "editorIndentGuide.background1": "#F1826025",
+    "editorWhitespace.foreground": "#F18260"
+  },
+  "tokenColors": [
+    {
+      "scope": "text.html.markdown",
+      "settings": {
+        "foreground": "#ddd"
+      }
+    },
+    {
+      "scope": "markup.heading",
+      "settings": {
+        "foreground": "#F18260"
+      }
+    },
+    {
+      "scope": "meta.link.inline.markdown, meta.image.inline.markdown",
+      "settings": {
+        "foreground": "#b4d388"
+      }
+    },
+    {
+      "scope": "string.other.link.title.markdown",
+      "settings": {
+        "foreground": "#92bfbf"
+      }
+    },
+    {
+      "scope": "meta.paragraph.list.markdown",
+      "settings": {
+        "foreground": "#bddcdc"
+      }
+    },
+    {
+      "scope": "markup.underline.link.image.markdown, meta.block-level.markdown markup.raw.block.markdown, markup.raw.inline",
+      "settings": {
+        "foreground": "#777"
+      }
+    },
+    {
+      "scope": "markup.deleted.git_gutter",
+      "settings": {
+        "foreground": "#CF5340"
+      }
+    },
+    {
+      "scope": "markup.changed.git_gutter",
+      "settings": {
+        "foreground": "#92BFBF"
+      }
+    },
+    {
+      "scope": "markup.inserted.git_gutter",
+      "settings": {
+        "foreground": "#B4D388"
+      }
+    },
+    {
+      "scope": "markup.ignored.git_gutter",
+      "settings": {
+        "foreground": "#777777"
+      }
+    },
+    {
+      "scope": "markup.untracked.git_gutter",
+      "settings": {
+        "foreground": "#777777"
+      }
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "author": "fogio",
+  "description": "JetBrains IDEs New UI inspired color theme. Minimize distractions and boost productivity",
+  "homepage": "https://github.com/fogio-org/vscode-jetbrains-color-theme",
+  "id": "vscode.fogio.jetbrains-color-theme",
+  "minSableVersion": "0.3.8",
+  "name": "JetBrains New UI Color Theme Extended",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-fogio-jetbrains-color-theme-dark-jetbrains-color-theme",
+      "label": "| Dark | JetBrains New UI Color Theme",
+      "path": "themes/dark-jetbrains-color-theme.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-fogio-jetbrains-color-theme-light-jetbrains-color-theme",
+      "label": "| Light | JetBrains New UI Color Theme",
+      "path": "themes/light-jetbrains-color-theme.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "1.0.3"
+}

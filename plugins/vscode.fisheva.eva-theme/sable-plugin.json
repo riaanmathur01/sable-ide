@@ -1,0 +1,59 @@
+{
+  "author": "fisheva",
+  "description": "A comfortable and semantic theme.",
+  "id": "vscode.fisheva.eva-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Eva Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-fisheva-eva-theme-eva-dark",
+      "label": "Eva Dark",
+      "path": "themes/eva-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-fisheva-eva-theme-eva-dark-bold",
+      "label": "Eva Dark Bold",
+      "path": "themes/eva-dark-bold.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-fisheva-eva-theme-eva-dark-italic",
+      "label": "Eva Dark Italic",
+      "path": "themes/eva-dark-italic.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-fisheva-eva-theme-eva-dark-italic-bold",
+      "label": "Eva Dark Italic Bold",
+      "path": "themes/eva-dark-italic-bold.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-fisheva-eva-theme-eva-light",
+      "label": "Eva Light",
+      "path": "themes/eva-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-fisheva-eva-theme-eva-light-bold",
+      "label": "Eva Light Bold",
+      "path": "themes/eva-light-bold.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-fisheva-eva-theme-eva-light-italic",
+      "label": "Eva Light Italic",
+      "path": "themes/eva-light-italic.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-fisheva-eva-theme-eva-light-italic-bold",
+      "label": "Eva Light Italic Bold",
+      "path": "themes/eva-light-italic-bold.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "2.9.1"
+}

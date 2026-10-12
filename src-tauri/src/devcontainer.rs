@@ -307,8 +307,8 @@ pub fn devcontainer_exists(folder: String) -> bool {
 /// Build/start the dev container for `folder`; the frontend then
 /// connects to it (remote_connect with a container target).
 #[tauri::command]
-pub async fn devcontainer_up(app: tauri::AppHandle, folder: String) -> Result<Started, String> {
-    up(crate::events::for_app(&app), Path::new(&folder)).await
+pub async fn devcontainer_up(window: tauri::WebviewWindow, folder: String) -> Result<Started, String> {
+    up(crate::events::for_window(&window), Path::new(&folder)).await
 }
 
 #[cfg(test)]

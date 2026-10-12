@@ -1,0 +1,18 @@
+{
+  "author": "brittanychiang",
+  "description": "A dark blue theme for VS Code based on the Ayu Mirage theme",
+  "homepage": "https://github.com/bchiang7/halcyon-vscode",
+  "id": "vscode.brittanychiang.halcyon-vscode",
+  "minSableVersion": "0.3.8",
+  "name": "Halcyon Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-brittanychiang-halcyon-vscode-halcyon",
+      "label": "Halcyon",
+      "path": "themes/halcyon.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.6.3"
+}

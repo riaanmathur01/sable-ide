@@ -1,0 +1,24 @@
+{
+  "author": "armandphilippot",
+  "description": "A blue-grey theme with light & dark versions.",
+  "homepage": "https://github.com/ArmandPhilippot/coldark-vscode",
+  "id": "vscode.armandphilippot.coldark",
+  "minSableVersion": "0.3.8",
+  "name": "Coldark",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-armandphilippot-coldark-coldark-cold",
+      "label": "Coldark - Cold",
+      "path": "themes/coldark-cold.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-armandphilippot-coldark-coldark-dark",
+      "label": "Coldark - Dark",
+      "path": "themes/coldark-dark.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.2.11"
+}

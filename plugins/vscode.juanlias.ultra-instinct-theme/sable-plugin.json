@@ -1,0 +1,30 @@
+{
+  "author": "JuanLias",
+  "description": "Sensory-first theme. 443 color keys, 3 variants — less noise, more focus.",
+  "homepage": "https://github.com/juanlias/ultra-instinct-theme",
+  "id": "vscode.juanlias.ultra-instinct-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Ultra Instinct Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-juanlias-ultra-instinct-theme-ultra-instinct-sign",
+      "label": "Ultra Instinct Sign",
+      "path": "themes/ultra-instinct-sign.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-juanlias-ultra-instinct-theme-ultra-instinct-mastered",
+      "label": "Ultra Instinct Mastered",
+      "path": "themes/ultra-instinct-mastered.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-juanlias-ultra-instinct-theme-ultra-instinct-mastered-light",
+      "label": "Ultra Instinct Mastered (Light)",
+      "path": "themes/ultra-instinct-mastered-light.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "1.0.1"
+}

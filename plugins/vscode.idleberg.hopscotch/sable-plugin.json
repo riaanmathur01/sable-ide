@@ -1,0 +1,24 @@
+{
+  "author": "idleberg",
+  "description": "Color scheme inspired by the Hopscotch learning platform for kids",
+  "homepage": "https://github.com/idleberg/vscode-hopscotch",
+  "id": "vscode.idleberg.hopscotch",
+  "minSableVersion": "0.3.8",
+  "name": "Hopscotch",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-idleberg-hopscotch-hopscotch",
+      "label": "Hopscotch",
+      "path": "themes/hopscotch.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-idleberg-hopscotch-hopscotch-mono",
+      "label": "Hopscotch Mono",
+      "path": "themes/hopscotch-mono.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.8.2"
+}

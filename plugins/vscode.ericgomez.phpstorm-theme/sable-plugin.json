@@ -1,0 +1,24 @@
+{
+  "author": "ericgomez",
+  "description": "Dark Theme - PhpStorm Edition",
+  "homepage": "https://github.com/ericgomez/vscode-phpstorm-theme",
+  "id": "vscode.ericgomez.phpstorm-theme",
+  "minSableVersion": "0.3.8",
+  "name": "PhpStorm Dark Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-ericgomez-phpstorm-theme-phpstorm-dark",
+      "label": "PhpStorm Dark",
+      "path": "themes/phpstorm-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-ericgomez-phpstorm-theme-phpstorm-dark-islands",
+      "label": "PhpStorm Dark Islands",
+      "path": "themes/phpstorm-dark-islands.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.0.21"
+}

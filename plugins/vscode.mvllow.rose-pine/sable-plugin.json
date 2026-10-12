@@ -1,0 +1,48 @@
+{
+  "author": "mvllow",
+  "description": "All natural pine, faux fur and a bit of soho vibes for the classy minimalist",
+  "homepage": "https://github.com/rose-pine/vscode",
+  "id": "vscode.mvllow.rose-pine",
+  "minSableVersion": "0.3.8",
+  "name": "Rosé Pine",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-mvllow-rose-pine-ros-pine",
+      "label": "Rosé Pine",
+      "path": "themes/ros-pine.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-mvllow-rose-pine-ros-pine-no-italics",
+      "label": "Rosé Pine (no italics)",
+      "path": "themes/ros-pine-no-italics.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-mvllow-rose-pine-ros-pine-moon",
+      "label": "Rosé Pine Moon",
+      "path": "themes/ros-pine-moon.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-mvllow-rose-pine-ros-pine-moon-no-italics",
+      "label": "Rosé Pine Moon (no italics)",
+      "path": "themes/ros-pine-moon-no-italics.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-mvllow-rose-pine-ros-pine-dawn",
+      "label": "Rosé Pine Dawn",
+      "path": "themes/ros-pine-dawn.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-mvllow-rose-pine-ros-pine-dawn-no-italics",
+      "label": "Rosé Pine Dawn (no italics)",
+      "path": "themes/ros-pine-dawn-no-italics.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "2.15.2"
+}

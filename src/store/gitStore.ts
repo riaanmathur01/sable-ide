@@ -55,6 +55,11 @@ export function treeStatusOf(entry: GitFileEntry): GitFileStatus | undefined {
 }
 
 interface GitState {
+  /** The workspace folder whose repository this shows (multi-root
+   *  workspaces have several; null: the workspace's first folder). */
+  repoRoot: string | null;
+  /** Show another folder's repository. */
+  setRepository: (folder: string | null) => void;
   isRepo: boolean;
   branch: string | null;
   statusByPath: Record<string, GitFileEntry>;
@@ -114,12 +119,20 @@ interface GitState {
 }
 
 const REFRESH_DEBOUNCE_MS = 250;
+
+/** The folder whose repository Source Control shows: the chosen one if
+ *  it's still in the workspace, else the first folder. */
+export function repositoryRoot(): string | null {
+  const { rootPath, folders } = useWorkspaceStore.getState();
+  const chosen = useGitStore.getState().repoRoot;
+  return chosen && folders.includes(chosen) ? chosen : rootPath;
+}
 let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
 async function queryStatus(
   set: (partial: Partial<GitState>) => void,
 ): Promise<void> {
-  const rootPath = useWorkspaceStore.getState().rootPath;
+  const rootPath = repositoryRoot();
   if (!rootPath) {
     set({
       isRepo: false,
@@ -165,6 +178,12 @@ async function queryStatus(
 }
 
 export const useGitStore = create<GitState>((set, get) => ({
+  repoRoot: null,
+  setRepository: (folder) => {
+    if (folder === get().repoRoot) return;
+    set({ repoRoot: folder, statusByPath: {}, branches: [], stashes: [] });
+    void get().refreshNow();
+  },
   isRepo: false,
   branch: null,
   statusByPath: {},
@@ -188,6 +207,7 @@ export const useGitStore = create<GitState>((set, get) => ({
   reset: () => {
     clearTimeout(refreshTimer);
     set({
+      repoRoot: null,
       isRepo: false,
       branch: null,
       statusByPath: {},
@@ -203,7 +223,7 @@ export const useGitStore = create<GitState>((set, get) => ({
   },
 
   stage: async (file) => {
-    const root = useWorkspaceStore.getState().rootPath;
+    const root = repositoryRoot();
     if (!root) return;
     try {
       await gitStage(root, file);
@@ -214,7 +234,7 @@ export const useGitStore = create<GitState>((set, get) => ({
   },
 
   unstage: async (file) => {
-    const root = useWorkspaceStore.getState().rootPath;
+    const root = repositoryRoot();
     if (!root) return;
     try {
       await gitUnstage(root, file);
@@ -225,7 +245,7 @@ export const useGitStore = create<GitState>((set, get) => ({
   },
 
   stageAll: async () => {
-    const root = useWorkspaceStore.getState().rootPath;
+    const root = repositoryRoot();
     if (!root) return;
     try {
       await gitStageAll(root);
@@ -236,7 +256,7 @@ export const useGitStore = create<GitState>((set, get) => ({
   },
 
   unstageAll: async () => {
-    const root = useWorkspaceStore.getState().rootPath;
+    const root = repositoryRoot();
     if (!root) return;
     try {
       await gitUnstageAll(root);
@@ -247,7 +267,7 @@ export const useGitStore = create<GitState>((set, get) => ({
   },
 
   stageContent: async (file, content) => {
-    const root = useWorkspaceStore.getState().rootPath;
+    const root = repositoryRoot();
     if (!root) return false;
     try {
       await gitStageContent(root, file, content);
@@ -265,7 +285,7 @@ export const useGitStore = create<GitState>((set, get) => ({
 
   stashes: [],
   loadStashes: async () => {
-    const root = useWorkspaceStore.getState().rootPath;
+    const root = repositoryRoot();
     if (!root) return;
     try {
       set({ stashes: await gitStashList(root) });
@@ -289,7 +309,7 @@ export const useGitStore = create<GitState>((set, get) => ({
   revertCommit: (hash) => runGitOperation(get, (root) => gitRevertCommit(root, hash), "Commit reverted"),
 
   commit: async (message) => {
-    const root = useWorkspaceStore.getState().rootPath;
+    const root = repositoryRoot();
     if (!root) return { ok: false, needsIdentity: false, message: "No repo" };
     try {
       await gitCommit(root, message);
@@ -314,7 +334,7 @@ export const useGitStore = create<GitState>((set, get) => ({
   },
 
   loadBranches: async () => {
-    const root = useWorkspaceStore.getState().rootPath;
+    const root = repositoryRoot();
     if (!root) return;
     try {
       const branches = await gitBranches(root);
@@ -325,7 +345,7 @@ export const useGitStore = create<GitState>((set, get) => ({
   },
 
   switchBranch: async (name) => {
-    const root = useWorkspaceStore.getState().rootPath;
+    const root = repositoryRoot();
     if (!root) return;
     try {
       await gitSwitchBranch(root, name);
@@ -338,7 +358,7 @@ export const useGitStore = create<GitState>((set, get) => ({
   },
 
   createBranch: async (name) => {
-    const root = useWorkspaceStore.getState().rootPath;
+    const root = repositoryRoot();
     if (!root) return;
     try {
       await gitCreateBranch(root, name);
@@ -350,7 +370,7 @@ export const useGitStore = create<GitState>((set, get) => ({
   },
 
   deleteBranch: async (name) => {
-    const root = useWorkspaceStore.getState().rootPath;
+    const root = repositoryRoot();
     if (!root) return;
     try {
       await gitDeleteBranch(root, name);
@@ -381,7 +401,7 @@ async function runNetwork(
   op: (root: string) => Promise<string>,
   successVerb: string,
 ): Promise<void> {
-  const root = useWorkspaceStore.getState().rootPath;
+  const root = repositoryRoot();
   if (!root) return;
   set({ isSyncing: true, syncMessage: null });
   try {
@@ -410,7 +430,7 @@ async function runNetwork(
  * Source Control, refresh.
  */
 async function runGitOperation(get: () => GitState, op: (root: string) => Promise<unknown>, done: string): Promise<void> {
-  const root = useWorkspaceStore.getState().rootPath;
+  const root = repositoryRoot();
   if (!root) return;
   const ui = useUiStore.getState();
   try {

@@ -1,0 +1,36 @@
+{
+  "author": "radiolevity",
+  "description": "Field Lights based dark theme",
+  "homepage": "https://github.com/finnsjames/search-lights",
+  "id": "vscode.radiolevity.search-lights",
+  "minSableVersion": "0.3.8",
+  "name": "Search Lights",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-radiolevity-search-lights-search-lights",
+      "label": "Search Lights",
+      "path": "themes/search-lights.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-radiolevity-search-lights-search-lights-italic",
+      "label": "Search Lights Italic",
+      "path": "themes/search-lights-italic.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-radiolevity-search-lights-desert-lights",
+      "label": "Desert Lights",
+      "path": "themes/desert-lights.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-radiolevity-search-lights-desert-lights-italic",
+      "label": "Desert Lights Italic",
+      "path": "themes/desert-lights-italic.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.10.3"
+}

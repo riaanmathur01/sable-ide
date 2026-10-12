@@ -11,7 +11,7 @@ use std::io::{Read, Write};
 use std::sync::Mutex;
 use crate::events::{emit, Events};
 #[cfg(feature = "desktop")]
-use tauri::{AppHandle, State};
+use tauri::State;
 
 pub struct PtySession {
     master: Box<dyn MasterPty + Send>,
@@ -41,14 +41,14 @@ fn default_shell() -> String {
 #[cfg(feature = "desktop")]
 #[cfg_attr(feature = "desktop", tauri::command)]
 pub fn create_terminal(
-    app: AppHandle,
-    state: State<TerminalState>,
+    window: tauri::WebviewWindow,
+    states: State<crate::windows::PerWindow<TerminalState>>,
     id: String,
     cols: u16,
     rows: u16,
     cwd: Option<String>,
 ) -> Result<(), String> {
-    open_terminal(crate::events::for_app(&app), &state, id, cols, rows, cwd)
+    open_terminal(crate::events::for_window(&window), &states.get(window.label()), id, cols, rows, cwd)
 }
 
 pub fn open_terminal(
@@ -77,8 +77,8 @@ pub fn open_terminal(
 #[cfg_attr(feature = "desktop", tauri::command)]
 #[allow(clippy::too_many_arguments)] // each is a separate argument from the frontend
 pub fn create_command_terminal(
-    app: AppHandle,
-    state: State<TerminalState>,
+    window: tauri::WebviewWindow,
+    states: State<crate::windows::PerWindow<TerminalState>>,
     id: String,
     args: Vec<String>,
     cwd: Option<String>,
@@ -86,7 +86,7 @@ pub fn create_command_terminal(
     cols: u16,
     rows: u16,
 ) -> Result<u32, String> {
-    open_command_terminal(crate::events::for_app(&app), &state, id, args, cwd, env, cols, rows)
+    open_command_terminal(crate::events::for_window(&window), &states.get(window.label()), id, args, cwd, env, cols, rows)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -205,8 +205,8 @@ fn spawn_session(
 
 #[cfg(feature = "desktop")]
 #[cfg_attr(feature = "desktop", tauri::command)]
-pub fn write_terminal(state: State<TerminalState>, id: String, data: String) -> Result<(), String> {
-    write_to_terminal(&state, id, data)
+pub fn write_terminal(window: tauri::WebviewWindow, states: State<crate::windows::PerWindow<TerminalState>>, id: String, data: String) -> Result<(), String> {
+    write_to_terminal(&states.get(window.label()), id, data)
 }
 
 pub fn write_to_terminal(state: &TerminalState, id: String, data: String) -> Result<(), String> {
@@ -222,8 +222,8 @@ pub fn write_to_terminal(state: &TerminalState, id: String, data: String) -> Res
 
 #[cfg(feature = "desktop")]
 #[cfg_attr(feature = "desktop", tauri::command)]
-pub fn resize_terminal(state: State<TerminalState>, id: String, cols: u16, rows: u16) -> Result<(), String> {
-    resize(&state, id, cols, rows)
+pub fn resize_terminal(window: tauri::WebviewWindow, states: State<crate::windows::PerWindow<TerminalState>>, id: String, cols: u16, rows: u16) -> Result<(), String> {
+    resize(&states.get(window.label()), id, cols, rows)
 }
 
 pub fn resize(state: &TerminalState, id: String, cols: u16, rows: u16) -> Result<(), String> {
@@ -244,8 +244,16 @@ pub fn resize(state: &TerminalState, id: String, cols: u16, rows: u16) -> Result
 
 #[cfg(feature = "desktop")]
 #[cfg_attr(feature = "desktop", tauri::command)]
-pub fn kill_terminal(state: State<TerminalState>, id: String) -> Result<(), String> {
-    kill(&state, id)
+pub fn kill_terminal(window: tauri::WebviewWindow, states: State<crate::windows::PerWindow<TerminalState>>, id: String) -> Result<(), String> {
+    kill(&states.get(window.label()), id)
+}
+
+/// End every terminal (the window closed).
+#[cfg(feature = "desktop")]
+pub fn kill_all(state: &TerminalState) {
+    for (_, mut session) in state.0.lock().unwrap().drain() {
+        let _ = session.child.kill();
+    }
 }
 
 pub fn kill(state: &TerminalState, id: String) -> Result<(), String> {

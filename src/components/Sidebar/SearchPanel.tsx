@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useSearchStore } from "../../store/searchStore";
 import { useTabsStore } from "../../store/tabsStore";
-import { useWorkspaceStore } from "../../store/workspaceStore";
+import { useWorkspaceStore, workspaceRelativePath } from "../../store/workspaceStore";
 import { useUiStore } from "../../store/uiStore";
 import { revealPosition } from "../../lib/editorRegistry";
 import { iconForFile } from "../../lib/fileIcons";
@@ -45,12 +45,7 @@ function buildRows(
   if (nameMatches.length > 0) {
     rows.push({ kind: "section", label: "Files & Folders" });
     for (const match of nameMatches) {
-      let relativePath = match.path;
-      if (rootPath && relativePath.startsWith(rootPath)) {
-        relativePath = relativePath
-          .slice(rootPath.length)
-          .replace(/^[/\\]/, "");
-      }
+      const relativePath = rootPath ? workspaceRelativePath(match.path) : match.path;
       rows.push({ kind: "fileName", match, relativePath });
     }
   }

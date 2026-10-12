@@ -1,0 +1,78 @@
+{
+  "author": "dez64ru",
+  "description": "MacOS Modern is a theme pack styled to match native MacOS as closely as possible. Use recommended settings in the README.md for best results.",
+  "homepage": "https://github.com/davidbwaters/macos-modern-vscode-theme",
+  "id": "vscode.dez64ru.macos-modern-theme",
+  "minSableVersion": "0.3.8",
+  "name": "MacOS Modern Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-dez64ru-macos-modern-theme-macos-modern-dark-ventura-xcode-civic",
+      "label": "MacOS Modern Dark - Ventura Xcode Civic",
+      "path": "themes/macos-modern-dark-ventura-xcode-civic.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-dez64ru-macos-modern-theme-macos-modern-dark-ventura-xcode",
+      "label": "MacOS Modern Dark - Ventura Xcode",
+      "path": "themes/macos-modern-dark-ventura-xcode.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-dez64ru-macos-modern-theme-macos-modern-dark-ventura-xcode-default",
+      "label": "MacOS Modern Dark - Ventura Xcode Default",
+      "path": "themes/macos-modern-dark-ventura-xcode-default.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-dez64ru-macos-modern-theme-macos-modern-dark-xcode-civic",
+      "label": "MacOS Modern Dark - Xcode Civic",
+      "path": "themes/macos-modern-dark-xcode-civic.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-dez64ru-macos-modern-theme-macos-modern-dark-xcode-modern",
+      "label": "MacOS Modern Dark - Xcode Modern",
+      "path": "themes/macos-modern-dark-xcode-modern.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-dez64ru-macos-modern-theme-macos-modern-dark-xcode-default",
+      "label": "MacOS Modern Dark - Xcode Default",
+      "path": "themes/macos-modern-dark-xcode-default.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-dez64ru-macos-modern-theme-macos-modern-light-ventura-xcode",
+      "label": "MacOS Modern Light - Ventura Xcode",
+      "path": "themes/macos-modern-light-ventura-xcode.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-dez64ru-macos-modern-theme-macos-modern-light-ventura-xcode-default",
+      "label": "MacOS Modern Light - Ventura Xcode Default",
+      "path": "themes/macos-modern-light-ventura-xcode-default.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-dez64ru-macos-modern-theme-macos-modern-light-ventura-xcode-low-key",
+      "label": "MacOS Modern Light - Ventura Xcode Low Key",
+      "path": "themes/macos-modern-light-ventura-xcode-low-key.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-dez64ru-macos-modern-theme-macos-modern-light-xcode-default",
+      "label": "MacOS Modern Light - Xcode Default",
+      "path": "themes/macos-modern-light-xcode-default.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-dez64ru-macos-modern-theme-macos-modern-light-xcode-low-key",
+      "label": "MacOS Modern Light - Xcode Low Key",
+      "path": "themes/macos-modern-light-xcode-low-key.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "2.3.18"
+}

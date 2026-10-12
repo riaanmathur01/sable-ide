@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "../../lib/events";
 import { KeyRound } from "lucide-react";
 import { invokeLocal } from "../../lib/backend";
 import { useRemoteStore } from "../../store/remoteStore";

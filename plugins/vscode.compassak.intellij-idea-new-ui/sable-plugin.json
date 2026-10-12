@@ -1,0 +1,30 @@
+{
+  "author": "compassak",
+  "description": "VSCode theme pack aims to replicate the aesthetic of IntelliJ IDEA's new user interface.",
+  "homepage": "https://github.com/compassak/vscode-intellij-idea-new-ui",
+  "id": "vscode.compassak.intellij-idea-new-ui",
+  "minSableVersion": "0.3.8",
+  "name": "IntelliJ IDEA New UI",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-compassak-intellij-idea-new-ui-intellij-idea-new-ui-dark",
+      "label": "IntelliJ IDEA New UI Dark",
+      "path": "themes/intellij-idea-new-ui-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-compassak-intellij-idea-new-ui-intellij-idea-new-ui-light",
+      "label": "IntelliJ IDEA New UI Light",
+      "path": "themes/intellij-idea-new-ui-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-compassak-intellij-idea-new-ui-intellij-idea-new-ui-light-with-light-header",
+      "label": "IntelliJ IDEA New UI Light with Light Header",
+      "path": "themes/intellij-idea-new-ui-light-with-light-header.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "1.4.0"
+}

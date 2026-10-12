@@ -13,6 +13,7 @@ pub mod agent;
 mod commands;
 pub mod events;
 mod lsp;
+pub mod notebook;
 mod watcher;
 
 mod debug;
@@ -23,21 +24,19 @@ mod remote;
 #[cfg(feature = "desktop")]
 mod vscode;
 #[cfg(feature = "desktop")]
+mod vscode_theme;
+#[cfg(feature = "desktop")]
 mod devcontainer;
 #[cfg(feature = "desktop")]
 mod plugin_node;
+#[cfg(feature = "desktop")]
+mod windows;
 #[cfg(all(test, feature = "desktop"))]
 mod ui_bridge;
 
 #[cfg(feature = "desktop")]
 pub use remote::askpass_client;
 
-#[cfg(feature = "desktop")]
-use std::collections::HashMap;
-#[cfg(feature = "desktop")]
-use std::sync::atomic::AtomicU64;
-#[cfg(feature = "desktop")]
-use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "desktop")]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -59,14 +58,21 @@ pub fn run() {
             }
             Ok(())
         })
-        .manage(watcher::WatcherState(Mutex::new(None)))
-        .manage(commands::terminal::TerminalState(Mutex::new(
-            HashMap::new(),
-        )))
-        .manage(commands::search::SearchState(Arc::new(AtomicU64::new(0))))
-        .manage(lsp::LspManager::default())
-        .manage(debug::DebugManager::default())
+        // Each window has its own workspace: its own watcher, terminals,
+        // searches, language servers and debug sessions (windows.rs).
+        .manage(windows::PerWindow::<watcher::WatcherState>::default())
+        .manage(windows::PerWindow::<commands::terminal::TerminalState>::default())
+        .manage(windows::PerWindow::<commands::search::SearchState>::default())
+        .manage(windows::PerWindow::<lsp::LspManager>::default())
+        .manage(windows::PerWindow::<debug::DebugManager>::default())
+        .manage(windows::PerWindow::<notebook::NotebookState>::default())
         .manage(commands::ai::AiState::default())
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                use tauri::Manager;
+                windows::closed(window.app_handle(), window.label());
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             commands::fs::read_directory,
             commands::history::history_list,
@@ -178,6 +184,7 @@ pub fn run() {
             plugins::plugin_uninstall,
             plugins::plugin_set_enabled,
             plugins::plugin_read_main,
+            plugins::plugin_read_theme,
             plugins::plugin_discard,
             plugins::plugin_marketplace,
             plugins::plugin_fetch_readme,
@@ -195,7 +202,16 @@ pub fn run() {
             plugin_node::plugin_node_available,
             plugin_node::plugin_node_start,
             plugin_node::plugin_node_send,
+            windows::new_window,
+            windows::window_labels,
+            windows::broadcast,
+            watcher::watch_folders,
             plugin_node::plugin_node_stop,
+            notebook::notebook_kernelspecs,
+            notebook::notebook_start,
+            notebook::notebook_send,
+            notebook::notebook_stop,
+            notebook::notebook_install_ipykernel,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

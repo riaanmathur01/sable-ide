@@ -1,0 +1,24 @@
+{
+  "author": "usernamehw",
+  "description": "Light theme for ... eyes or something.",
+  "homepage": "https://github.com/usernamehw/vscode-theme-prism",
+  "id": "vscode.usernamehw.prism",
+  "minSableVersion": "0.3.8",
+  "name": "Light Theme ( Prism )",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-usernamehw-prism-prism",
+      "label": "Prism",
+      "path": "themes/prism.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-usernamehw-prism-prism-no-bold",
+      "label": "Prism (No Bold)",
+      "path": "themes/prism-no-bold.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "1.2.0"
+}

@@ -1,0 +1,48 @@
+{
+  "author": "teabyii",
+  "description": "A simple theme with bright colors and comes in three versions — dark, light and mirage for all day long comfortable work.",
+  "homepage": "https://github.com/ayu-theme/vscode-ayu",
+  "id": "vscode.teabyii.ayu",
+  "minSableVersion": "0.3.8",
+  "name": "Ayu",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-teabyii-ayu-ayu-light-bordered",
+      "label": "Ayu Light",
+      "path": "themes/ayu-light-bordered.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-teabyii-ayu-ayu-mirage-bordered",
+      "label": "Ayu Mirage",
+      "path": "themes/ayu-mirage-bordered.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-teabyii-ayu-ayu-dark-bordered",
+      "label": "Ayu Dark",
+      "path": "themes/ayu-dark-bordered.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-teabyii-ayu-ayu-light",
+      "label": "Ayu Light Unbordered",
+      "path": "themes/ayu-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-teabyii-ayu-ayu-mirage",
+      "label": "Ayu Mirage Unbordered",
+      "path": "themes/ayu-mirage.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-teabyii-ayu-ayu-dark",
+      "label": "Ayu Dark Unbordered",
+      "path": "themes/ayu-dark.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.4.1"
+}

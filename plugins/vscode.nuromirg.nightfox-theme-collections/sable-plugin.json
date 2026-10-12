@@ -1,0 +1,54 @@
+{
+  "author": "nuromirg",
+  "description": "A highly customizable themes for VSCode, ported from nightfox.nvim",
+  "homepage": "https://github.com/nuromirg/nightfox-vscode",
+  "id": "vscode.nuromirg.nightfox-theme-collections",
+  "minSableVersion": "0.3.8",
+  "name": "Nightfox Theme Collections",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-nuromirg-nightfox-theme-collections-nightfox",
+      "label": "Nightfox",
+      "path": "themes/nightfox.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-nuromirg-nightfox-theme-collections-carbonfox",
+      "label": "Carbonfox",
+      "path": "themes/carbonfox.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-nuromirg-nightfox-theme-collections-dawnfox",
+      "label": "Dawnfox",
+      "path": "themes/dawnfox.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-nuromirg-nightfox-theme-collections-dayfox",
+      "label": "Dayfox",
+      "path": "themes/dayfox.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-nuromirg-nightfox-theme-collections-duskfox",
+      "label": "Duskfox",
+      "path": "themes/duskfox.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-nuromirg-nightfox-theme-collections-nordfox",
+      "label": "Nordfox",
+      "path": "themes/nordfox.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-nuromirg-nightfox-theme-collections-terafox",
+      "label": "Terafox",
+      "path": "themes/terafox.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.0.7"
+}

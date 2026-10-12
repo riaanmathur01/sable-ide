@@ -1,0 +1,42 @@
+{
+  "author": "zhuangtongfa",
+  "description": "Atom's iconic One Dark theme for Visual Studio Code",
+  "homepage": "https://github.com/Binaryify/OneDark-Pro",
+  "id": "vscode.zhuangtongfa.material-theme",
+  "minSableVersion": "0.3.8",
+  "name": "One Dark Pro",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-zhuangtongfa-material-theme-one-dark-pro",
+      "label": "One Dark Pro",
+      "path": "themes/one-dark-pro.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-zhuangtongfa-material-theme-one-dark-pro-flat",
+      "label": "One Dark Pro Flat",
+      "path": "themes/one-dark-pro-flat.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-zhuangtongfa-material-theme-one-dark-pro-darker",
+      "label": "One Dark Pro Darker",
+      "path": "themes/one-dark-pro-darker.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-zhuangtongfa-material-theme-one-dark-pro-mix",
+      "label": "One Dark Pro Mix",
+      "path": "themes/one-dark-pro-mix.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-zhuangtongfa-material-theme-one-dark-pro-night-flat",
+      "label": "One Dark Pro Night Flat",
+      "path": "themes/one-dark-pro-night-flat.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "3.20.3"
+}

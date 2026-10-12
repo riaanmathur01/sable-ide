@@ -26,7 +26,7 @@ function ViewSection({ view }: { view: PluginView }) {
   const [open, setOpen] = useState(true);
   const Chevron = open ? ChevronDown : ChevronRight;
   return (
-    <section className="plugin-view">
+    <section className={`plugin-view${open && view.kind === "webview" ? " grows" : ""}`}>
       <button className="plugin-view-header" onClick={() => setOpen(!open)} title={view.pluginName}>
         <Chevron size={13} strokeWidth={1.5} />
         {view.name}

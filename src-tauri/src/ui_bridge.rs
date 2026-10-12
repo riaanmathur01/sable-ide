@@ -35,13 +35,34 @@ fn bridge_events() -> crate::events::Events {
     std::sync::Arc::new(|name, payload| EVENTS.lock().unwrap().push(json!({ "event": name, "payload": payload })))
 }
 
+/// Notebook kernels started through the bridge.
+static NOTEBOOKS: std::sync::LazyLock<crate::notebook::NotebookState> = std::sync::LazyLock::new(Default::default);
+
 async fn dispatch(command: &str, args: &Value) -> Result<Value, String> {
     Ok(match command {
         "__events" => json!({ "ok": std::mem::take(&mut *EVENTS.lock().unwrap()) }),
         "plugin_node_available" => json!({ "ok": crate::plugin_node::plugin_node_available() }),
-        "plugin_node_start" => reply(crate::plugin_node::start(bridge_events(), arg(args, "id")?).await),
-        "plugin_node_send" => reply(crate::plugin_node::plugin_node_send(arg(args, "id")?, arg(args, "message")?)),
-        "plugin_node_stop" => reply(crate::plugin_node::plugin_node_stop(arg(args, "id")?).await),
+        "plugin_node_start" => reply(crate::plugin_node::start(bridge_events(), arg(args, "id")?, "main").await),
+        "plugin_node_send" => reply(crate::plugin_node::send("main", &arg::<String>(args, "id")?, arg(args, "message")?)),
+        "notebook_kernelspecs" => reply(crate::notebook::kernelspecs(arg(args, "python")?).await),
+        "notebook_start" => reply(
+            crate::notebook::start(
+                bridge_events(),
+                &NOTEBOOKS,
+                arg(args, "session")?,
+                arg(args, "python")?,
+                arg(args, "kernel")?,
+                arg(args, "cwd")?,
+            )
+            .await,
+        ),
+        "notebook_send" => reply(crate::notebook::send(&NOTEBOOKS, arg(args, "session")?, arg(args, "message")?).await),
+        "notebook_stop" => reply(crate::notebook::stop(&NOTEBOOKS, arg(args, "session")?).await),
+        "notebook_install_ipykernel" => reply(crate::notebook::install_ipykernel(arg(args, "python")?).await),
+        "plugin_node_stop" => {
+            crate::plugin_node::stop("main", &arg::<String>(args, "id")?).await;
+            json!({ "ok": null })
+        }
         "read_directory" => reply(fs::read_directory(arg(args, "path")?)),
         "read_file" => reply(fs::read_file(arg(args, "path")?)),
         "read_file_base64" => reply(fs::read_file_base64(arg(args, "path")?)),
@@ -55,6 +76,12 @@ async fn dispatch(command: &str, args: &Value) -> Result<Value, String> {
         "rename_path" => reply(fs::rename_path(arg(args, "path")?, arg(args, "newName")?)),
         "move_path" => reply(fs::move_path(arg(args, "source")?, arg(args, "targetDirectory")?)),
         "list_workspace_files" => reply(search::list_workspace_files(arg(args, "root")?)),
+        "search_workspace" => {
+            static SEARCH: std::sync::LazyLock<search::SearchState> = std::sync::LazyLock::new(Default::default);
+            let roots: Option<Vec<String>> = args.get("roots").and_then(|roots| serde_json::from_value(roots.clone()).ok());
+            let roots = roots.filter(|roots| !roots.is_empty()).map_or_else(|| arg(args, "root").map(|root| vec![root]), Ok)?;
+            reply(search::search(bridge_events(), &SEARCH, roots, arg(args, "query")?, arg(args, "searchId")?, arg(args, "options")?))
+        }
         "run_shell" => reply(shell::run_shell(arg(args, "command")?, arg(args, "cwd")?, arg(args, "timeoutSecs")?).await),
         "git_status" => reply(git::git_status(arg(args, "path")?)),
         "git_stage" => reply(git::git_stage(arg(args, "root")?, arg(args, "file")?)),
@@ -110,6 +137,7 @@ async fn dispatch(command: &str, args: &Value) -> Result<Value, String> {
         "plugin_uninstall" => reply(plugins::plugin_uninstall(arg(args, "id")?)),
         "plugin_set_enabled" => reply(plugins::plugin_set_enabled(arg(args, "id")?, arg(args, "enabled")?)),
         "plugin_read_main" => reply(plugins::plugin_read_main(arg(args, "id")?)),
+        "plugin_read_theme" => reply(plugins::plugin_read_theme(arg(args, "id")?, arg(args, "path")?)),
         "plugin_discard" => reply(plugins::plugin_discard(arg(args, "path")?)),
         "plugin_marketplace" => reply(plugins::plugin_marketplace(arg(args, "url")?).await),
         "plugin_fetch_readme" => reply(plugins::plugin_fetch_readme(arg(args, "url")?).await),

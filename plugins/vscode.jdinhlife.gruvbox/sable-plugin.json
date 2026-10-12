@@ -1,0 +1,48 @@
+{
+  "author": "jdinhlife",
+  "description": "Gruvbox Theme",
+  "homepage": "https://github.com/jdinhify/vscode-theme-gruvbox",
+  "id": "vscode.jdinhlife.gruvbox",
+  "minSableVersion": "0.3.8",
+  "name": "Gruvbox Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-jdinhlife-gruvbox-gruvbox-dark-medium",
+      "label": "Gruvbox Dark Medium",
+      "path": "themes/gruvbox-dark-medium.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-jdinhlife-gruvbox-gruvbox-dark-hard",
+      "label": "Gruvbox Dark Hard",
+      "path": "themes/gruvbox-dark-hard.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-jdinhlife-gruvbox-gruvbox-dark-soft",
+      "label": "Gruvbox Dark Soft",
+      "path": "themes/gruvbox-dark-soft.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-jdinhlife-gruvbox-gruvbox-light-medium",
+      "label": "Gruvbox Light Medium",
+      "path": "themes/gruvbox-light-medium.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-jdinhlife-gruvbox-gruvbox-light-hard",
+      "label": "Gruvbox Light Hard",
+      "path": "themes/gruvbox-light-hard.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-jdinhlife-gruvbox-gruvbox-light-soft",
+      "label": "Gruvbox Light Soft",
+      "path": "themes/gruvbox-light-soft.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "1.29.1"
+}

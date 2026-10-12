@@ -1,0 +1,42 @@
+{
+  "author": "psudo-dev",
+  "description": "Oni (鬼) is a type of ogre youkai and \"Nebula Oni Theme\" has colors from Outer Space! Nebula Oni has a Menu with a lot of different options, give it a try, customize it!",
+  "homepage": "https://github.com/psudo-dev/nebula-oni-theme",
+  "id": "vscode.psudo-dev.nebula-oni-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Nebula Oni Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-psudo-dev-nebula-oni-theme-nebula-oni-hourglass",
+      "label": "Nebula Oni (Hourglass)",
+      "path": "themes/nebula-oni-hourglass.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-psudo-dev-nebula-oni-theme-nebula-oni-pegasus",
+      "label": "Nebula Oni (Pegasus)",
+      "path": "themes/nebula-oni-pegasus.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-psudo-dev-nebula-oni-theme-nebula-oni-spirograph",
+      "label": "Nebula Oni (Spirograph)",
+      "path": "themes/nebula-oni-spirograph.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-psudo-dev-nebula-oni-theme-nebula-oni-cerberus",
+      "label": "Nebula Oni (Cerberus)",
+      "path": "themes/nebula-oni-cerberus.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-psudo-dev-nebula-oni-theme-nebula-oni-favorite",
+      "label": "Nebula Oni (Favorite)",
+      "path": "themes/nebula-oni-favorite.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "3.0.0"
+}

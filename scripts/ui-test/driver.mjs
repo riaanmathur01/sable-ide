@@ -5,6 +5,9 @@
 // stand-ins here. See README → Testing.
 import puppeteer from "puppeteer-core";
 
+// Ports (SABLE_UI_VITE_PORT / SABLE_UI_BRIDGE_PORT to run beside another test).
+const VITE_PORT = process.env.SABLE_UI_VITE_PORT ?? "1530";
+const BRIDGE_PORT = process.env.SABLE_UI_BRIDGE_PORT ?? "1531";
 const CHROME = process.env.SABLE_CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 const STANDINS = {
@@ -14,6 +17,11 @@ const STANDINS = {
   list_monospace_fonts: ["JetBrains Mono"],
   discover_python_interpreters: [],
   watch_workspace: null,
+  watch_folders: null,
+  // One window (opening another needs the app).
+  window_labels: ["main"],
+  broadcast: null,
+  new_window: "window-2",
   load_chats: [],
   ai_key_status: {},
   python_formatter: null,
@@ -27,7 +35,7 @@ export const extraStandins = {};
 /** Every command the page invoked, in order. */
 export const calls = [];
 
-export async function openSable(workspace, { width = 1500, height = 950, init, cache = true, pollEvents = false } = {}) {
+export async function openSable(workspace, { width = 1500, height = 950, init, cache = true, pollEvents = false, beforeLoad } = {}) {
   const browser = await puppeteer.launch({
     executablePath: CHROME,
     headless: true,
@@ -49,7 +57,7 @@ export async function openSable(workspace, { width = 1500, height = 950, init, c
     if (cmd in STANDINS) return { ok: STANDINS[cmd] };
     // No language servers here: fail fast, as the app does without one.
     if (cmd === "lsp_request" || cmd === "start_language_server") return { err: "No language server running" };
-    const response = await fetch("http://127.0.0.1:1531/invoke", { method: "POST", body: JSON.stringify({ cmd, args }) });
+    const response = await fetch(`http://127.0.0.1:${BRIDGE_PORT}/invoke`, { method: "POST", body: JSON.stringify({ cmd, args }) });
     const result = await response.json();
     if (result.unknown) {
       unknownCommands.add(cmd);
@@ -96,13 +104,15 @@ export async function openSable(workspace, { width = 1500, height = 950, init, c
   // Measurements: run `init` before the app's own code; cache off for cold loads.
   if (init) await page.evaluateOnNewDocument(init);
   if (!cache) await page.setCacheEnabled(false);
-  await page.goto("http://localhost:1530/", { waitUntil: "networkidle0" });
+  // Anything to set up on the page before the app loads (request interception…).
+  if (beforeLoad) await beforeLoad(page);
+  await page.goto(`http://localhost:${VITE_PORT}/`, { waitUntil: "networkidle0" });
   // Backend events the bridge collected (Node plugins), delivered to the page.
   if (pollEvents) {
     const poll = async () => {
       if (page.isClosed()) return;
       try {
-        const response = await fetch("http://127.0.0.1:1531/invoke", { method: "POST", body: JSON.stringify({ cmd: "__events", args: {} }) });
+        const response = await fetch(`http://127.0.0.1:${BRIDGE_PORT}/invoke`, { method: "POST", body: JSON.stringify({ cmd: "__events", args: {} }) });
         const { ok: events } = await response.json();
         for (const { event, payload } of events ?? []) await page.evaluate((event, payload) => window.__sableEmit(event, payload), event, payload);
       } catch {

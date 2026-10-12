@@ -16,7 +16,7 @@
 
 use crate::commands::{format, fs, git, history, interpreter, refactor, search, shell, terminal};
 use crate::events::Events;
-use crate::{debug, lsp, watcher};
+use crate::{debug, lsp, notebook, watcher};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -57,6 +57,7 @@ pub struct AgentState {
     search: search::SearchState,
     lsp: lsp::LspManager,
     debug: debug::DebugManager,
+    notebooks: notebook::NotebookState,
     tunnels: std::sync::Mutex<std::collections::HashMap<u64, mpsc::UnboundedSender<Vec<u8>>>>,
     watching_ports: std::sync::atomic::AtomicBool,
 }
@@ -220,6 +221,7 @@ pub async fn dispatch(state: &AgentState, events: &Events, command: &str, args: 
             "rename_path" => ok(fs::rename_path(arg(args, "path")?, arg(args, "newName")?)),
             "move_path" => ok(fs::move_path(arg(args, "source")?, arg(args, "targetDirectory")?)),
             "watch_workspace" => ok(watcher::watch(events.clone(), &state.watcher, arg(args, "path")?)),
+            "watch_folders" => ok(watcher::watch_all(events.clone(), &state.watcher, arg(args, "paths")?)),
             "history_list" => ok(Ok(history::history_list(arg(args, "path")?))),
             "history_read" => ok(history::history_read(arg(args, "path")?, arg(args, "id")?)),
             "history_deleted_files" => ok(Ok(history::history_deleted_files(arg(args, "root")?))),
@@ -229,7 +231,10 @@ pub async fn dispatch(state: &AgentState, events: &Events, command: &str, args: 
             "search_workspace" => ok(search::search(
                 events.clone(),
                 &state.search,
-                arg(args, "root")?,
+                args.get("roots")
+                    .and_then(|roots| serde_json::from_value::<Vec<String>>(roots.clone()).ok())
+                    .filter(|roots| !roots.is_empty())
+                    .map_or_else(|| arg(args, "root").map(|root| vec![root]), Ok)?,
                 arg(args, "query")?,
                 arg(args, "searchId")?,
                 arg(args, "options")?,
@@ -287,7 +292,8 @@ pub async fn dispatch(state: &AgentState, events: &Events, command: &str, args: 
 
             // --- Language servers, formatting, refactoring -------------------------------
             "start_language_server" => {
-                ok(lsp::start(events.clone(), &state.lsp, arg(args, "extension")?, arg(args, "rootPath")?).await)
+                let folders: Option<Vec<String>> = args.get("workspaceFolders").and_then(|value| serde_json::from_value(value.clone()).ok());
+                ok(lsp::start_with_folders(events.clone(), &state.lsp, arg(args, "extension")?, arg(args, "rootPath")?, folders.unwrap_or_default()).await)
             }
             "lsp_notify" => ok(lsp::notify(&state.lsp, arg(args, "extension")?, arg(args, "method")?, arg(args, "params")?).await),
             "lsp_request" => ok(lsp::request(
@@ -357,6 +363,21 @@ pub async fn dispatch(state: &AgentState, events: &Events, command: &str, args: 
                 debug::jvm_debug_cancel(arg(args, "port")?);
                 ok(Ok(()))
             }
+
+            // --- Notebooks (Jupyter kernels) --------------------------------------------
+            "notebook_kernelspecs" => ok(notebook::kernelspecs(arg(args, "python")?).await),
+            "notebook_start" => ok(notebook::start(
+                events.clone(),
+                &state.notebooks,
+                arg(args, "session")?,
+                arg(args, "python")?,
+                arg(args, "kernel")?,
+                arg(args, "cwd")?,
+            )
+            .await),
+            "notebook_send" => ok(notebook::send(&state.notebooks, arg(args, "session")?, arg(args, "message")?).await),
+            "notebook_stop" => ok(notebook::stop(&state.notebooks, arg(args, "session")?).await),
+            "notebook_install_ipykernel" => ok(notebook::install_ipykernel(arg(args, "python")?).await),
 
             // --- Git -------------------------------------------------------------------
             "git_status" => ok(git::git_status(arg(args, "path")?)),
@@ -533,6 +554,7 @@ pub async fn serve_stdio() {
     // The app went away: stop servers, debuggers and terminals with us.
     let _ = debug::stop(&state.debug).await;
     let _ = lsp::stop_all(&state.lsp).await;
+    notebook::stop_all(&state.notebooks).await;
     drop(out_tx);
     drop(events);
     let _ = writer.await;

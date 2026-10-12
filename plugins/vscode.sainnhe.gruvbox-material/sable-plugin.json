@@ -1,0 +1,24 @@
+{
+  "author": "sainnhe",
+  "description": "Gruvbox with Material Palette",
+  "homepage": "https://github.com/sainnhe/gruvbox-material-vscode",
+  "id": "vscode.sainnhe.gruvbox-material",
+  "minSableVersion": "0.3.8",
+  "name": "Gruvbox Material",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-sainnhe-gruvbox-material-gruvbox-material-dark",
+      "label": "Gruvbox Material Dark",
+      "path": "themes/gruvbox-material-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-sainnhe-gruvbox-material-gruvbox-material-light",
+      "label": "Gruvbox Material Light",
+      "path": "themes/gruvbox-material-light.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "6.5.2"
+}

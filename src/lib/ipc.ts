@@ -75,6 +75,11 @@ export function watchWorkspace(path: string): Promise<void> {
   return invoke<void>("watch_workspace", { path });
 }
 
+/** Watch every folder of a multi-root workspace. */
+export function watchFolders(paths: string[]): Promise<void> {
+  return invoke<void>("watch_folders", { paths });
+}
+
 export function createTerminal(
   id: string,
   cols: number,
@@ -428,8 +433,10 @@ export function searchWorkspace(
   query: string,
   searchId: number,
   options?: SearchOptions,
+  /** Every folder of a multi-root workspace (else just `root`). */
+  roots?: string[],
 ): Promise<void> {
-  return invoke<void>("search_workspace", { root, query, searchId, options });
+  return invoke<void>("search_workspace", { root, query, searchId, options, roots: roots ?? null });
 }
 
 /** Every file with at least one match (for Replace All). */

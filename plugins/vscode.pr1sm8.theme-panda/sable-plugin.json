@@ -1,0 +1,18 @@
+{
+  "author": "pr1sm8",
+  "description": "Panda Theme for Visual Studio Code.",
+  "homepage": "https://github.com/pr1sm8/panda-syntax-vscode",
+  "id": "vscode.pr1sm8.theme-panda",
+  "minSableVersion": "0.3.8",
+  "name": "Panda Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-pr1sm8-theme-panda-panda-syntax",
+      "label": "Panda Syntax",
+      "path": "themes/panda-syntax.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.2.0"
+}

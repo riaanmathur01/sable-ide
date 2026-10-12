@@ -37,8 +37,21 @@
   cursor: pointer;
 }
 
+/* Open webview views share the sidebar's height (trees take what they need). */
+.plugin-view {
+  flex: none;
+}
+
+.plugin-view.grows {
+  display: flex;
+  flex: 1 1 320px;
+  flex-direction: column;
+  min-height: 220px;
+}
+
 .plugin-view-webview {
-  height: 320px;
+  flex: 1;
+  min-height: 0;
 }
 
 .plugin-tree-row {

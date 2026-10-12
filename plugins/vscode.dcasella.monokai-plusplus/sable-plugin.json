@@ -1,0 +1,18 @@
+{
+  "author": "dcasella",
+  "description": "A modern Monokai theme for Sublime Text 3 and Visual Studio Code",
+  "homepage": "https://github.com/dcasella/monokai-plusplus",
+  "id": "vscode.dcasella.monokai-plusplus",
+  "minSableVersion": "0.3.8",
+  "name": "Monokai++",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-dcasella-monokai-plusplus-monokai-unified",
+      "label": "Monokai++ Unified",
+      "path": "themes/monokai-unified.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "2.0.4"
+}

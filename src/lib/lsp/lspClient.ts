@@ -1,6 +1,6 @@
 import { invoke } from "../backend";
-import { listen } from "@tauri-apps/api/event";
-import { useWorkspaceStore } from "../../store/workspaceStore";
+import { listen } from "../events";
+import { onFoldersChange, useWorkspaceStore } from "../../store/workspaceStore";
 import { useUiStore } from "../../store/uiStore";
 import { useDiagnosticsStore } from "../../store/diagnosticsStore";
 import { parentDirectoryOf } from "../ipc";
@@ -220,7 +220,8 @@ async function ensureLanguageServerForFile(path: string): Promise<boolean> {
   const rootPath =
     useWorkspaceStore.getState().rootPath ?? parentDirectoryOf(path);
   try {
-    await invoke("start_language_server", { extension, rootPath });
+    const { folders } = useWorkspaceStore.getState();
+    await invoke("start_language_server", { extension, rootPath, workspaceFolders: folders.length > 1 ? folders : null });
     return true;
   } catch (error) {
     requestedExtensions.delete(extension);
@@ -468,9 +469,26 @@ export function sendRequestWithError(
 let listenersReady = false;
 
 /** Register the Rust→frontend event listeners exactly once. */
+/** Tell the running servers that folders joined or left the workspace. */
+async function notifyWorkspaceFolders(added: string[], removed: string[]): Promise<void> {
+  const folder = (path: string) => ({ uri: pathToUri(path), name: path.split(/[/\\]/).filter(Boolean).pop() ?? path });
+  for (const extension of requestedExtensions) {
+    await invoke("lsp_notify", {
+      extension,
+      method: "workspace/didChangeWorkspaceFolders",
+      params: { event: { added: added.map(folder), removed: removed.map(folder) } },
+    }).catch(() => {});
+  }
+}
+
 export function initLspListeners(): void {
   if (listenersReady) return;
   listenersReady = true;
+
+  // A multi-root workspace's folders come and go without restarting.
+  onFoldersChange(({ added, removed }) => {
+    if (useWorkspaceStore.getState().rootPath) void notifyWorkspaceFolders(added, removed);
+  });
 
   listen<{
     state: string;

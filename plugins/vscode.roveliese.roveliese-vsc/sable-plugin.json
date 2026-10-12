@@ -1,0 +1,30 @@
+{
+  "author": "Roveliese",
+  "description": "Atmospheric rose theme for VS Code",
+  "homepage": "https://github.com/roveliese/vscode",
+  "id": "vscode.roveliese.roveliese-vsc",
+  "minSableVersion": "0.3.8",
+  "name": "Roveliese for VS Code",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-roveliese-roveliese-vsc-roveliese-dark",
+      "label": "Roveliese Dark",
+      "path": "themes/roveliese-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-roveliese-roveliese-vsc-roveliese-light",
+      "label": "Roveliese Light",
+      "path": "themes/roveliese-light.json",
+      "uiTheme": "vs-light"
+    },
+    {
+      "id": "vscode-roveliese-roveliese-vsc-roveliese-storm",
+      "label": "Roveliese Storm",
+      "path": "themes/roveliese-storm.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "3.8.6"
+}

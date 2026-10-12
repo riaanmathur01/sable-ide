@@ -1,0 +1,36 @@
+{
+  "author": "atomiks",
+  "description": "A VS Code theme with bubblegum colors on a moonlit background.",
+  "homepage": "https://github.com/atomiks/moonlight-vscode-theme",
+  "id": "vscode.atomiks.moonlight",
+  "minSableVersion": "0.3.8",
+  "name": "Moonlight",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-atomiks-moonlight-moonlight-ii",
+      "label": "Moonlight II",
+      "path": "themes/moonlight-ii.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-atomiks-moonlight-moonlight-ii-italic",
+      "label": "Moonlight II Italic",
+      "path": "themes/moonlight-ii-italic.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-atomiks-moonlight-moonlight",
+      "label": "Moonlight",
+      "path": "themes/moonlight.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-atomiks-moonlight-moonlight-italic",
+      "label": "Moonlight Italic",
+      "path": "themes/moonlight-italic.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.10.6"
+}

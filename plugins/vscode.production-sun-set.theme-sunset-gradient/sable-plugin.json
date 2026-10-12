@@ -1,0 +1,24 @@
+{
+  "author": "production-sun-set",
+  "description": "A warm and romantic VS Code theme inspired by beautiful sunset gradients with coral, orange, and purple accents",
+  "homepage": "https://github.com/buih39435-pixel/theme-sunset-gradient",
+  "id": "vscode.production-sun-set.theme-sunset-gradient",
+  "minSableVersion": "0.3.8",
+  "name": "Sunset Gradient Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-production-sun-set-theme-sunset-gradient-sunset-gradient",
+      "label": "Sunset Gradient",
+      "path": "themes/sunset-gradient.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-production-sun-set-theme-sunset-gradient-sunset-gradient-soft",
+      "label": "Sunset Gradient Soft",
+      "path": "themes/sunset-gradient-soft.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.0.3"
+}

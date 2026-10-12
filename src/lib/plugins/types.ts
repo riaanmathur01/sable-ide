@@ -18,6 +18,7 @@ export interface PluginManifest {
   version: string;
   description: string;
   author: string;
+  /** Its code (empty for a plugin that only adds themes). */
   main: string;
   permissions: PluginPermission[];
   minSableVersion?: string;
@@ -26,6 +27,8 @@ export interface PluginManifest {
   keybindings?: { command: string; key: string; mac?: string }[];
   /** "node": a VS Code extension made for Node (runs in a Node process when Node.js is installed). */
   runtime?: "node";
+  /** Color themes: VS Code color-theme JSON files in the plugin's folder. */
+  themes?: { id: string; label: string; uiTheme?: string; path: string }[];
 }
 
 export interface PluginInfo {
@@ -57,10 +60,10 @@ export interface PluginLogLine {
 
 /** Host → worker. */
 export type HostMessage =
-  | { type: "init"; source: string; manifest: PluginManifest; root: string | null; sableVersion: string }
+  | { type: "init"; source: string; manifest: PluginManifest; root: string | null; folders?: string[]; sableVersion: string }
   | { type: "reply"; id: number; value?: unknown; error?: string }
   | { type: "invoke"; id: number; handler: number; args: unknown[] }
-  | { type: "root"; root: string | null }
+  | { type: "root"; root: string | null; folders?: string[] }
   | { type: "deactivate" };
 
 /** Worker → host. */

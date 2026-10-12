@@ -1,0 +1,24 @@
+{
+  "author": "aurora-them-creator",
+  "description": "A mystical VS Code theme inspired by the northern lights on a polar night - featuring deep arctic blues, ethereal aurora greens, and starlight accents",
+  "homepage": "https://github.com/aubineherodvulbdl/Aurora-Nocturne-Dreams",
+  "id": "vscode.aurora-them-creator.theme-aurora-nocturne",
+  "minSableVersion": "0.3.8",
+  "name": "Aurora Nocturne Dreams Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-aurora-them-creator-theme-aurora-nocturne-aurora-nocturne",
+      "label": "Aurora Nocturne",
+      "path": "themes/aurora-nocturne.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-aurora-them-creator-theme-aurora-nocturne-aurora-nocturne-soft",
+      "label": "Aurora Nocturne Soft",
+      "path": "themes/aurora-nocturne-soft.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.0.3"
+}

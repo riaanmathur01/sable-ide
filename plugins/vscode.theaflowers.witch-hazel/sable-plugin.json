@@ -1,0 +1,24 @@
+{
+  "author": "TheaFlowers",
+  "description": "A dark and feminine color scheme",
+  "homepage": "https://github.com/theacodes/witchhazel",
+  "id": "vscode.theaflowers.witch-hazel",
+  "minSableVersion": "0.3.8",
+  "name": "Witch Hazel",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-theaflowers-witch-hazel-witch-hazel",
+      "label": "Witch Hazel",
+      "path": "themes/witch-hazel.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-theaflowers-witch-hazel-witch-hazel-hypercolor",
+      "label": "Witch Hazel Hypercolor",
+      "path": "themes/witch-hazel-hypercolor.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "2021.10.16"
+}

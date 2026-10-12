@@ -272,3 +272,25 @@
 .scm-stash-file {
   padding-left: 34px;
 }
+
+/* Multi-root workspaces: which folder's repository is shown. */
+.scm-repository {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.scm-repository select {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font: inherit;
+  font-size: 12px;
+}

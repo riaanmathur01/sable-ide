@@ -1,0 +1,18 @@
+{
+  "author": "vscode",
+  "description": "Solarized light theme for Visual Studio Code",
+  "homepage": "https://github.com/eclipse-theia/vscode-builtin-extensions",
+  "id": "vscode.vscode.theme-solarized-light",
+  "minSableVersion": "0.3.8",
+  "name": "VS Code Solarized Light",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-vscode-theme-solarized-light-solarized-light",
+      "label": "Solarized Light",
+      "path": "themes/solarized-light.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "1.95.3"
+}

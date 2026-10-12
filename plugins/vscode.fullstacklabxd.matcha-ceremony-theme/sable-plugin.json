@@ -1,0 +1,48 @@
+{
+  "author": "fullstacklabXD",
+  "description": "Zen-inspired theme with muted matcha greens and warm rice paper tones",
+  "homepage": "https://github.com/fullstacklabXD/matcha-theme",
+  "id": "vscode.fullstacklabxd.matcha-ceremony-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Matcha Ceremony",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-fullstacklabxd-matcha-ceremony-theme-matcha-ceremony",
+      "label": "Matcha Ceremony",
+      "path": "themes/matcha-ceremony.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-fullstacklabxd-matcha-ceremony-theme-matcha-ceremony-dawn",
+      "label": "Matcha Ceremony Dawn",
+      "path": "themes/matcha-ceremony-dawn.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-fullstacklabxd-matcha-ceremony-theme-matcha-ceremony-dusk",
+      "label": "Matcha Ceremony Dusk",
+      "path": "themes/matcha-ceremony-dusk.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-fullstacklabxd-matcha-ceremony-theme-matcha-ceremony-midnight",
+      "label": "Matcha Ceremony Midnight",
+      "path": "themes/matcha-ceremony-midnight.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-fullstacklabxd-matcha-ceremony-theme-matcha-ceremony-zen",
+      "label": "Matcha Ceremony Zen",
+      "path": "themes/matcha-ceremony-zen.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-fullstacklabxd-matcha-ceremony-theme-matcha-ceremony-sakura",
+      "label": "Matcha Ceremony Sakura",
+      "path": "themes/matcha-ceremony-sakura.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.0.0"
+}

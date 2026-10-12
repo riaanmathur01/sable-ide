@@ -1,0 +1,11 @@
+{
+  "id": "pets",
+  "name": "Pets",
+  "version": "1.0.0",
+  "description": "Little pixel-art pets that live in a sidebar view or an editor tab: they wander, nap, chase the ball you throw and say hello to each other.",
+  "author": "Sable",
+  "main": "main.js",
+  "permissions": [],
+  "minSableVersion": "0.3.7",
+  "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/pets"
+}

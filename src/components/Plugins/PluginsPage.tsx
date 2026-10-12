@@ -17,7 +17,7 @@ import {
   Trash2,
   Wrench,
 } from "lucide-react";
-import { isNewerVersion, usePluginStore, type MarketplaceEntry } from "../../store/pluginStore";
+import { isNewerVersion, usePluginStore, type MarketplaceEntry, type ThemePreview } from "../../store/pluginStore";
 import { useTabsStore } from "../../store/tabsStore";
 import { useUiStore, type PluginsTab } from "../../store/uiStore";
 import { SETTINGS_SCHEMA } from "../../store/settingsStore";
@@ -80,6 +80,7 @@ function Marketplace() {
   const error = usePluginStore((state) => state.marketplaceError);
   const loading = usePluginStore((state) => state.marketplaceLoading);
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<"all" | "plugins" | "themes">("all");
   const [url, setUrl] = useState("");
   const busy = usePluginStore((state) => state.busy);
   const store = usePluginStore.getState();
@@ -88,13 +89,25 @@ function Marketplace() {
     if (usePluginStore.getState().marketplace === null) void usePluginStore.getState().loadMarketplace();
   }, []);
 
-  const shown = useMemo(() => {
+  const isTheme = (entry: MarketplaceEntry) => entry.tags.includes("theme");
+  const matching = useMemo(() => {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
     return (marketplace ?? []).filter((entry) => {
       const haystack = `${entry.name} ${entry.description} ${entry.author} ${entry.tags.join(" ")} ${entry.id}`.toLowerCase();
       return words.every((word) => haystack.includes(word));
     });
   }, [marketplace, query]);
+  // Plugins first, then themes (there are many more themes).
+  const shown = useMemo(
+    () =>
+      category === "themes"
+        ? matching.filter(isTheme)
+        : category === "plugins"
+          ? matching.filter((entry) => !isTheme(entry))
+          : [...matching.filter((entry) => !isTheme(entry)), ...matching.filter(isTheme)],
+    [matching, category],
+  );
+  const counts = { all: matching.length, plugins: matching.filter((entry) => !isTheme(entry)).length, themes: matching.filter(isTheme).length };
 
   const marketplaceSpec = SETTINGS_SCHEMA.find((spec) => spec.key === "plugins.marketplaceUrl");
 
@@ -109,6 +122,22 @@ function Marketplace() {
           <RefreshCw size={13} strokeWidth={1.5} className={loading ? "spinning" : undefined} />
         </button>
       </div>
+      {marketplace !== null && (
+        <div className="marketplace-categories" role="tablist">
+          {(["all", "plugins", "themes"] as const).map((name) => (
+            <button
+              key={name}
+              role="tab"
+              aria-selected={category === name}
+              className={category === name ? "active" : undefined}
+              onClick={() => setCategory(name)}
+            >
+              {name === "all" ? "All" : name === "plugins" ? "Plugins" : "Color Themes"}
+              <span className="marketplace-count">{counts[name]}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {error ? (
         <div className="plugins-notice error">
@@ -120,7 +149,7 @@ function Marketplace() {
       ) : marketplace === null ? (
         <div className="plugins-notice">Loading the marketplace…</div>
       ) : shown.length === 0 ? (
-        <div className="plugins-notice">{query ? `No plugins match “${query}”.` : "The marketplace is empty."}</div>
+        <div className="plugins-notice">{query ? `Nothing matches “${query}”.` : "Nothing here yet."}</div>
       ) : (
         <div className="marketplace-grid">
           {shown.map((entry) => (
@@ -174,6 +203,25 @@ function Marketplace() {
   );
 }
 
+/** A few lines of code in a theme's colors. */
+function ThemeSample({ preview, onClick }: { preview: ThemePreview; onClick: () => void }) {
+  const p = preview;
+  return (
+    <button className="theme-sample" style={{ background: p.background, color: p.foreground, borderColor: `${p.accent}66` }} onClick={onClick} title="Show details">
+      <span style={{ color: p.comment, fontStyle: "italic" }}>// greet the user</span>
+      <span>
+        <span style={{ color: p.keyword }}>function</span> <span style={{ color: p.function }}>greet</span>(name: <span style={{ color: p.type }}>string</span>) {"{"}
+      </span>
+      <span>
+        {"  "}
+        <span style={{ color: p.keyword }}>return</span> <span style={{ color: p.string }}>`Hello, ${"{"}name{"}"}!`</span>;
+      </span>
+      <span>{"}"}</span>
+      <span className="theme-sample-accent" style={{ background: p.accent }} />
+    </button>
+  );
+}
+
 function MarketplaceCard({ entry }: { entry: MarketplaceEntry }) {
   const installed = usePluginStore((state) => state.plugins.find((plugin) => plugin.manifest.id === entry.id));
   const busy = usePluginStore((state) => state.busy);
@@ -193,6 +241,7 @@ function MarketplaceCard({ entry }: { entry: MarketplaceEntry }) {
 
   return (
     <div className="marketplace-card">
+      {entry.preview && <ThemeSample preview={entry.preview} onClick={details} />}
       <div className="marketplace-card-title">
         <button className="marketplace-card-name" title="Show details" onClick={details}>
           {entry.name}
@@ -209,7 +258,7 @@ function MarketplaceCard({ entry }: { entry: MarketplaceEntry }) {
         ))}
         {entry.tags.map((tag) => (
           <span key={tag} className="marketplace-tag">
-            {tag}
+            {tag === "theme" && entry.themes ? `${entry.themes} theme${entry.themes === 1 ? "" : "s"}` : tag}
           </span>
         ))}
       </div>

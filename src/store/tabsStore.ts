@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { ask as confirmNative } from "@tauri-apps/plugin-dialog";
-import { readFile, writeFile } from "../lib/ipc";
+import { pathExists, readFile, writeFile } from "../lib/ipc";
+import { isNotebookPath, notebookHooks, notebookTabKey } from "../lib/notebook/hooks";
 import { closeDocument, openDocument, saveDocument } from "../lib/lsp/lspClient";
 import { useGitStore } from "./gitStore";
 import { useWorkspaceStore } from "./workspaceStore";
@@ -53,7 +54,7 @@ export interface EditorTab {
   path: string;
   name: string;
   isDirty: boolean;
-  kind: "file" | "diff" | "settings" | "merge" | "history" | "preview" | "plugin" | "webview";
+  kind: "file" | "diff" | "settings" | "merge" | "history" | "preview" | "plugin" | "webview" | "notebook";
   /** Present on diff tabs: what to compare. */
   diff?: DiffSource;
   /** Present on merge tabs: the conflicted file. */
@@ -66,6 +67,8 @@ export interface EditorTab {
   pluginId?: string;
   /** On webview tabs: the plugin webview shown (store/pluginViewsStore). */
   webviewId?: string;
+  /** On notebook tabs: the .ipynb file shown in the notebook editor. */
+  notebookFile?: string;
 }
 
 /**
@@ -137,8 +140,11 @@ interface TabsState {
   lastFilePath: string | null;
   /** Initial content for models Monaco hasn't created yet. */
   initialContentByPath: Record<string, string>;
-  /** Open a file in a group (default: the focused one). */
-  openFile: (path: string, options?: { groupId?: string }) => Promise<void>;
+  /** Open a file in a group (default: the focused one). Notebooks
+   *  (.ipynb) open in the notebook editor unless `asText`. */
+  openFile: (path: string, options?: { groupId?: string; asText?: boolean }) => Promise<void>;
+  /** Set a non-file tab's unsaved-changes dot (notebooks). */
+  setTabDirty: (key: string, isDirty: boolean) => void;
   /** Open a read-only diff (working change or commit) as its own tab. */
   openDiff: (source: DiffSource) => void;
   /** Open (or focus) the merge tool for a conflicted file. */
@@ -217,9 +223,11 @@ function persistSession(state: Pick<TabsState, "groups" | "activeGroupId">) {
     // Only file tabs persist; diff/settings tabs are transient (and have
     // synthetic keys that aren't openable paths).
     const groups = state.groups.map((group) => {
-      const openPaths = group.tabs.filter((tab) => tab.kind === "file").map((tab) => tab.path);
-      const activePath =
-        group.activePath && openPaths.includes(group.activePath) ? group.activePath : null;
+      // Notebook tabs persist as their file (reopened as notebooks).
+      const restorable = group.tabs.filter((tab) => tab.kind === "file" || tab.kind === "notebook");
+      const openPaths = restorable.map((tab) => tab.notebookFile ?? tab.path);
+      const active = restorable.find((tab) => tab.path === group.activePath);
+      const activePath = active ? (active.notebookFile ?? active.path) : null;
       return { openPaths, activePath };
     });
     const session: PersistedSession = {
@@ -341,6 +349,32 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     const groupId = options?.groupId ?? get().activeGroupId;
     const group = get().groups.find((candidate) => candidate.id === groupId);
     if (!group) return;
+    if (!options?.asText && isNotebookPath(path)) {
+      const key = notebookTabKey(path);
+      if (!group.tabs.some((tab) => tab.path === key) && !(await pathExists(path).catch(() => false))) {
+        useUiStore.getState().setLastError(`${path} doesn't exist`);
+        return;
+      }
+      set((state) =>
+        withGroups(
+          updateGroup(state.groups, groupId, (current) =>
+            current.tabs.some((tab) => tab.path === key)
+              ? { ...current, activePath: key }
+              : {
+                  ...current,
+                  tabs: [
+                    ...current.tabs,
+                    { path: key, name: fileNameOf(path), isDirty: false, kind: "notebook", notebookFile: path },
+                  ],
+                  activePath: key,
+                },
+          ),
+          groupId,
+        ),
+      );
+      persistSession(get());
+      return;
+    }
     if (group.tabs.some((tab) => tab.path === path)) {
       get().setActive(path, groupId);
       return;
@@ -725,6 +759,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
   resetTabs: () => {
     const paths = new Set(get().groups.flatMap((group) => group.tabs.map((tab) => tab.path)));
     for (const path of paths) {
+      if (path.startsWith("notebook:")) notebookHooks.close?.(path.slice("notebook:".length));
       cancelAutoSave(path);
       disposeModel(path);
       void closeDocument(path);
@@ -732,6 +767,19 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     const group = emptyGroup();
     set({ ...withGroups([group], group.id), initialContentByPath: {} });
   },
+
+  setTabDirty: (key, isDirty) =>
+    set((state) =>
+      state.groups.some((group) => group.tabs.some((tab) => tab.path === key && tab.isDirty !== isDirty))
+        ? withGroups(
+            state.groups.map((group) => ({
+              ...group,
+              tabs: group.tabs.map((tab) => (tab.path === key ? { ...tab, isDirty } : tab)),
+            })),
+            state.activeGroupId,
+          )
+        : state,
+    ),
 
   syncDirtyState: (path) => {
     const isDirty = isModelDirty(path);
@@ -755,6 +803,17 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     const tab = get()
       .groups.flatMap((group) => group.tabs)
       .find((candidate) => candidate.path === path);
+    if (tab?.kind === "notebook" && tab.notebookFile) {
+      cancelAutoSave(path);
+      try {
+        await notebookHooks.save?.(tab.notebookFile);
+        emitPluginEvent("didSave", { path: tab.notebookFile });
+        useGitStore.getState().refresh();
+      } catch (error) {
+        useUiStore.getState().setLastError(String(error));
+      }
+      return;
+    }
     if (tab && tab.kind !== "file") return;
     cancelAutoSave(path);
     if (reason === "manual") {
@@ -787,6 +846,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       // Hand-edited settings.json takes effect on save.
       if (path === useSettingsStore.getState().filePath) {
         void useSettingsStore.getState().load();
+        void import("../lib/windows").then(({ broadcast }) => broadcast("sable:settings-changed"));
       }
       // …and so do snippet files.
       void import("../lib/snippets").then(({ isSnippetsFile, reloadSnippets }) => {
@@ -810,6 +870,31 @@ export const useTabsStore = create<TabsState>((set, get) => ({
   },
 
   remapMovedPaths: async (oldPath, newPath) => {
+    // Notebook tabs follow their file (the notebook keeps its state).
+    const movedNotebooks = new Set(
+      get()
+        .groups.flatMap((group) => group.tabs)
+        .filter((tab) => tab.kind === "notebook" && tab.notebookFile && isSameOrInside(tab.notebookFile, oldPath))
+        .map((tab) => tab.notebookFile!),
+    );
+    for (const file of movedNotebooks) {
+      const moved = newPath + file.slice(oldPath.length);
+      const [from, to] = [notebookTabKey(file), notebookTabKey(moved)];
+      notebookHooks.rename?.(file, moved);
+      set((state) =>
+        withGroups(
+          state.groups.map((group) => ({
+            ...group,
+            tabs: group.tabs.map((tab) =>
+              tab.path === from ? { ...tab, path: to, name: fileNameOf(moved), notebookFile: moved } : tab,
+            ),
+            activePath: group.activePath === from ? to : group.activePath,
+          })),
+          state.activeGroupId,
+        ),
+      );
+      persistSession(get());
+    }
     const affected = new Set(
       get()
         .groups.flatMap((group) => group.tabs)
@@ -856,7 +941,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     const dirty = new Set(
       get()
         .groups.flatMap((group) => group.tabs)
-        .filter((tab) => tab.kind === "file" && tab.isDirty && isSameOrInside(tab.path, path))
+        .filter((tab) => (tab.kind === "file" || tab.kind === "notebook") && tab.isDirty && isSameOrInside(tab.notebookFile ?? tab.path, path))
         .map((tab) => tab.path),
     );
     for (const dirtyPath of dirty) await get().saveTab(dirtyPath);
@@ -866,11 +951,12 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     const closing = new Set(
       get()
         .groups.flatMap((group) => group.tabs)
-        .filter((tab) => tab.kind === "file" && isSameOrInside(tab.path, path))
+        .filter((tab) => (tab.kind === "file" || tab.kind === "notebook") && isSameOrInside(tab.notebookFile ?? tab.path, path))
         .map((tab) => tab.path),
     );
     if (closing.size === 0) return;
     for (const closedPath of closing) {
+      if (closedPath.startsWith("notebook:")) notebookHooks.close?.(closedPath.slice("notebook:".length));
       cancelAutoSave(closedPath);
       void closeDocument(closedPath);
       disposeModel(closedPath);
@@ -932,6 +1018,12 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     if (closingTab.kind === "file") {
       if (!isOpenAnywhere(get().groups, path)) rememberClosed(path);
       releaseIfUnused(get().groups, path);
+    }
+    // The notebook's last tab: shut its kernel down.
+    if (closingTab.kind === "notebook" && closingTab.notebookFile && !isOpenAnywhere(get().groups, path)) {
+      cancelAutoSave(path);
+      rememberClosed(closingTab.notebookFile);
+      notebookHooks.close?.(closingTab.notebookFile);
     }
     persistSession(get());
   },

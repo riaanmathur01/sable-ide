@@ -26,3 +26,15 @@ pub fn for_app(app: &tauri::AppHandle) -> Events {
         let _ = app.emit(name, payload);
     })
 }
+
+/// Events for one window only (each window has its own workspace, so a
+/// terminal's output or a language server's messages belong to one).
+#[cfg(feature = "desktop")]
+pub fn for_window(window: &tauri::WebviewWindow) -> Events {
+    use tauri::{Emitter, Manager};
+    let app = window.app_handle().clone();
+    let label = window.label().to_string();
+    Arc::new(move |name, payload| {
+        let _ = app.emit_to(tauri::EventTarget::webview_window(label.clone()), name, payload);
+    })
+}

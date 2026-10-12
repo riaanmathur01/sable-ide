@@ -1,0 +1,84 @@
+{
+  "author": "t3dotgg",
+  "description": "A Apache-2 licensed fork of Material Theme with no threats of legal action",
+  "homepage": "https://github.com/t3dotgg/vsc-material-but-i-wont-sue-you",
+  "id": "vscode.t3dotgg.vsc-material-theme-but-i-wont-sue-you",
+  "minSableVersion": "0.3.8",
+  "name": "Material Theme (But I Won't Sue You)",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-t3dotgg-vsc-material-theme-but-i-wont-sue-you-material-theme",
+      "label": "Material Theme",
+      "path": "themes/material-theme.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-t3dotgg-vsc-material-theme-but-i-wont-sue-you-material-theme-high-contrast",
+      "label": "Material Theme High Contrast",
+      "path": "themes/material-theme-high-contrast.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-t3dotgg-vsc-material-theme-but-i-wont-sue-you-material-theme-darker",
+      "label": "Material Theme Darker",
+      "path": "themes/material-theme-darker.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-t3dotgg-vsc-material-theme-but-i-wont-sue-you-material-theme-darker-high-contrast",
+      "label": "Material Theme Darker High Contrast",
+      "path": "themes/material-theme-darker-high-contrast.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-t3dotgg-vsc-material-theme-but-i-wont-sue-you-material-theme-palenight",
+      "label": "Material Theme Palenight",
+      "path": "themes/material-theme-palenight.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-t3dotgg-vsc-material-theme-but-i-wont-sue-you-material-theme-palenight-high-contrast",
+      "label": "Material Theme Palenight High Contrast",
+      "path": "themes/material-theme-palenight-high-contrast.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-t3dotgg-vsc-material-theme-but-i-wont-sue-you-material-theme-ocean",
+      "label": "Material Theme Ocean",
+      "path": "themes/material-theme-ocean.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-t3dotgg-vsc-material-theme-but-i-wont-sue-you-material-theme-ocean-high-contrast",
+      "label": "Material Theme Ocean High Contrast",
+      "path": "themes/material-theme-ocean-high-contrast.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-t3dotgg-vsc-material-theme-but-i-wont-sue-you-material-theme-deepforest",
+      "label": "Material Theme Deepforest",
+      "path": "themes/material-theme-deepforest.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-t3dotgg-vsc-material-theme-but-i-wont-sue-you-material-theme-deepforest-high-contrast",
+      "label": "Material Theme DeepForest High Contrast",
+      "path": "themes/material-theme-deepforest-high-contrast.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-t3dotgg-vsc-material-theme-but-i-wont-sue-you-material-theme-lighter",
+      "label": "Material Theme Lighter",
+      "path": "themes/material-theme-lighter.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-t3dotgg-vsc-material-theme-but-i-wont-sue-you-material-theme-lighter-high-contrast",
+      "label": "Material Theme Lighter High Contrast",
+      "path": "themes/material-theme-lighter-high-contrast.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "35.0.2"
+}

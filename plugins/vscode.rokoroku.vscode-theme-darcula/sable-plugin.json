@@ -1,0 +1,18 @@
+{
+  "author": "rokoroku",
+  "description": "A theme extension for VS Code based on Darcula theme from Jetbrains IDEs",
+  "homepage": "https://github.com/rokoroku/vscode-theme-darcula",
+  "id": "vscode.rokoroku.vscode-theme-darcula",
+  "minSableVersion": "0.3.8",
+  "name": "Darcula Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-rokoroku-vscode-theme-darcula-darcula",
+      "label": "Darcula",
+      "path": "themes/darcula.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.2.3"
+}

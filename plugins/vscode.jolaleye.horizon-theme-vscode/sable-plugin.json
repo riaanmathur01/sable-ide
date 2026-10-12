@@ -1,0 +1,48 @@
+{
+  "author": "jolaleye",
+  "description": "A beautifully warm dual theme for Visual Studio Code",
+  "homepage": "https://github.com/jolaleye/horizon-theme-vscode",
+  "id": "vscode.jolaleye.horizon-theme-vscode",
+  "minSableVersion": "0.3.8",
+  "name": "Horizon Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-jolaleye-horizon-theme-vscode-horizon",
+      "label": "Horizon",
+      "path": "themes/horizon.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-jolaleye-horizon-theme-vscode-horizon-italic",
+      "label": "Horizon Italic",
+      "path": "themes/horizon-italic.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-jolaleye-horizon-theme-vscode-horizon-bold",
+      "label": "Horizon Bold",
+      "path": "themes/horizon-bold.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-jolaleye-horizon-theme-vscode-horizon-bright",
+      "label": "Horizon Bright",
+      "path": "themes/horizon-bright.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-jolaleye-horizon-theme-vscode-horizon-bright-italic",
+      "label": "Horizon Bright Italic",
+      "path": "themes/horizon-bright-italic.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-jolaleye-horizon-theme-vscode-horizon-bright-bold",
+      "label": "Horizon Bright Bold",
+      "path": "themes/horizon-bright-bold.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "2.0.2"
+}

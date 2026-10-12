@@ -1,0 +1,24 @@
+{
+  "author": "dracula-theme",
+  "description": "The official Dracula Theme: a dark theme for many editors, shells, and more. 🦇",
+  "homepage": "https://github.com/dracula/visual-studio-code",
+  "id": "vscode.dracula-theme.theme-dracula",
+  "minSableVersion": "0.3.8",
+  "name": "Dracula Theme Official",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-dracula-theme-theme-dracula-dracula-theme",
+      "label": "Dracula Theme",
+      "path": "themes/dracula-theme.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-dracula-theme-theme-dracula-dracula-theme-soft",
+      "label": "Dracula Theme Soft",
+      "path": "themes/dracula-theme-soft.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "2.25.1"
+}

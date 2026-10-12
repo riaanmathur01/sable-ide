@@ -902,3 +902,75 @@
   font-family: var(--font-mono);
   font-size: 11.5px;
 }
+
+/* Marketplace: All / Plugins / Color Themes. */
+.marketplace-categories {
+  display: flex;
+  gap: 4px;
+  margin: 2px 0 12px;
+}
+
+.marketplace-categories button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.marketplace-categories button:hover {
+  color: var(--text);
+}
+
+.marketplace-categories button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.marketplace-count {
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+/* A theme plugin's card: a sample of code in its colors. */
+.theme-sample {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  margin: -2px -4px 4px;
+  padding: 10px 12px 12px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre;
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.theme-sample-accent {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 18px;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.marketplace-card .marketplace-card-description {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

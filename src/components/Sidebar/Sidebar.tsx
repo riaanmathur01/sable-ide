@@ -28,7 +28,13 @@ type PendingCreate = "file" | "folder" | null;
 export function Sidebar() {
   const views = useViews();
   const rootPath = useWorkspaceStore((state) => state.rootPath);
-  const rootName = useWorkspaceStore((state) => state.rootName);
+  const folderTitle = useWorkspaceStore((state) =>
+    state.workspaceFile
+      ? `${(state.workspaceFile.split(/[/\\]/).pop() ?? "").replace(/\.code-workspace$/, "")} (Workspace)`
+      : state.folders.length > 1
+        ? "Untitled (Workspace)"
+        : state.rootName,
+  );
   const remoteLabel = useRemoteStore((state) => (state.status === "local" ? null : state.label));
   const refreshDirectory = useWorkspaceStore((state) => state.refreshDirectory);
   const setLastError = useUiStore((state) => state.setLastError);
@@ -73,7 +79,7 @@ export function Sidebar() {
       <div className="sidebar-header">
         {switcher === "menu" && <ViewMenu />}
         <span className="sidebar-title">
-          {sidebarView === "files" ? (rootName ?? "Explorer") : ([...VIEWS, PLUGIN_VIEWS].find((view) => view.id === sidebarView)?.label ?? "")}
+          {sidebarView === "files" ? (folderTitle ?? "Explorer") : ([...VIEWS, PLUGIN_VIEWS].find((view) => view.id === sidebarView)?.label ?? "")}
         </span>
         <span className="sidebar-actions">
           {switcher === "sidebarHeader" && (

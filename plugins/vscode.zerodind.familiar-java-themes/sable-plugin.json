@@ -1,0 +1,48 @@
+{
+  "author": "zerodind",
+  "description": "Familiar color themes inspired by Java IDEs like Eclipse and IntelliJ IDEA.",
+  "homepage": "https://gitlab.com/zerodind/familiar-java-themes",
+  "id": "vscode.zerodind.familiar-java-themes",
+  "minSableVersion": "0.3.8",
+  "name": "Familiar Java Themes",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-zerodind-familiar-java-themes-eclipse-light",
+      "label": "Eclipse Light",
+      "path": "themes/eclipse-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-zerodind-familiar-java-themes-eclipse-dark",
+      "label": "Eclipse Dark",
+      "path": "themes/eclipse-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-zerodind-familiar-java-themes-intellij-light",
+      "label": "IntelliJ Light",
+      "path": "themes/intellij-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-zerodind-familiar-java-themes-intellij-light-classic",
+      "label": "IntelliJ Light (Classic)",
+      "path": "themes/intellij-light-classic.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-zerodind-familiar-java-themes-intellij-dark",
+      "label": "IntelliJ Dark",
+      "path": "themes/intellij-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-zerodind-familiar-java-themes-intellij-eclipse-dark",
+      "label": "IntelliJ+Eclipse Dark",
+      "path": "themes/intellij-eclipse-dark.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.1.7"
+}

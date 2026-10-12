@@ -1,0 +1,36 @@
+{
+  "author": "sdras",
+  "description": "A VS Code theme for the night owls out there. Now introducing Light Owl theme for daytime usage. Decisions were based on meaningful contrast for reading comprehension and for optimal razzle dazzle. ✨",
+  "homepage": "https://github.com/sdras/night-owl-vscode-theme",
+  "id": "vscode.sdras.night-owl",
+  "minSableVersion": "0.3.8",
+  "name": "Night Owl",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-sdras-night-owl-night-owl",
+      "label": "Night Owl",
+      "path": "themes/night-owl.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-sdras-night-owl-night-owl-no-italics",
+      "label": "Night Owl (No Italics)",
+      "path": "themes/night-owl-no-italics.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-sdras-night-owl-night-owl-light",
+      "label": "Night Owl Light",
+      "path": "themes/night-owl-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-sdras-night-owl-night-owl-light-no-italics",
+      "label": "Night Owl Light (No Italics)",
+      "path": "themes/night-owl-light-no-italics.json",
+      "uiTheme": "vs"
+    }
+  ],
+  "version": "2.1.1"
+}

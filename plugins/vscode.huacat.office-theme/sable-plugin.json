@@ -1,0 +1,60 @@
+{
+  "author": "huacat",
+  "description": "Microsoft Office(like) theme for VScode",
+  "homepage": "https://github.com/huacat1017/huacat.office-theme",
+  "id": "vscode.huacat.office-theme",
+  "minSableVersion": "0.3.8",
+  "name": "Office Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-huacat-office-theme-office-theme-word",
+      "label": "Office Theme (Word)",
+      "path": "themes/office-theme-word.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-huacat-office-theme-office-theme-powerpoint",
+      "label": "Office Theme (PowerPoint)",
+      "path": "themes/office-theme-powerpoint.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-huacat-office-theme-office-theme-excel",
+      "label": "Office Theme (Excel)",
+      "path": "themes/office-theme-excel.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-huacat-office-theme-office-theme-onenote",
+      "label": "Office Theme (OneNote)",
+      "path": "themes/office-theme-onenote.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-huacat-office-theme-office-theme-access",
+      "label": "Office Theme (Access)",
+      "path": "themes/office-theme-access.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-huacat-office-theme-office-theme-publisher",
+      "label": "Office Theme (Publisher)",
+      "path": "themes/office-theme-publisher.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-huacat-office-theme-office-black-theme-word-experimental",
+      "label": "Office Black Theme (Word) (Experimental)",
+      "path": "themes/office-black-theme-word-experimental.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-huacat-office-theme-office-black-theme-word",
+      "label": "Office Black Theme (Word)",
+      "path": "themes/office-black-theme-word.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.4.1"
+}

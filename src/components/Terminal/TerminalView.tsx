@@ -1,12 +1,12 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
-import { listen } from "@tauri-apps/api/event";
+import { listen } from "../../lib/events";
 import { useTerminalStore } from "../../store/terminalStore";
 import { resizeTerminal, writeTerminal } from "../../lib/ipc";
 import { useUiStore } from "../../store/uiStore";
 import { useColorTheme, useSetting } from "../../store/settingsStore";
-import { themeById } from "../../lib/themes";
+import { onThemeRegistryChange, themeById, themeRegistryVersion } from "../../lib/themes";
 
 /** xterm theme for a color theme; the background matches the panel so
  *  the terminal blends into it. */
@@ -51,6 +51,8 @@ export default function TerminalView({ terminalId, isActive }: TerminalViewProps
   const fontFamily = useSetting("terminal.fontFamily");
   const cursorBlink = useSetting("terminal.cursorBlink");
   const colorTheme = useColorTheme();
+  // A plugin's theme may arrive after the terminal opens.
+  const themes = useSyncExternalStore(onThemeRegistryChange, themeRegistryVersion);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -189,7 +191,7 @@ export default function TerminalView({ terminalId, isActive }: TerminalViewProps
       fitAddonRef.current?.fit();
       resizeTerminal(terminalId, terminal.cols, terminal.rows).catch(() => {});
     }
-  }, [fontSize, fontFamily, cursorBlink, colorTheme, terminalId]);
+  }, [fontSize, fontFamily, cursorBlink, colorTheme, themes, terminalId]);
 
   // Hidden panels have zero size; refit and focus when shown again.
   useEffect(() => {

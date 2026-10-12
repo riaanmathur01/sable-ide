@@ -1,0 +1,23 @@
+{
+  "author": "yama",
+  "description": "Theme for Vue",
+  "id": "vscode.yama.yama-theme",
+  "minSableVersion": "0.3.8",
+  "name": "YaMa Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-yama-yama-theme-yama-theme-light",
+      "label": "YaMa theme light",
+      "path": "themes/yama-theme-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-yama-yama-theme-yama-theme-dark",
+      "label": "YaMa theme dark",
+      "path": "themes/yama-theme-dark.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.1.3"
+}

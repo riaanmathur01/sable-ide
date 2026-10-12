@@ -39,6 +39,30 @@ opens `main.js`. It reloads every time you save a file in its folder, and
 | `description`, `author`, `homepage` | Optional, shown in Settings → Plugins. |
 | `keybindings` | Optional keyboard shortcuts for your commands (below). |
 | `runtime` | Optional: `"node"` runs the plugin in Node.js instead of a worker (below). Needs the `node` permission. |
+| `themes` | Optional color themes (below). A plugin with themes doesn't need a `main`. |
+
+### Color themes
+
+```json
+"themes": [
+  { "id": "midnight", "label": "Midnight", "uiTheme": "vs-dark", "path": "themes/midnight.json" }
+]
+```
+
+Each theme is a VS Code color-theme file (JSON, comments allowed):
+`colors` for the editor and workbench, `tokenColors` (TextMate rules) for
+syntax, and optionally `semanticTokenColors`. `uiTheme` is `vs-dark`,
+`vs` (light), `hc-black` or `hc-light`. Sable colors its whole window from
+the theme: the editor takes `colors` as they are (Monaco shares VS Code's
+color ids), and the sidebar, panels, popups, terminal and accent come from
+the workbench colors (`sideBar.background`, `editorWidget.background`,
+`focusBorder`, `terminal.ansi*`, …), adjusted where needed so text stays
+readable. A plugin that only adds themes has no `main` and needs no
+permissions; it runs no code. Its themes appear in **Settings → Editor
+Appearance → Color Theme** and in the palette's *Color Theme* commands
+as soon as it's installed, and they apply before other plugins start.
+Saving a theme file of a plugin you're developing (a linked plugin)
+reloads it.
 
 ### Keyboard shortcuts
 
@@ -239,6 +263,8 @@ Values kept for your plugin between runs (JSON, 1 MB in all).
 ### `sable.workspace`
 - `root`: the open folder, or `null`. It stays current when the folder
   changes.
+- `folders`: every folder of a multi-root workspace (`root` first).
+  File access works in all of them.
 - `readFile(path)` (`workspace:read`): sees unsaved edits.
 - `writeFile(path, text)` (`workspace:write`): creates folders as needed.
   Open files update undoably.
@@ -247,8 +273,8 @@ Values kept for your plugin between runs (JSON, 1 MB in all).
 - `listDirectory(path)` (`workspace:read`): `{ name, isDirectory }[]`.
 - `createDirectory(path)`, `delete(path)`, `rename(from, to)`
   (`workspace:write`).
-- `onDidChangeRoot(listener)`: the folder changed; gets the new root (or
-  `null`).
+- `onDidChangeRoot(listener)`: the folder changed, or folders were added
+  or removed; gets the new root (or `null`).
 
 ### `sable.events`
 - `onDidSave(listener)`, `onDidOpen(listener)`: the listener gets
@@ -339,6 +365,11 @@ around its code with a compatibility layer
 installs like any plugin (you see its permissions first), and **Update**
 fetches the latest version again.
 
+**Color themes.** A theme extension (Dracula, One Dark Pro, …) converts
+to a plugin of its themes: VS Code's JSON themes, including the ones that
+`include` others, and TextMate `.tmTheme` files. The Marketplace's *Color
+Themes* tab lists over a hundred converted this way.
+
 **Where it runs.** An extension with a `main` entry (most of them) runs
 **in Node.js**, as in VS Code, with its whole folder and `node_modules`.
 `fs`, `child_process`, `http`, `path` and the rest of Node work, so
@@ -399,8 +430,7 @@ providers, authentication
 providers, tasks, testing, `vscode.lm`/chat, plist (`.tmLanguage`) and
 YAML grammars, and extensions that depend on another extension's API.
 Calls into these are accepted and do nothing, so the extension still
-loads, and its log notes what it skipped. Themes and snippet-only
-extensions have no code to run and aren't converted.
+loads, and its log notes what it skipped. Snippet-only extensions aren't converted yet.
 
 To check what a converted extension is doing, open it in **Settings →
 Plugins → Installed** and look at its log.

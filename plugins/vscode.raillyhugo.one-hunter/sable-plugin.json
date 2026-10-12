@@ -1,0 +1,72 @@
+{
+  "author": "RaillyHugo",
+  "description": "A VSCode theme inspired by Vercel Theme and One Dark Pro",
+  "homepage": "https://github.com/Railly/one-hunter-vscode",
+  "id": "vscode.raillyhugo.one-hunter",
+  "minSableVersion": "0.3.8",
+  "name": "One Hunter Theme",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-raillyhugo-one-hunter-one-hunter-theme",
+      "label": "One Hunter Theme",
+      "path": "themes/one-hunter-theme.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-raillyhugo-one-hunter-one-hunter-theme-material",
+      "label": "One Hunter Theme Material",
+      "path": "themes/one-hunter-theme-material.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-raillyhugo-one-hunter-one-hunter-theme-vercel",
+      "label": "One Hunter Theme Vercel",
+      "path": "themes/one-hunter-theme-vercel.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-raillyhugo-one-hunter-one-hunter-theme-light",
+      "label": "One Hunter Theme Light",
+      "path": "themes/one-hunter-theme-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-raillyhugo-one-hunter-one-hunter-flexoki-dark",
+      "label": "One Hunter Flexoki Dark",
+      "path": "themes/one-hunter-flexoki-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-raillyhugo-one-hunter-one-hunter-flexoki-light",
+      "label": "One Hunter Flexoki Light",
+      "path": "themes/one-hunter-flexoki-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-raillyhugo-one-hunter-flexoki-dark",
+      "label": "Flexoki Dark",
+      "path": "themes/flexoki-dark.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-raillyhugo-one-hunter-flexoki-light",
+      "label": "Flexoki Light",
+      "path": "themes/flexoki-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-raillyhugo-one-hunter-vercel-2024-light",
+      "label": "Vercel 2024 Light",
+      "path": "themes/vercel-2024-light.json",
+      "uiTheme": "vs"
+    },
+    {
+      "id": "vscode-raillyhugo-one-hunter-vercel-2024-dark",
+      "label": "Vercel 2024 Dark",
+      "path": "themes/vercel-2024-dark.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "1.4.1"
+}

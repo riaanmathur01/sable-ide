@@ -1,0 +1,42 @@
+{
+  "author": "sjsepan",
+  "description": "Matrix-like, but with borders and with matching colors in Activity- and Side-bars.",
+  "homepage": "https://gitlab.com/sjsepan/sjsepan-matrixish",
+  "id": "vscode.sjsepan.sjsepan-matrixish",
+  "minSableVersion": "0.3.8",
+  "name": "sjsepan.matrixish",
+  "permissions": [],
+  "themes": [
+    {
+      "id": "vscode-sjsepan-sjsepan-matrixish-matrixish",
+      "label": "Matrixish",
+      "path": "themes/matrixish.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-sjsepan-sjsepan-matrixish-matrixish-c64greendieoldschool",
+      "label": "Matrixish-C64GreenDieOldSchool",
+      "path": "themes/matrixish-c64greendieoldschool.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-sjsepan-sjsepan-matrixish-matrixish-neonhacker",
+      "label": "Matrixish-NeonHacker",
+      "path": "themes/matrixish-neonhacker.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-sjsepan-sjsepan-matrixish-matrixish-retrohackergreen",
+      "label": "Matrixish-RetroHackerGreen",
+      "path": "themes/matrixish-retrohackergreen.json",
+      "uiTheme": "vs-dark"
+    },
+    {
+      "id": "vscode-sjsepan-sjsepan-matrixish-matrixish-toxicwaste",
+      "label": "Matrixish-ToxicWaste",
+      "path": "themes/matrixish-toxicwaste.json",
+      "uiTheme": "vs-dark"
+    }
+  ],
+  "version": "0.4.1"
+}
