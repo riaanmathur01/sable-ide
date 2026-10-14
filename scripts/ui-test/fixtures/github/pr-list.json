@@ -1,0 +1,82 @@
+{
+  "_comment": "Recorded shapes of `gh pr list --json number,title,author,labels,isDraft,statusCheckRollup,reviewDecision,headRefName,baseRefName,url,updatedAt,state`, by search. A fictional repository.",
+  "review-requested:@me": [
+    {
+      "author": { "id": "MDQ6VXNlcjU4MzIzMQ==", "is_bot": false, "login": "octocat", "name": "The Octocat" },
+      "baseRefName": "main",
+      "headRefName": "feature/login",
+      "isDraft": false,
+      "labels": [
+        { "id": "LA_kwDOA1", "name": "enhancement", "description": "New feature or request", "color": "a2eeef" },
+        { "id": "LA_kwDOA2", "name": "ui", "description": "", "color": "d4c5f9" }
+      ],
+      "number": 42,
+      "reviewDecision": "REVIEW_REQUIRED",
+      "state": "OPEN",
+      "statusCheckRollup": [
+        { "__typename": "CheckRun", "completedAt": "2026-10-11T09:02:11Z", "conclusion": "SUCCESS", "detailsUrl": "https://github.com/sable-test/demo/actions/runs/1/job/1", "name": "build", "startedAt": "2026-10-11T09:00:02Z", "status": "COMPLETED", "workflowName": "CI" },
+        { "__typename": "CheckRun", "completedAt": "2026-10-11T09:01:40Z", "conclusion": "SUCCESS", "detailsUrl": "https://github.com/sable-test/demo/actions/runs/1/job/2", "name": "lint", "startedAt": "2026-10-11T09:00:02Z", "status": "COMPLETED", "workflowName": "CI" },
+        { "__typename": "CheckRun", "completedAt": "0001-01-01T00:00:00Z", "conclusion": "", "detailsUrl": "https://github.com/sable-test/demo/actions/runs/1/job/3", "name": "test (ubuntu-latest)", "startedAt": "2026-10-11T09:00:02Z", "status": "IN_PROGRESS", "workflowName": "CI" }
+      ],
+      "title": "Add login form",
+      "updatedAt": "2026-10-12T16:20:00Z",
+      "url": "https://github.com/sable-test/demo/pull/42"
+    },
+    {
+      "author": { "id": "MDQ6VXNlcjE=", "is_bot": false, "login": "alice", "name": "Alice" },
+      "baseRefName": "main",
+      "headRefName": "docs/readme",
+      "isDraft": false,
+      "labels": [{ "id": "LA_kwDOA3", "name": "docs", "description": "", "color": "0075ca" }],
+      "number": 38,
+      "reviewDecision": "APPROVED",
+      "state": "OPEN",
+      "statusCheckRollup": [
+        { "__typename": "StatusContext", "context": "ci/docs", "description": "Docs built", "state": "SUCCESS", "targetUrl": "https://ci.example.com/38" }
+      ],
+      "title": "Explain the setup in the README",
+      "updatedAt": "2026-10-10T08:00:00Z",
+      "url": "https://github.com/sable-test/demo/pull/38"
+    }
+  ],
+  "assignee:@me": [
+    {
+      "author": { "id": "MDQ6VXNlcjU4MzIzMQ==", "is_bot": false, "login": "octocat", "name": "The Octocat" },
+      "baseRefName": "main",
+      "headRefName": "feature/login",
+      "isDraft": false,
+      "labels": [
+        { "id": "LA_kwDOA1", "name": "enhancement", "description": "New feature or request", "color": "a2eeef" },
+        { "id": "LA_kwDOA2", "name": "ui", "description": "", "color": "d4c5f9" }
+      ],
+      "number": 42,
+      "reviewDecision": "REVIEW_REQUIRED",
+      "state": "OPEN",
+      "statusCheckRollup": [
+        { "__typename": "CheckRun", "conclusion": "", "detailsUrl": "", "name": "test (ubuntu-latest)", "status": "IN_PROGRESS", "workflowName": "CI" }
+      ],
+      "title": "Add login form",
+      "updatedAt": "2026-10-12T16:20:00Z",
+      "url": "https://github.com/sable-test/demo/pull/42"
+    }
+  ],
+  "author:@me": [
+    {
+      "author": { "id": "MDQ6VXNlcjU4MzIzMQ==", "is_bot": false, "login": "octocat", "name": "The Octocat" },
+      "baseRefName": "main",
+      "headRefName": "perf/cache",
+      "isDraft": true,
+      "labels": [],
+      "number": 45,
+      "reviewDecision": "",
+      "state": "OPEN",
+      "statusCheckRollup": [
+        { "__typename": "CheckRun", "conclusion": "FAILURE", "detailsUrl": "https://github.com/sable-test/demo/actions/runs/9", "name": "test (ubuntu-latest)", "status": "COMPLETED", "workflowName": "CI" }
+      ],
+      "title": "Cache the session lookup",
+      "updatedAt": "2026-10-13T07:30:00Z",
+      "url": "https://github.com/sable-test/demo/pull/45"
+    }
+  ],
+  "": "ALL"
+}

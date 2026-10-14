@@ -41,7 +41,14 @@ static NOTEBOOKS: std::sync::LazyLock<crate::notebook::NotebookState> = std::syn
 /// Databases opened through the bridge.
 static DATABASES: std::sync::LazyLock<std::sync::Arc<crate::database::DatabaseState>> = std::sync::LazyLock::new(Default::default);
 
+/// Debug sessions started through the bridge (launch.json debugging).
+static DEBUG: std::sync::LazyLock<crate::debug::DebugManager> = std::sync::LazyLock::new(Default::default);
+
 async fn dispatch(command: &str, args: &Value) -> Result<Value, String> {
+    let debug_events = || -> std::sync::Arc<dyn crate::debug::DebugEvents> { std::sync::Arc::new(crate::debug::SinkEvents(bridge_events())) };
+    if let Some(result) = crate::launch_config::dispatch("bridge", debug_events(), &DEBUG, command, args).await {
+        return Ok(reply(result));
+    }
     Ok(match command {
         "__events" => json!({ "ok": std::mem::take(&mut *EVENTS.lock().unwrap()) }),
         "plugin_node_available" => json!({ "ok": crate::plugin_node::plugin_node_available() }),
@@ -63,6 +70,7 @@ async fn dispatch(command: &str, args: &Value) -> Result<Value, String> {
         "notebook_stop" => reply(crate::notebook::stop(&NOTEBOOKS, arg(args, "session")?).await),
         "notebook_install_ipykernel" => reply(crate::notebook::install_ipykernel(arg(args, "python")?).await),
         "database_call" => reply(crate::database::request(DATABASES.clone(), arg(args, "op")?, arg(args, "args")?).await),
+        "github_call" => reply(crate::github::github_call(arg(args, "root")?, arg(args, "op")?, arg(args, "args")?, arg(args, "ghPath")?).await),
         "plugin_node_stop" => {
             crate::plugin_node::stop("main", &arg::<String>(args, "id")?).await;
             json!({ "ok": null })
@@ -119,6 +127,7 @@ async fn dispatch(command: &str, args: &Value) -> Result<Value, String> {
         "git_switch_branch" => reply(git::git_switch_branch(arg(args, "root")?, arg(args, "name")?)),
         "git_delete_branch" => reply(git::git_delete_branch(arg(args, "root")?, arg(args, "name")?)),
         "git_ahead_behind" => reply(git::git_ahead_behind(arg(args, "root")?)),
+        "git_push" => reply(git::git_push(arg(args, "root")?).await),
         "python_refactor" => reply(
             refactor::python_refactor(
                 arg(args, "python")?,
@@ -131,10 +140,17 @@ async fn dispatch(command: &str, args: &Value) -> Result<Value, String> {
             )
             .await,
         ),
+        "python_rope_refactor" => reply(
+            crate::commands::refactor_deep::python_rope_refactor(arg(args, "python")?, arg(args, "root")?, arg(args, "request")?).await,
+        ),
         "history_list" => json!({ "ok": history::history_list(arg(args, "path")?) }),
         "history_read" => reply(history::history_read(arg(args, "path")?, arg(args, "id")?)),
         "history_deleted_files" => json!({ "ok": history::history_deleted_files(arg(args, "root")?) }),
         "list_processes" => reply(crate::debug::list_processes().await),
+        "debug_request" => reply(crate::debug::send_request(&DEBUG, arg(args, "seq")?, arg(args, "command")?, arg(args, "arguments")?).await),
+        "debug_stop" => reply(crate::debug::stop(&DEBUG).await),
+        "debug_terminal_started" => reply(crate::debug::terminal_started(&DEBUG, arg(args, "id")?, arg(args, "processId")?, arg(args, "error")?).await),
+        "install_debugpy" => reply(crate::debug::install_debugpy(arg(args, "python")?).await),
         "plugin_list" => reply(plugins::plugin_list()),
         "plugin_inspect" => reply(plugins::plugin_inspect(arg(args, "source")?).await),
         "plugin_install" => reply(plugins::plugin_install(arg(args, "path")?, arg(args, "link")?, arg(args, "source")?)),

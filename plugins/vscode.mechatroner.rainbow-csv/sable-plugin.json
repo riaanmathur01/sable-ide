@@ -1,0 +1,17 @@
+{
+  "id": "vscode.mechatroner.rainbow-csv",
+  "name": "Rainbow CSV",
+  "version": "3.24.1",
+  "description": "Highlight CSV and TSV files, Run SQL-like queries",
+  "author": "mechatroner",
+  "main": "main.js",
+  "permissions": [
+    "node",
+    "editor",
+    "workspace:read",
+    "workspace:write"
+  ],
+  "minSableVersion": "0.3.9",
+  "homepage": "https://github.com/mechatroner/vscode_rainbow_csv",
+  "runtime": "node"
+}

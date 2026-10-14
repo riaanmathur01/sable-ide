@@ -33,9 +33,17 @@ export function activate(sable) {
       // The selection's lines, or the whole file without a selection. A
       // trailing newline stays where it was.
       const text = selected || editor.text;
-      const trailing = text.endsWith("\n") ? "\n" : "";
-      const lines = (trailing ? text.slice(0, -1) : text).split("\n");
-      const result = transform(lines).join("\n") + trailing;
+      // Lines keep the file's line endings (\r\n or \n).
+      const parts = text.split(/(\r?\n)/);
+      const lines = parts.filter((_, i) => i % 2 === 0);
+      const breaks = parts.filter((_, i) => i % 2 === 1);
+      const trailing = lines.length > 1 && lines[lines.length - 1] === "" ? breaks.pop() : "";
+      if (trailing) lines.pop();
+      const sorted = transform(lines);
+      const usual = text.includes("\r\n") ? "\r\n" : "\n";
+      const result =
+        sorted.map((line, i) => (i === 0 ? line : (sorted.length === lines.length ? breaks[i - 1] : usual) + line)).join("") +
+        (trailing ? (sorted.length === lines.length ? trailing : usual) : "");
       if (selected) await sable.editor.replaceSelection(result);
       else await sable.editor.setText(result);
       await sable.window.showMessage(`${title}: ${lines.length} line${lines.length === 1 ? "" : "s"}`);

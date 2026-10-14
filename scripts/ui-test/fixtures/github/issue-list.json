@@ -1,0 +1,31 @@
+{
+  "_comment": "Recorded shapes of `gh issue list --json number,title,author,labels,milestone,assignees,updatedAt,url,state`, by search. A fictional repository.",
+  "assignee:@me": [
+    {
+      "assignees": [{ "id": "MDQ6VXNlcjU4MzIzMQ==", "login": "octocat", "name": "The Octocat" }],
+      "author": { "id": "MDQ6VXNlcjI=", "is_bot": false, "login": "bob", "name": "Bob" },
+      "labels": [{ "id": "LA_kwDOB1", "name": "bug", "description": "Something isn't working", "color": "d73a4a" }],
+      "milestone": { "number": 1, "title": "v1.0", "description": "", "dueOn": null },
+      "number": 7,
+      "state": "OPEN",
+      "title": "Crash when the password is empty",
+      "updatedAt": "2026-10-12T10:00:00Z",
+      "url": "https://github.com/sable-test/demo/issues/7"
+    }
+  ],
+  "author:@me": [
+    {
+      "assignees": [],
+      "author": { "id": "MDQ6VXNlcjU4MzIzMQ==", "is_bot": false, "login": "octocat", "name": "The Octocat" },
+      "labels": [{ "id": "LA_kwDOB2", "name": "good first issue", "description": "", "color": "7057ff" }],
+      "milestone": null,
+      "number": 9,
+      "state": "OPEN",
+      "title": "Dark mode for the settings page",
+      "updatedAt": "2026-10-09T10:00:00Z",
+      "url": "https://github.com/sable-test/demo/issues/9"
+    }
+  ],
+  "mentions:@me": [],
+  "": "ALL"
+}

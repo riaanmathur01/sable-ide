@@ -1,0 +1,29 @@
+{
+  "id": "vscode.ritwickdey.liveserver",
+  "name": "Live Server",
+  "version": "5.7.10",
+  "description": "Launch a development local Server with live reload feature for static & dynamic pages",
+  "author": "ritwickdey",
+  "main": "main.js",
+  "permissions": [
+    "node",
+    "editor",
+    "workspace:read",
+    "workspace:write"
+  ],
+  "minSableVersion": "0.3.9",
+  "homepage": "https://github.com/ritwickdey/vscode-live-server",
+  "keybindings": [
+    {
+      "command": "extension.liveServer.goOffline",
+      "key": "alt+L alt+C",
+      "mac": "cmd+L cmd+C"
+    },
+    {
+      "command": "extension.liveServer.goOnline",
+      "key": "alt+L alt+O",
+      "mac": "cmd+L cmd+O"
+    }
+  ],
+  "runtime": "node"
+}

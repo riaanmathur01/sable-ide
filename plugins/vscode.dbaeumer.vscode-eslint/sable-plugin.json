@@ -1,0 +1,17 @@
+{
+  "id": "vscode.dbaeumer.vscode-eslint",
+  "name": "ESLint",
+  "version": "3.0.34",
+  "description": "Integrates ESLint JavaScript into VS Code.",
+  "author": "dbaeumer",
+  "main": "main.js",
+  "permissions": [
+    "node",
+    "editor",
+    "workspace:read",
+    "workspace:write"
+  ],
+  "minSableVersion": "0.3.9",
+  "homepage": "https://github.com/Microsoft/vscode-eslint",
+  "runtime": "node"
+}

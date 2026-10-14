@@ -8,6 +8,7 @@ import { StatusBar } from "./components/StatusBar/StatusBar";
 import { CommandPalette } from "./components/CommandPalette/CommandPalette";
 import { RunConfigDialog } from "./components/Run/RunConfigDialog";
 import { RefactorPicker } from "./components/ContextMenu/RefactorPicker";
+import { RefactoringDialogs } from "./components/Refactoring/RefactoringDialogs";
 import { BreakpointEditor } from "./components/Debug/BreakpointEditor";
 import { AttachDialog } from "./components/Debug/AttachDialog";
 import { RebaseDialog } from "./components/Sidebar/RebaseDialog";
@@ -308,6 +309,7 @@ function App() {
       <CommandPalette />
       <RunConfigDialog />
       <RefactorPicker />
+      <RefactoringDialogs />
       <BreakpointEditor />
       <AttachDialog />
       <RebaseDialog />

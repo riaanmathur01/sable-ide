@@ -1,0 +1,17 @@
+{
+  "id": "vscode.bradlc.vscode-tailwindcss",
+  "name": "Tailwind CSS IntelliSense",
+  "version": "0.16.0",
+  "description": "Intelligent Tailwind CSS tooling for VS Code",
+  "author": "bradlc",
+  "main": "main.js",
+  "permissions": [
+    "node",
+    "editor",
+    "workspace:read",
+    "workspace:write"
+  ],
+  "minSableVersion": "0.3.9",
+  "homepage": "https://github.com/tailwindlabs/tailwindcss-intellisense",
+  "runtime": "node"
+}

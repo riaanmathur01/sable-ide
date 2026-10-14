@@ -80,9 +80,22 @@ const TEXT_TRANSFORMS = {
 /** `text` with `transform` applied to its lines. A trailing newline
  *  stays where it was. */
 function transformLines(text, transform) {
-  const newline = text.endsWith("\n") ? "\n" : "";
-  const lines = (newline ? text.slice(0, -1) : text).split("\n");
-  return transform(lines).join("\n") + newline;
+  return withLineEndings(text, transform);
+}
+
+/** `transform` on the lines of `text`, keeping its line endings (\r\n or
+ *  \n, even mixed): each line break stays in its place while the number
+ *  of lines doesn't change, else the text's usual one is used. */
+function withLineEndings(text, transform) {
+  const parts = text.split(/(\r?\n)/);
+  const lines = parts.filter((_, i) => i % 2 === 0);
+  const breaks = parts.filter((_, i) => i % 2 === 1);
+  const trailing = lines.length > 1 && lines[lines.length - 1] === "" ? breaks.pop() : "";
+  if (trailing) lines.pop();
+  const result = transform(lines);
+  const usual = text.includes("\r\n") ? "\r\n" : "\n";
+  const joined = result.map((line, i) => (i === 0 ? line : (result.length === lines.length ? breaks[i - 1] : usual) + line)).join("");
+  return joined + (trailing ? (result.length === lines.length ? trailing : usual) : "");
 }
 
 /** @param {Sable} sable */

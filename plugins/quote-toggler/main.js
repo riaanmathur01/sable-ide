@@ -110,9 +110,29 @@ export function activate(sable) {
     await sable.editor.applyEdits([
       { range: { start: { line, column: found.start + 1 }, end: { line, column: found.end + 1 } }, text: toggled },
     ]);
-    // Keep the cursor where it was, shifted if escapes made the string longer or shorter.
-    const shift = toggled.length - (found.end - found.start);
-    const place = (index) => ({ line, column: (index >= found.end - 1 ? index + shift : index) + 1 });
+    // Keep the cursor on the same character: toggling only adds or drops
+    // backslashes, so line the two strings up, skipping those.
+    const before = lineText.slice(found.start, found.end);
+    const offsets = [];
+    for (let i = 0, j = 0; i <= before.length; ) {
+      if (i < before.length && j < toggled.length && before[i] !== toggled[j]) {
+        if (before[i] === "\\") {
+          offsets[i++] = j;
+          continue;
+        }
+        if (toggled[j] === "\\") {
+          j++;
+          continue;
+        }
+      }
+      offsets[i++] = j++;
+    }
+    const shift = toggled.length - before.length;
+    const place = (index) => {
+      const inside = index - found.start;
+      const mapped = inside >= 0 && inside <= before.length ? found.start + Math.min(offsets[inside], toggled.length) : index >= found.end ? index + shift : index;
+      return { line, column: mapped + 1 };
+    };
     await sable.editor.setSelection({ start: place(from), end: place(to) });
   });
 

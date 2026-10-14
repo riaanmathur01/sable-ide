@@ -78,9 +78,12 @@ function typed(value) {
 /** CSV (header row first) → an array of objects. */
 function csvToObjects(text, separator = detectSeparator(text)) {
   const [header = [], ...rows] = parseCsv(text, separator);
-  // Blank or repeated column names get a number so no value is lost.
+  // Blank or repeated column names get a number, and fields beyond the
+  // header get columnN keys, so no value is lost.
+  const width = Math.max(header.length, ...rows.map((row) => row.length));
+  const names = Array.from({ length: width }, (_, i) => header[i] ?? "");
   const used = new Set();
-  const keys = header.map((name, i) => {
+  const keys = names.map((name, i) => {
     let key = name.trim() || `column${i + 1}`;
     for (let n = 2; used.has(key); n++) key = `${name.trim() || `column${i + 1}`}_${n}`;
     used.add(key);

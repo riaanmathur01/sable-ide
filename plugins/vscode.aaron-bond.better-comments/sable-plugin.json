@@ -1,0 +1,17 @@
+{
+  "id": "vscode.aaron-bond.better-comments",
+  "name": "Better Comments",
+  "version": "3.0.2",
+  "description": "Improve your code commenting by annotating with alert, informational, TODOs, and more!",
+  "author": "aaron-bond",
+  "main": "main.js",
+  "permissions": [
+    "node",
+    "editor",
+    "workspace:read",
+    "workspace:write"
+  ],
+  "minSableVersion": "0.3.9",
+  "homepage": "https://github.com/aaron-bond/better-comments",
+  "runtime": "node"
+}

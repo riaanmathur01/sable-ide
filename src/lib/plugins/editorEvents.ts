@@ -60,7 +60,27 @@ export function installPluginEditorEvents(
         if (focused() && path()) emitPluginEvent("didChangeSelection", { path: path(), selection: selection() });
       }, SELECTION_DELAY_MS);
     }),
-    editor.onDidChangeModelContent(() => {
+    editor.onDidChangeModelContent((event) => {
+      // Each edit, as VS Code's onDidChangeTextDocument reports it (0-based
+      // ranges in the text before the edit) — from the focused editor
+      // only, so a file open in two groups doesn't report it twice.
+      const changed = path();
+      if (changed && focused()) {
+        emitPluginEvent("didChangeContent", {
+          path: changed,
+          changes: event.changes.map((change) => ({
+            range: {
+              start: { line: change.range.startLineNumber - 1, character: change.range.startColumn - 1 },
+              end: { line: change.range.endLineNumber - 1, character: change.range.endColumn - 1 },
+            },
+            rangeOffset: change.rangeOffset,
+            rangeLength: change.rangeLength,
+            text: change.text,
+          })),
+          isUndoing: event.isUndoing,
+          isRedoing: event.isRedoing,
+        });
+      }
       clearTimeout(changeTimer);
       changeTimer = setTimeout(() => {
         if (path()) emitPluginEvent("didChange", { path: path() });

@@ -411,8 +411,16 @@ async function setDecorations(rt: RuntimeAccess, path: string | null, key: strin
   const decorations: MonacoTypes.editor.IModelDeltaDecoration[] = (items ?? []).map((item) => {
     const beforeText = (item.renderOptions?.before?.contentText ?? options.before?.contentText) as string | undefined;
     const afterText = (item.renderOptions?.after?.contentText ?? options.after?.contentText) as string | undefined;
+    // A whole-line decoration covers its lines, as in VS Code, so its
+    // `after` text (Error Lens's message) goes at the end of the line,
+    // not where the range happens to end.
+    let range = toRange(item.range);
+    if (options.isWholeLine && afterText) {
+      const line = Math.min(range.endLineNumber, model.getLineCount());
+      range = { ...range, endLineNumber: line, endColumn: model.getLineMaxColumn(line) };
+    }
     return {
-      range: toRange(item.range),
+      range,
       options: {
         isWholeLine: Boolean(options.isWholeLine),
         className: options.isWholeLine ? type.className : undefined,

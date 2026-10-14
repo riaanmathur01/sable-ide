@@ -1,0 +1,52 @@
+{
+  "data": {
+    "repository": {
+      "pullRequest": {
+        "id": "PR_kwDOA_42",
+        "files": {
+          "nodes": [
+            { "path": "src/auth.ts", "viewerViewedState": "UNVIEWED" },
+            { "path": "src/login.ts", "viewerViewedState": "VIEWED" }
+          ]
+        },
+        "reviewThreads": {
+          "nodes": [
+            {
+              "id": "PRRT_kwDOA_1",
+              "isResolved": false,
+              "isOutdated": false,
+              "path": "src/auth.ts",
+              "line": 3,
+              "originalLine": 3,
+              "startLine": null,
+              "originalStartLine": null,
+              "diffSide": "RIGHT",
+              "comments": {
+                "nodes": [
+                  { "id": "PRRC_kwDOA_1", "databaseId": 1001, "body": "Should `8` be a named constant?", "createdAt": "2026-10-11T14:00:00Z", "url": "https://github.com/sable-test/demo/pull/42#discussion_r1001", "author": { "login": "bob" } },
+                  { "id": "PRRC_kwDOA_2", "databaseId": 1002, "body": "Good idea — I'll add `MIN_PASSWORD_LENGTH`.", "createdAt": "2026-10-11T15:00:00Z", "url": "https://github.com/sable-test/demo/pull/42#discussion_r1002", "author": { "login": "octocat" } }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOA_2",
+              "isResolved": true,
+              "isOutdated": false,
+              "path": "src/login.ts",
+              "line": 4,
+              "originalLine": 4,
+              "startLine": null,
+              "originalStartLine": null,
+              "diffSide": "RIGHT",
+              "comments": {
+                "nodes": [
+                  { "id": "PRRC_kwDOA_3", "databaseId": 1003, "body": "Typo in the label.", "createdAt": "2026-10-11T13:00:00Z", "url": "https://github.com/sable-test/demo/pull/42#discussion_r1003", "author": { "login": "alice" } }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

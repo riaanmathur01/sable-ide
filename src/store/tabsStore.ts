@@ -21,6 +21,7 @@ import { useUiStore, type PluginsTab, type SettingsPage } from "./uiStore";
 import { getSetting, useSettingsStore } from "./settingsStore";
 import { emitPluginEvent } from "../lib/plugins/events";
 import { usePluginViewsStore } from "./pluginViewsStore";
+import { githubTabKey, type GitHubTabTarget, type PrDiffSource } from "../lib/github/types";
 
 /** Run `then` when the editor is showing `path` (or after a second). */
 function emitWhenShown(path: string, then: () => void) {
@@ -49,14 +50,16 @@ export type DiffSource =
   /** A file's unsaved changes: the saved file (left), the editor (right). */
   | { kind: "saved"; filePath: string }
   /** A file (left) against text from the clipboard (right). */
-  | { kind: "clipboard"; filePath: string; text: string };
+  | { kind: "clipboard"; filePath: string; text: string }
+  /** A pull request's file between its base and head (GitHub review). */
+  | PrDiffSource;
 
 export interface EditorTab {
   /** Stable key. File tabs use the file path; diff tabs use a synthetic key. */
   path: string;
   name: string;
   isDirty: boolean;
-  kind: "file" | "diff" | "settings" | "merge" | "history" | "preview" | "plugin" | "webview" | "notebook" | "database";
+  kind: "file" | "diff" | "settings" | "merge" | "history" | "preview" | "plugin" | "webview" | "notebook" | "database" | "github";
   /** Present on diff tabs: what to compare. */
   diff?: DiffSource;
   /** Present on merge tabs: the conflicted file. */
@@ -73,6 +76,8 @@ export interface EditorTab {
   notebookFile?: string;
   /** On database tabs: the SQLite file shown in the database editor. */
   databaseFile?: string;
+  /** On GitHub tabs: the pull request, issue or form shown. */
+  github?: GitHubTabTarget;
 }
 
 /**
@@ -105,6 +110,8 @@ function diffKey(source: DiffSource): string {
       return `diff:s:${source.filePath}`;
     case "clipboard":
       return `diff:b:${source.filePath}`;
+    case "pr":
+      return `diff:pr:${source.root}#${source.number}:${source.path}`;
   }
 }
 
@@ -123,6 +130,8 @@ function diffName(source: DiffSource): string {
       return `${base} (Unsaved Changes)`;
     case "clipboard":
       return `${base} ↔ Clipboard`;
+    case "pr":
+      return `${base} (#${source.number})`;
   }
 }
 
@@ -165,6 +174,8 @@ interface TabsState {
   openPluginDetails: (pluginId: string, name: string) => void;
   /** Open (or focus) a file's local history (null: deleted files). */
   openHistory: (filePath: string | null) => void;
+  /** Open (or focus) a GitHub pull request / issue / form tab. */
+  openGitHub: (target: GitHubTabTarget, title: string) => void;
   /** Activate a tab in a group (default: focused) and focus that group. */
   setActive: (path: string, groupId?: string) => void;
   /** Open (or focus) the Settings tab — on a page (Plugins) if given. */
@@ -598,6 +609,26 @@ export const useTabsStore = create<TabsState>((set, get) => ({
         updateGroup(state.groups, groupId, (group) => ({
           ...group,
           tabs: [...group.tabs, { path: key, name: `Plugin: ${name}`, isDirty: false, kind: "plugin", pluginId }],
+          activePath: key,
+        })),
+        groupId,
+      ),
+    );
+  },
+
+  openGitHub: (target, title) => {
+    const key = githubTabKey(target);
+    const existing = get().groups.find((group) => group.tabs.some((tab) => tab.path === key));
+    if (existing) {
+      get().setActive(key, existing.id);
+      return;
+    }
+    const groupId = get().activeGroupId;
+    set((state) =>
+      withGroups(
+        updateGroup(state.groups, groupId, (group) => ({
+          ...group,
+          tabs: [...group.tabs, { path: key, name: title, isDirty: false, kind: "github", github: target }],
           activePath: key,
         })),
         groupId,

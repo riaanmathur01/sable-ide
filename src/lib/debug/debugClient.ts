@@ -80,7 +80,7 @@ export async function loadVariables(
  * A `stopped` event only carries a threadId — ask for the stack to learn
  * where (lines are 1-based, matching Monaco).
  */
-async function handleStopped(body: {
+export async function handleStopped(body: {
   threadId?: number;
   reason?: string;
   description?: string;
@@ -123,6 +123,14 @@ async function handleStopped(body: {
 
 let listenersReady = false;
 
+/** Messages from named sessions (launch.json, see launchSessions.ts) go
+ *  here first; true means handled. */
+type DebugRouter = (channel: "message" | "status" | "terminal", payload: unknown) => boolean;
+let router: DebugRouter | null = null;
+export function setDebugRouter(next: DebugRouter): void {
+  router = next;
+}
+
 export function initDebugListeners(): void {
   if (listenersReady) return;
   listenersReady = true;
@@ -137,6 +145,7 @@ export function initDebugListeners(): void {
     env?: Record<string, string | null>;
     title?: string;
   }>("debug:run-in-terminal", async (event) => {
+    if (router?.("terminal", event.payload)) return;
     const { id, args, cwd, env } = event.payload;
     const program = useDebugStore.getState().lastProgram?.split(/[/\\]/).pop();
     try {
@@ -152,6 +161,7 @@ export function initDebugListeners(): void {
 
   listen<DapMessage>("debug:message", (event) => {
     const message = event.payload;
+    if (router?.("message", message)) return;
     // The adapter's exception kinds (shown as checkboxes)…
     if (message.type === "response" && message.command === "initialize" && message.success) {
       const filters = (message.body as { exceptionBreakpointFilters?: ExceptionFilter[] } | undefined)
@@ -217,6 +227,7 @@ export function initDebugListeners(): void {
   });
 
   listen<{ state: string }>("debug:status", (event) => {
+    if (router?.("status", event.payload)) return;
     if (event.payload.state === "terminated") {
       useDebugStore.getState().setTerminated();
     }

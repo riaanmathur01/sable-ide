@@ -1,0 +1,42 @@
+{
+  "id": "vscode.yzhang.markdown-all-in-one",
+  "name": "Markdown All in One",
+  "version": "3.6.2",
+  "description": "All you need to write Markdown (keyboard shortcuts, table of contents, auto preview and more)",
+  "author": "yzhang",
+  "main": "main.js",
+  "permissions": [
+    "node",
+    "editor",
+    "workspace:read",
+    "workspace:write"
+  ],
+  "minSableVersion": "0.3.9",
+  "homepage": "https://github.com/yzhang-gh/vscode-markdown",
+  "keybindings": [
+    {
+      "command": "markdown.extension.editing.toggleBold",
+      "key": "ctrl+b",
+      "mac": "cmd+b"
+    },
+    {
+      "command": "markdown.extension.editing.toggleItalic",
+      "key": "ctrl+i",
+      "mac": "cmd+i"
+    },
+    {
+      "command": "markdown.extension.editing.toggleStrikethrough",
+      "key": "alt+s"
+    },
+    {
+      "command": "markdown.extension.editing.toggleMath",
+      "key": "ctrl+m",
+      "mac": "cmd+m"
+    },
+    {
+      "command": "markdown.extension.checkTaskList",
+      "key": "alt+c"
+    }
+  ],
+  "runtime": "node"
+}

@@ -77,6 +77,24 @@ fn localize_all(value: &mut Value, nls: &Value) {
     }
 }
 
+/// A setting without a default gets its type's, as in VS Code (an array
+/// setting reads as `[]`, not null).
+fn type_default(property: &Value) -> Value {
+    let kind = match property.get("type") {
+        Some(Value::Array(kinds)) => kinds.first().and_then(Value::as_str),
+        Some(kind) => kind.as_str(),
+        None => None,
+    };
+    match kind {
+        Some("string") => json!(""),
+        Some("boolean") => json!(false),
+        Some("number" | "integer") => json!(0),
+        Some("array") => json!([]),
+        Some("object") => json!({}),
+        _ => Value::Null,
+    }
+}
+
 /// The extension's settings and their defaults ("myExt.option" → value).
 fn configuration_defaults(package: &Value) -> BTreeMap<String, Value> {
     let mut defaults = BTreeMap::new();
@@ -88,7 +106,7 @@ fn configuration_defaults(package: &Value) -> BTreeMap<String, Value> {
     for section in sections {
         if let Some(Value::Object(properties)) = section.get("properties") {
             for (key, property) in properties {
-                defaults.insert(key.clone(), property.get("default").cloned().unwrap_or(Value::Null));
+                defaults.insert(key.clone(), property.get("default").cloned().unwrap_or_else(|| type_default(property)));
             }
         }
     }

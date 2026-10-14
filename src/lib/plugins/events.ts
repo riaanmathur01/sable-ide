@@ -6,6 +6,8 @@ export type PluginEventName =
   | "didSave"
   | "didOpen"
   | "didChange"
+  /** Every edit as it happens, with what changed (not debounced). */
+  | "didChangeContent"
   | "didChangeActiveEditor"
   | "didChangeSelection"
   | "didChangeDiagnostics";

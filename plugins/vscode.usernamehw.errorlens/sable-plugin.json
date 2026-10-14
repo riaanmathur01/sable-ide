@@ -1,0 +1,17 @@
+{
+  "id": "vscode.usernamehw.errorlens",
+  "name": "Error Lens",
+  "version": "3.29.0",
+  "description": "Improve highlighting of errors, warnings and other language diagnostics.",
+  "author": "usernamehw",
+  "main": "main.js",
+  "permissions": [
+    "node",
+    "editor",
+    "workspace:read",
+    "workspace:write"
+  ],
+  "minSableVersion": "0.3.9",
+  "homepage": "https://github.com/usernamehw/vscode-error-lens",
+  "runtime": "node"
+}

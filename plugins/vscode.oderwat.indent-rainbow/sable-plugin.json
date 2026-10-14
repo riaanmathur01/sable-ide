@@ -1,0 +1,17 @@
+{
+  "id": "vscode.oderwat.indent-rainbow",
+  "name": "indent-rainbow",
+  "version": "8.3.1",
+  "description": "Makes indentation easier to read",
+  "author": "oderwat",
+  "main": "main.js",
+  "permissions": [
+    "node",
+    "editor",
+    "workspace:read",
+    "workspace:write"
+  ],
+  "minSableVersion": "0.3.9",
+  "homepage": "https://github.com/oderwat/vscode-indent-rainbow",
+  "runtime": "node"
+}

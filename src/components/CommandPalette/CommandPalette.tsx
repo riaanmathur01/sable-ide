@@ -28,6 +28,7 @@ import {
 import { useRemoteStore } from "../../store/remoteStore";
 import { keybindingsPath, setPaletteRunner } from "../../lib/shortcuts";
 import { useDebugStore } from "../../store/debugStore";
+import { addConfiguration, openLaunchJson, selectAndStart, startDebugging } from "../../lib/debug/launchRunner";
 import { useAgentStore } from "../../store/agentStore";
 import { useBreakpointsStore } from "../../store/breakpointsStore";
 import {
@@ -41,6 +42,7 @@ import { runnableFile } from "../../lib/runFile";
 import { useRunConfigStore } from "../../store/runConfigStore";
 import { useTestStore } from "../../store/testStore";
 import { refactor, refactorThis } from "../../lib/refactor";
+import { changeSignature, move as moveRefactoring, safeDelete, undoLastRefactoring } from "../../lib/refactorings";
 import { checkForUpdates } from "../../lib/updates";
 import { useTasksStore } from "../../store/tasksStore";
 import { usePluginStore } from "../../store/pluginStore";
@@ -49,6 +51,8 @@ import { toggleInlineCompletions } from "../../lib/ai/inlineCompletions";
 import { allThemes } from "../../lib/themes";
 import { isNotebookPath, notebookHooks, type NotebookCommand } from "../../lib/notebook/hooks";
 import { databaseHooks, type DatabaseCommand } from "../../lib/database/hooks";
+import { githubPaletteCommands } from "../../lib/github/commands";
+import { editorExtrasCommands } from "../../lib/editorExtrasCommands";
 import {
   restartLanguageServers,
   setUpPythonSemanticHighlighting,
@@ -275,7 +279,9 @@ function PaletteInner({ mode, onClose }: { mode: PaletteMode; onClose: () => voi
         const typed = query.trim();
         // What's typed, as a choice of its own (unless it's listed).
         if (pick?.text && typed && !ranked.some((item) => item.label === typed)) {
-          return [{ id: "pick:text", label: pick.text.replace("%s", typed), run: () => answer(typed) }, ...ranked];
+          // A long typed path keeps its end (the part being typed) in view.
+          const shown = typed.length > 60 ? `…${typed.slice(-58)}` : typed;
+          return [{ id: "pick:text", label: pick.text.replace("%s", shown), run: () => answer(typed) }, ...ranked];
         }
         return ranked;
       }
@@ -647,6 +653,8 @@ function buildCommands(): PaletteItem[] {
     },
     ...notebookCommands(),
     ...databaseCommands(),
+    ...githubPaletteCommands(),
+    ...editorExtrasCommands(),
     { id: "inline-completions", label: "AI: Toggle Inline Completions", run: toggleInlineCompletions },
     {
       id: "debug-attach",
@@ -681,6 +689,10 @@ function buildCommands(): PaletteItem[] {
     { id: "refactor-method", label: "Refactor: Extract Method (⌥⌘M)", run: () => void refactor("extractMethod") },
     { id: "refactor-constant", label: "Refactor: Extract Constant (⌥⌘C)", run: () => void refactor("extractConstant") },
     { id: "refactor-inline", label: "Refactor: Inline (⌥⌘N)", run: () => void refactor("inline") },
+    { id: "refactor-safe-delete", label: "Refactor: Safe Delete… (⌘⌫ / Alt+Delete)", run: () => void safeDelete() },
+    { id: "refactor-change-signature", label: "Refactor: Change Signature… (⌘F6 / Ctrl+F6)", run: () => void changeSignature() },
+    { id: "refactor-move", label: "Refactor: Move… (F6)", run: () => void moveRefactoring() },
+    { id: "refactor-undo", label: "Refactor: Undo Last Refactoring", run: () => void undoLastRefactoring() },
     {
       id: "format",
       label: "Format Document",
@@ -925,8 +937,11 @@ function buildCommands(): PaletteItem[] {
       id: "debug-start",
       label: "Debug: Start Debugging",
       detail: "F5",
-      run: () => void useDebugStore.getState().start(),
+      run: () => void startDebugging(),
     },
+    { id: "debug-select-start", label: "Debug: Select and Start Debugging", run: () => void selectAndStart() },
+    { id: "debug-open-launch-json", label: "Debug: Open launch.json", run: () => void openLaunchJson() },
+    { id: "debug-add-configuration", label: "Debug: Add Configuration…", run: () => void addConfiguration() },
     {
       id: "debug-stop",
       label: "Debug: Stop Debugging",

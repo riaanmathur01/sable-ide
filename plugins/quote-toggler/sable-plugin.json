@@ -1,7 +1,7 @@
 {
   "id": "quote-toggler",
   "name": "Quote & Bracket Toggler",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Cycle the string at the cursor between single, double and backtick quotes, and wrap the selection in brackets, quotes or Markdown emphasis.",
   "author": "Sable",
   "main": "main.js",

@@ -281,6 +281,10 @@ Values kept for your plugin between runs (JSON, 1 MB in all).
   `{ path }`. Returns a `Disposable`.
 - `onDidChange(listener)`: a file's text changed (after typing pauses);
   gets `{ path }`.
+- `onDidChangeContent(listener)`: every edit as it happens (not
+  debounced), as VS Code's `onDidChangeTextDocument` reports it: gets
+  `{ path, changes: [{ range, rangeOffset, rangeLength, text }], isUndoing,
+  isRedoing }`, with **0-based** ranges in the text before the edit.
 - `onDidChangeActiveEditor(listener)`: a different file is in front;
   gets `{ path }` (`null` for none).
 - `onDidChangeSelection(listener)`: the selection or cursor moved
@@ -422,7 +426,14 @@ fall back to the worker, where the parts that need Node fail.
   paths.
 
 These have been tried end to end: Better Comments, Bookmarks, Error
-Lens, REST Client, Code Runner and Sort Lines.
+Lens, REST Client, Code Runner and Sort Lines; and the twelve popular
+extensions in the Marketplace (`scripts/ui-test/popular-plugins.mjs`):
+Live Server, Prettier, ESLint, YAML, Path Intellisense, Auto Close Tag,
+Tailwind CSS IntelliSense, indent-rainbow, Error Lens, Markdown All in
+One, Rainbow CSV and Better Comments. Language-server extensions
+(`vscode-languageclient`, over Node IPC or stdio) work: documents sync
+edit by edit, and `window.tabGroups` lists the open documents (for
+pulled diagnostics). Extensions built as ES modules need Node 22.15+.
 
 **What doesn't (yet):** custom editors, notebooks, debug adapters
 (Sable's debugger has its own), file-system watchers, source-control

@@ -8,6 +8,7 @@ pub mod git;
 pub mod history;
 pub mod interpreter;
 pub mod refactor;
+pub mod refactor_deep;
 pub mod search;
 #[cfg(feature = "desktop")]
 pub mod settings;

@@ -1,0 +1,73 @@
+{
+  "_comment": "Recorded shape of `gh pr view 42 --json …` (the fields Sable asks for). {{BASE_SHA}}, {{HEAD_SHA}}, {{HEAD1_SHA}} are the test repository's commits.",
+  "additions": 24,
+  "assignees": [{ "id": "MDQ6VXNlcjU4MzIzMQ==", "login": "octocat", "name": "The Octocat" }],
+  "author": { "id": "MDQ6VXNlcjU4MzIzMQ==", "is_bot": false, "login": "octocat", "name": "The Octocat" },
+  "baseRefName": "main",
+  "baseRefOid": "{{BASE_SHA}}",
+  "body": "Adds a **login form** with validation.\n\n- [x] Form and submit handler\n- [x] Password check\n- [ ] Remember me\n\n```ts\nexport function login(name: string, password: string) {\n  return check(name, password);\n}\n```\n\nFixes #7 — thanks @alice for the design.",
+  "changedFiles": 2,
+  "comments": [
+    {
+      "id": "IC_kwDOA_1",
+      "author": { "login": "alice" },
+      "authorAssociation": "MEMBER",
+      "body": "Can you add a test for the empty password case?",
+      "createdAt": "2026-10-11T12:00:00Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/sable-test/demo/pull/42#issuecomment-1",
+      "viewerDidAuthor": false
+    }
+  ],
+  "commits": [
+    {
+      "authoredDate": "2026-10-11T08:00:00Z",
+      "authors": [{ "email": "octocat@example.com", "id": "MDQ6VXNlcjU4MzIzMQ==", "login": "octocat", "name": "The Octocat" }],
+      "committedDate": "2026-10-11T08:00:00Z",
+      "messageBody": "",
+      "messageHeadline": "Add login form",
+      "oid": "{{HEAD1_SHA}}"
+    },
+    {
+      "authoredDate": "2026-10-11T09:00:00Z",
+      "authors": [{ "email": "octocat@example.com", "id": "MDQ6VXNlcjU4MzIzMQ==", "login": "octocat", "name": "The Octocat" }],
+      "committedDate": "2026-10-11T09:00:00Z",
+      "messageBody": "",
+      "messageHeadline": "Validate the password",
+      "oid": "{{HEAD_SHA}}"
+    }
+  ],
+  "createdAt": "2026-10-11T08:30:00Z",
+  "deletions": 3,
+  "headRefName": "feature/login",
+  "headRefOid": "{{HEAD_SHA}}",
+  "isCrossRepository": false,
+  "isDraft": false,
+  "labels": [
+    { "id": "LA_kwDOA1", "name": "enhancement", "description": "New feature or request", "color": "a2eeef" },
+    { "id": "LA_kwDOA2", "name": "ui", "description": "", "color": "d4c5f9" }
+  ],
+  "latestReviews": [
+    { "id": "PRR_kwDOA_1", "author": { "login": "bob" }, "authorAssociation": "MEMBER", "body": "Looks great, one question inline.", "submittedAt": "2026-10-11T14:00:00Z", "includesCreatedEdit": false, "reactionGroups": [], "state": "APPROVED", "commit": { "oid": "{{HEAD_SHA}}" } }
+  ],
+  "mergeStateStatus": "CLEAN",
+  "mergeable": "MERGEABLE",
+  "milestone": { "number": 1, "title": "v1.0", "description": "", "dueOn": null },
+  "number": 42,
+  "reviewDecision": "REVIEW_REQUIRED",
+  "reviewRequests": [{ "__typename": "User", "login": "alice" }],
+  "reviews": [
+    { "id": "PRR_kwDOA_1", "author": { "login": "bob" }, "authorAssociation": "MEMBER", "body": "Looks great, one question inline.", "submittedAt": "2026-10-11T14:00:00Z", "includesCreatedEdit": false, "reactionGroups": [], "state": "APPROVED", "commit": { "oid": "{{HEAD_SHA}}" } }
+  ],
+  "state": "OPEN",
+  "statusCheckRollup": [
+    { "__typename": "CheckRun", "completedAt": "2026-10-11T09:02:11Z", "conclusion": "SUCCESS", "detailsUrl": "https://github.com/sable-test/demo/actions/runs/1/job/1", "name": "build", "startedAt": "2026-10-11T09:00:02Z", "status": "COMPLETED", "workflowName": "CI" },
+    { "__typename": "CheckRun", "completedAt": "2026-10-11T09:01:40Z", "conclusion": "SUCCESS", "detailsUrl": "https://github.com/sable-test/demo/actions/runs/1/job/2", "name": "lint", "startedAt": "2026-10-11T09:00:02Z", "status": "COMPLETED", "workflowName": "CI" },
+    { "__typename": "CheckRun", "completedAt": "0001-01-01T00:00:00Z", "conclusion": "", "detailsUrl": "https://github.com/sable-test/demo/actions/runs/1/job/3", "name": "test (ubuntu-latest)", "startedAt": "2026-10-11T09:00:02Z", "status": "IN_PROGRESS", "workflowName": "CI" }
+  ],
+  "title": "Add login form",
+  "url": "https://github.com/sable-test/demo/pull/42"
+}

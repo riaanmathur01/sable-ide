@@ -50,6 +50,17 @@ export type LineScopes = ScopedToken[];
 export function scopesForLines(languageId: string, lines: string[]): LineScopes[] | null {
   return tokenizeScopes?.(languageId, lines) ?? null;
 }
+
+let makeScopeTokenizer: ((languageId: string) => ((line: string) => LineScopes) | null) | null = null;
+
+/**
+ * A line-by-line version of scopesForLines: each call tokenizes the next
+ * line, carrying state from the one before, so a long file can be
+ * tokenized a chunk at a time (null if the language has no grammar yet).
+ */
+export function scopeTokenizer(languageId: string): ((line: string) => LineScopes) | null {
+  return makeScopeTokenizer?.(languageId) ?? null;
+}
 const themeListeners = new Set<(id: string) => void>();
 
 /** The editor theme currently applied. */
@@ -337,6 +348,21 @@ export function installShikiHighlighting(monaco: Monaco, initialTheme: ThemeId) 
         scopes: token.scopes,
       }));
     });
+  };
+
+  makeScopeTokenizer = (languageId) => {
+    if (!highlighter || !providers.has(languageId)) return null;
+    const grammar = highlighter.getLanguage(GRAMMAR_NAME[languageId] ?? languageId);
+    let ruleStack = INITIAL;
+    return (line) => {
+      const result = grammar.tokenizeLine(line, ruleStack, 500);
+      ruleStack = result.ruleStack;
+      return result.tokens.map((token) => ({
+        start: token.startIndex,
+        end: Math.min(token.endIndex, line.length),
+        scopes: token.scopes,
+      }));
+    };
   };
 
   const initialized = (async () => {

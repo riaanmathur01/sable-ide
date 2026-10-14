@@ -1,0 +1,28 @@
+// Unit tests for breadcrumb-free editor extras: the spell checker
+// (identifier splitting, word checks, suggestion ranking, workspace
+// dictionaries) and Emmet (where it applies, expansion, tag structure).
+//
+//   node scripts/unit-test/editor-extras.mjs
+//
+// Bundles editor-extras.test.ts with esbuild into a temp dir and runs it.
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const out = fs.mkdtempSync(path.join(os.tmpdir(), "sable-unit-"));
+const bundle = path.join(out, "editor-extras.test.mjs");
+execFileSync(
+  path.join(root, "node_modules/.bin/esbuild"),
+  [path.join(root, "scripts/unit-test/editor-extras.test.ts"), "--bundle", "--platform=node", "--format=esm", "--log-level=warning", `--outfile=${bundle}`],
+  { stdio: "inherit" },
+);
+try {
+  execFileSync(process.execPath, [bundle], { stdio: "inherit", env: { ...process.env, SABLE_ROOT: root } });
+} catch {
+  process.exitCode = 1;
+} finally {
+  fs.rmSync(out, { recursive: true, force: true });
+}

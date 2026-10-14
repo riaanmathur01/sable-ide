@@ -1,7 +1,7 @@
 {
   "id": "csv-tools",
   "name": "CSV Tools",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Convert CSV to JSON and JSON to CSV, and align CSV columns for reading. Detects comma, semicolon and tab separators and handles quoted fields.",
   "author": "Sable",
   "main": "main.js",

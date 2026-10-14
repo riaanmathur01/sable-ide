@@ -140,6 +140,11 @@ interface DebugState {
   lastProgram: string | null;
   /** A debugger component that needs installing (one-click install). */
   missingTool: MissingTool | null;
+  /** Restart (and retry after an install) with this instead of
+   *  `lastProgram` — set by launch.json debugging (launchRunner). */
+  relaunch: (() => Promise<void>) | null;
+  /** Report a failed start: offer a missing tool, else show why. */
+  reportError: (error: unknown) => void;
   isInstallingTool: boolean;
 
   /** Debug a file. `launch` adjusts how (debugging one test: run
@@ -290,6 +295,8 @@ export const useDebugStore = create<DebugState>((set, get) => {
     consoleLines: [],
     lastProgram: null,
     missingTool: null,
+    relaunch: null,
+    reportError: (error) => reportStartError(error),
     isInstallingTool: false,
 
     start: async (programOverride, launch) => {
@@ -336,7 +343,7 @@ export const useDebugStore = create<DebugState>((set, get) => {
         Object.keys(useBreakpointsStore.getState().breakpointsByFile).map((file) => [file, sourceBreakpoints(file)]),
       );
 
-      set({ ...IDLE, isDebugging: true, lastProgram: program, missingTool: null });
+      set({ ...IDLE, isDebugging: true, lastProgram: program, missingTool: null, relaunch: null });
       get().clearConsole();
       get().appendConsole("console", `Debugging ${program}`);
       useUiStore.getState().setBottomPanel("debug");
@@ -376,8 +383,9 @@ export const useDebugStore = create<DebugState>((set, get) => {
           const { restartLanguageServers } = await import("../lib/lsp/lspClient");
           await restartLanguageServers();
         }
-        const program = get().lastProgram;
-        if (program) await get().start(program);
+        const { lastProgram: program, relaunch } = get();
+        if (relaunch) await relaunch();
+        else if (program) await get().start(program);
       } catch (error) {
         get().appendConsole("error", String(error));
         useUiStore.getState().setLastError(String(error));
@@ -392,9 +400,10 @@ export const useDebugStore = create<DebugState>((set, get) => {
     },
 
     restart: async () => {
-      const program = get().lastProgram;
+      const { lastProgram: program, relaunch } = get();
       await get().stop();
-      if (program) await get().start(program);
+      if (relaunch) await relaunch();
+      else if (program) await get().start(program);
     },
 
     continue: () => control("continue"),

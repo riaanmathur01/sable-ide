@@ -1,0 +1,30 @@
+{
+  "user": {
+    "login": "octocat",
+    "id": 583231,
+    "node_id": "MDQ6VXNlcjU4MzIzMQ==",
+    "avatar_url": "https://avatars.githubusercontent.com/u/583231?v=4",
+    "type": "User",
+    "site_admin": false,
+    "name": "The Octocat",
+    "public_repos": 8
+  },
+  "repo": {
+    "defaultBranchRef": { "name": "main" },
+    "nameWithOwner": "sable-test/demo",
+    "url": "https://github.com/sable-test/demo",
+    "viewerPermission": "ADMIN"
+  },
+  "labels": [
+    { "color": "d73a4a", "description": "Something isn't working", "name": "bug" },
+    { "color": "0075ca", "description": "Improvements or additions to documentation", "name": "docs" },
+    { "color": "a2eeef", "description": "New feature or request", "name": "enhancement" },
+    { "color": "7057ff", "description": "Good for newcomers", "name": "good first issue" },
+    { "color": "d4c5f9", "description": "", "name": "ui" }
+  ],
+  "assignees": [
+    { "login": "alice", "id": 1, "type": "User", "site_admin": false },
+    { "login": "bob", "id": 2, "type": "User", "site_admin": false },
+    { "login": "octocat", "id": 583231, "type": "User", "site_admin": false }
+  ]
+}

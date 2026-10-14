@@ -127,6 +127,30 @@ may ask once too (More info → Run anyway).
   into Sable's tools folder on first use), with two safety nets: an
   inlined value keeps its meaning (`x = 2 + 3; x * 2` → `(2 + 3) * 2`),
   and a result that doesn't parse is refused.
+- **Safe Delete, Change Signature, Move** (JetBrains' deeper
+  refactorings; also in ⌃T, the light bulb and the palette). **Safe
+  Delete** (⌘⌫ on a declaration's name / Alt+Delete; Explorer → Safe
+  Delete… for a file) looks for usages first: none, and it's deleted
+  (with its decorators, doc comment and blank line); otherwise a dialog
+  lists them by file — Delete Anyway, View Usages, Cancel. On a
+  parameter it removes the argument at every call too. **Change
+  Signature** (⌘F6 / Ctrl+F6): name, parameters (rename, type, default,
+  reorder, add with a value for existing calls, remove; Python's
+  keyword-only), return type, with a live preview; every call follows
+  (keyword arguments too), and overrides. **Move** (F6) moves a
+  top-level class, function or constant to another file — existing or
+  new — taking the imports it needs, importing it where it's used and
+  dropping imports the source no longer needs. Renaming or dragging a
+  file in the Explorer offers to update its imports. Each shows a
+  Refactoring Preview (a diff of every file, problems such as a name
+  clash or a removed parameter still in use listed first) and applies as
+  one step, undone in every file at once (the Undo after it, or
+  *Refactor: Undo Last Refactoring*). Python works through Rope;
+  TypeScript/JavaScript through the TypeScript language service (Monaco's
+  TypeScript, over the workspace's files — with or without
+  typescript-language-server); other languages (Java, Go, Rust, C/C++,
+  C#, Kotlin, PHP, Ruby) on their language server's references with text
+  rewriting, labeled best effort (Move: Python and TS/JS only).
 - **Debugger** — breakpoints (saved per project, and they follow your
   edits), continue/step/pause, call stack, variables, debug console, and
   stop on uncaught exceptions, for:
@@ -154,6 +178,18 @@ may ask once too (More info → Run anyway).
   that's already running — Python (`python -m debugpy --listen 5678`),
   Node (`--inspect`), Java (JDWP port), or a Go / C / C++ / Rust process
   picked from a list; stopping detaches and leaves it running.
+
+  **launch.json.** Projects with `.vscode/launch.json` (or a
+  `.code-workspace` file's `launch`) debug with their own configurations:
+  the Run and Debug view's dropdown lists them (`Name (folder)` in
+  multi-root workspaces) and F5 starts the selected one. VS Code's
+  variables (`${workspaceFolder}`, `${file}`, `${env:…}`, `${input:…}`,
+  `${command:pickProcess}`, …), `envFile`, `preLaunchTask` /
+  `postDebugTask` from `.vscode/tasks.json`, and `compounds` work; types
+  map onto Sable's debuggers (debugpy, js-debug incl. Chrome, Delve,
+  lldb-dap for `lldb`/`cppdbg`/`codelldb`, java-debug). The gear opens
+  launch.json (creating one from a template), **Add Configuration…**
+  inserts snippets.
 
   C, C++, and Rust files are compiled with debug info first (Cargo
   projects build with `cargo build`). TypeScript runs directly on Node 22.18+
@@ -210,6 +246,25 @@ may ask once too (More info → Run anyway).
   and your own in VS Code's format: “Snippets: Configure User Snippets”
   opens `snippets/<language>.json` next to settings.json (`global.json`
   for every language).
+- **Breadcrumbs** — above each editor: the file's path in its workspace
+  folder, then the symbols around the cursor (`src › lib › themes.ts ›
+  themeById`, from the language server or Monaco's own outline). Click a
+  folder for its files, a symbol for its neighbours; ⇧⌘. focuses them
+  (←/→, Enter, Esc). “View: Toggle Breadcrumbs” hides them.
+- **Emmet** — `ul>li*3`, `.card>h2+p`, `m10`, `df`, `jcsb` … in HTML,
+  JSX/TSX (`className`, `<img />`), Vue, Svelte, XML and CSS/SCSS/Less:
+  Tab expands (tab stops become placeholders), and the expansion shows in
+  the suggestion list with a preview. Never in plain JavaScript, strings
+  or comments. Wrap with Abbreviation, Balance outward/inward, Go to
+  Matching Pair, Remove Tag and Update Tag in the command palette.
+- **Spell check** — comments, strings, identifiers (`getUserProfleId` is
+  checked as get/User/Profle/Id) and Markdown/plain text, against a
+  bundled US or UK English dictionary plus programming terms; code
+  keywords, URLs, hex, UUIDs and short words are skipped. The quick fix
+  (⌘.) suggests corrections, or adds the word to your dictionary, the
+  workspace's (`cSpell.words` in `.vscode/settings.json`, shared with VS
+  Code's Code Spell Checker; `cspell.json` is read too) or ignores it in
+  the file. Spelling stays out of the Problems panel.
 - **Compare** — any two files (Explorer → Select for Compare / Compare
   with …, or “File: Compare Active File With…”), a file's unsaved changes
   (“Compare with Saved”), or a file against the clipboard.
@@ -276,6 +331,23 @@ may ask once too (More info → Run anyway).
   Run and Debug, Plugins) from a VS Code-style activity bar at the left
   edge, from icons in the sidebar header, or from a ☰ menu: Settings →
   Editor Appearance → View Switcher.
+- **GitHub pull requests and issues** — a GitHub view (like VS Code's
+  extension): pull requests waiting for your review, assigned to you,
+  created by you and all open ones, and issues assigned to you, created by
+  you, mentioning you and open — with labels, check state (✓ ✗ ●), review
+  state, search and refresh. A pull request opens in a tab: its
+  description, timeline with review threads, commits, checks, reviewers;
+  Checkout, Approve / Request changes / Comment, Merge (merge, squash or
+  rebase), Close / Reopen, Ready for review. Files changed open as diffs
+  with the review threads inline: reply, resolve, and add line comments
+  from the + in the gutter (select lines for a range) into a review you
+  submit; mark files viewed. Issues open in a tab too (comment, close,
+  labels, assignees, “Start working on issue” makes a
+  `<you>/issue-<n>-<title>` branch). Create Pull Request (pushes the branch
+  first, after asking) and New Issue (from `.github/ISSUE_TEMPLATE`).
+  The status bar shows the current branch's pull request. It all runs the
+  GitHub CLI (`gh`) you've signed in with (`gh auth login`) — Sable stores
+  no tokens; in a remote workspace, gh runs on the remote.
 - **Settings** — a searchable settings page (⌘,) backed by a plain
   `settings.json`.
 - **Rebindable shortcuts** — Settings → Keyboard Shortcuts lists every
@@ -434,6 +506,7 @@ one can be changed. The defaults:
 | `F2` / `⇧F6` | Rename symbol (project-wide) |
 | `⌃T` | Refactor This |
 | `⌥⌘V` / `⌥⌘M` / `⌥⌘C` / `⌥⌘N` | Extract variable / method / constant, inline |
+| `⌘⌫` (on a declaration) / `⌘F6` / `F6` | Safe delete / change signature / move |
 | `⌘J` | Toggle the bottom panel (terminal / debug console) |
 | `⌘B` / `⌥⌘A` | Toggle sidebar / agent panel |
 | `⇧⇧` | Search Everywhere |
@@ -442,6 +515,8 @@ one can be changed. The defaults:
 | `⌥F7`, `⌥⌘B`, `⌃⌥H` | Find usages, go to implementation, call hierarchy |
 | `⌃Tab`, `⌘1…9`, `⇧⌘T` | Switch tabs, jump to tab N, reopen closed tab |
 | `⌘=` / `⌘-` / `⌘0` | Editor zoom |
+| `⇧⌘.` | Focus the breadcrumbs |
+| `Tab` | Expand an Emmet abbreviation (HTML, JSX, CSS…) |
 | `F5`, `F9`, `F10`/`F11` | Debug start/continue, toggle breakpoint, step |
 
 ## Testing
@@ -487,6 +562,41 @@ language servers). To use other ports, set `SABLE_UI_VITE_PORT` and
 `node scripts/ui-test/database.mjs` tests the database editor end to end
 (it builds a sample database with `python3`; `SHOTS=/dir` keeps its
 screenshots).
+`node scripts/ui-test/launch-json.mjs` tests launch.json debugging end
+to end (debugpy, and js-debug if installed); `node --test
+scripts/unit-test/launch-json.test.mjs` unit-tests its parsing,
+variables and launch requests. `node scripts/ui-test/editor-extras.mjs`
+tests the breadcrumbs, Emmet and the spell checker the same way, and
+`node scripts/unit-test/editor-extras.mjs` unit-tests their pure parts
+(no servers needed). `node scripts/ui-test/github.mjs` tests pull
+requests and issues against a fake `gh` (`scripts/ui-test/fake-gh.mjs`,
+recorded fixtures, every call logged) in a throwaway repository — it
+never talks to GitHub; `SABLE_GH_THEME=catppuccin-latte` for light
+screenshots.
+`SABLE_TEST_ROPE_PYTHON=/venv/bin/python node scripts/ui-test/refactorings.mjs`
+tests Safe Delete, Change Signature and Move end to end (Python through
+Rope in that virtualenv, TypeScript through the TypeScript language
+service), and `node scripts/ui-test/refactorings-engines.mjs` (no
+browser) their TypeScript and text-based engines;
+`SABLE_TEST_ROPE_PYTHON=… cargo test --lib refactor_deep` tests the Rope
+side.
+
+**Running every UI suite.** `node scripts/ui-test/run-all.mjs` starts
+Vite (port 1550) and, for each suite, a fresh bridge (port 1551) with
+empty plugins and history folders, runs all the suites in
+`scripts/ui-test/` and prints a PASS/FAIL/SKIP line per suite with its
+failing checks; it exits non-zero if any failed. `--only a,b` (or
+`--skip a,b`, `--list`, `--verbose`); `SABLE_RUN_VITE_PORT` /
+`SABLE_RUN_BRIDGE_PORT` for other ports. Each suite's log and
+screenshots are kept in the run folder it prints. Suites whose
+prerequisites are missing are skipped and say why: `notebook` needs
+`SABLE_TEST_JUPYTER_PYTHON`, `refactorings` `SABLE_TEST_ROPE_PYTHON`,
+`launch-json` a Python with debugpy (`SABLE_TEST_PYTHON`),
+`popular-plugins` and `vscode-real` the network (npm, Open VSX). Every
+suite also runs on its own with Vite and a bridge already running (see
+its header), e.g. `SABLE_UI_VITE_PORT=1550 SABLE_UI_BRIDGE_PORT=1551
+node scripts/ui-test/marketplace.mjs`; `plugin-units.mjs` and
+`plugin-smoke.mjs` (the bundled plugins in a fake host) need neither.
 
 ## Installers and updates
 

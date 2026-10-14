@@ -1,0 +1,5 @@
+# Converted VS Code extensions (vscode.*/extension/) ship their built code
+# and production dependencies, which the repository's .gitignore leaves out
+# elsewhere.
+!node_modules
+!dist

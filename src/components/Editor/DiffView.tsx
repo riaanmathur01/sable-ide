@@ -10,6 +10,7 @@ import { getSetting, useSettingsStore } from "../../store/settingsStore";
 import { cachedThemeId, themeById } from "../../lib/themes";
 import { stageHunk, unstageHunk, type LineChange } from "../../lib/git/hunks";
 import { useGitStore } from "../../store/gitStore";
+import { attachPrReview, loadPrSides, PrDiffToolbar } from "../GitHub/prReview";
 import "./DiffView.css";
 
 type DiffEditor = MonacoTypes.editor.IStandaloneDiffEditor;
@@ -84,6 +85,8 @@ async function loadSides(root: string, source: DiffSource): Promise<{ original: 
       return { original: await readFile(source.filePath), modified: await currentText(source.filePath), isBinary: false };
     case "clipboard":
       return { original: await currentText(source.filePath), modified: source.text, isBinary: false };
+    case "pr":
+      return loadPrSides(source);
   }
 }
 
@@ -129,6 +132,8 @@ export default function DiffView({ source }: DiffViewProps) {
     let modifiedModel: ReturnType<typeof monaco.editor.createModel> | null =
       null;
     let disposed = false;
+    /** Review threads and commenting on a pull request's file. */
+    let detachReview: (() => void) | null = null;
 
     const fetchDiff = loadSides(root, source);
 
@@ -187,6 +192,8 @@ export default function DiffView({ source }: DiffViewProps) {
           scrollTop.current = event.scrollTop;
         });
 
+        if (source.kind === "pr") detachReview = attachPrReview(diffEditor, source);
+
         if (source.kind === "working") {
           registerHunkLenses();
           const original = originalModel;
@@ -218,6 +225,7 @@ export default function DiffView({ source }: DiffViewProps) {
     return () => {
       disposed = true;
       if (modifiedModel) hunkTargets.delete(modifiedModel.uri.toString());
+      detachReview?.();
       diffEditorRef.current?.dispose();
       diffEditorRef.current = null;
       originalModel?.dispose();
@@ -236,6 +244,7 @@ export default function DiffView({ source }: DiffViewProps) {
   return (
     <div className="diff-view">
       <div className="diff-toolbar">
+        {source.kind === "pr" && <PrDiffToolbar source={source} />}
         {source.kind === "working" && (
           <button
             className="diff-toggle diff-stage-file"

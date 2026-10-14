@@ -13,6 +13,8 @@ import { useWorkspaceStore, workspaceRelativePath } from "../../store/workspaceS
 import { loadVariables, type DebugVariable } from "../../lib/debug/debugClient";
 import { revealPosition } from "../../lib/editorRegistry";
 import { DebugToolbar } from "./DebugToolbar";
+import { LaunchConfigBar, LaunchSessions } from "./LaunchConfigBar";
+import { useLaunchStore } from "../../store/launchStore";
 import "./Debug.css";
 
 /** Workspace-relative display path. */
@@ -50,18 +52,22 @@ export function DebugPanel() {
   const canDebug = isDebuggable(lastFilePath);
   const missingTool = useDebugStore((state) => state.missingTool);
   const isInstallingTool = useDebugStore((state) => state.isInstallingTool);
+  const hasLaunchConfigs = useLaunchStore((state) => state.entries.length > 0);
 
   return (
     <div className="debug-panel">
       {!isDebugging ? (
         <div className="debug-start">
-          <button
-            className="debug-start-button"
-            disabled={!canDebug}
-            onClick={() => void useDebugStore.getState().start()}
-          >
-            <Play size={13} strokeWidth={1.75} /> Run and Debug
-          </button>
+          <LaunchConfigBar />
+          {!hasLaunchConfigs && (
+            <button
+              className="debug-start-button"
+              disabled={!canDebug}
+              onClick={() => void useDebugStore.getState().start()}
+            >
+              <Play size={13} strokeWidth={1.75} /> Run and Debug
+            </button>
+          )}
           <button
             className="debug-start-button secondary"
             onClick={() => useDebugStore.getState().setAttachDialogOpen(true)}
@@ -69,11 +75,13 @@ export function DebugPanel() {
           >
             Attach to Process…
           </button>
-          <div className="debug-hint">
-            {canDebug
-              ? `Debugs ${displayPath(lastFilePath!, rootPath)} (F5)${debugNote(lastFilePath!)}. Click the gutter to add breakpoints (F9).`
-              : "Open a Python, JavaScript, TypeScript, Go, Java, C, C++, or Rust file to debug it."}
-          </div>
+          {!hasLaunchConfigs && (
+            <div className="debug-hint">
+              {canDebug
+                ? `Debugs ${displayPath(lastFilePath!, rootPath)} (F5)${debugNote(lastFilePath!)}. Click the gutter to add breakpoints (F9).`
+                : "Open a Python, JavaScript, TypeScript, Go, Java, C, C++, or Rust file to debug it."}
+            </div>
+          )}
           {missingTool && (
             <div className="debug-install">
               <div className="debug-hint">{missingTool.message}</div>
@@ -98,6 +106,7 @@ export function DebugPanel() {
 
       {isDebugging && (
         <>
+          <LaunchSessions />
           <WatchSection isPaused={isPaused} />
           <Section title="Variables">
             {!isPaused ? (

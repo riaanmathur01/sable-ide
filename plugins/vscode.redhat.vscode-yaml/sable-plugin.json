@@ -1,0 +1,17 @@
+{
+  "id": "vscode.redhat.vscode-yaml",
+  "name": "YAML",
+  "version": "1.25.2026101008",
+  "description": "YAML Language Support by Red Hat, with built-in Kubernetes syntax support",
+  "author": "redhat",
+  "main": "main.js",
+  "permissions": [
+    "node",
+    "editor",
+    "workspace:read",
+    "workspace:write"
+  ],
+  "minSableVersion": "0.3.9",
+  "homepage": "https://github.com/redhat-developer/vscode-yaml",
+  "runtime": "node"
+}

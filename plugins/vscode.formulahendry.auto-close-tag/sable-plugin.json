@@ -1,0 +1,24 @@
+{
+  "id": "vscode.formulahendry.auto-close-tag",
+  "name": "Auto Close Tag",
+  "version": "0.5.15",
+  "description": "Automatically add HTML/XML close tag, same as Visual Studio IDE or Sublime Text",
+  "author": "formulahendry",
+  "main": "main.js",
+  "permissions": [
+    "node",
+    "editor",
+    "workspace:read",
+    "workspace:write"
+  ],
+  "minSableVersion": "0.3.9",
+  "homepage": "https://github.com/formulahendry/vscode-auto-close-tag",
+  "keybindings": [
+    {
+      "command": "auto-close-tag.closeTag",
+      "key": "alt+.",
+      "mac": "cmd+alt+."
+    }
+  ],
+  "runtime": "node"
+}

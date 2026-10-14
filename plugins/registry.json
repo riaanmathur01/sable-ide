@@ -37,7 +37,7 @@
     {
       "id": "sort-lines",
       "name": "Sort Lines",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "Sort, reverse, shuffle and de-duplicate lines in the selection or the whole file.",
       "author": "Sable",
       "permissions": [
@@ -149,7 +149,7 @@
     {
       "id": "text-transforms",
       "name": "Text Transforms",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "Reverse, ROT13, slugify, trim, join, number and word-wrap the selection or the whole file.",
       "author": "Sable",
       "permissions": [
@@ -277,7 +277,7 @@
     {
       "id": "csv-tools",
       "name": "CSV Tools",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "Convert CSV to JSON and JSON to CSV, and align CSV columns for reading. Detects comma, semicolon and tab separators and handles quoted fields.",
       "author": "Sable",
       "permissions": [
@@ -417,7 +417,7 @@
     {
       "id": "quote-toggler",
       "name": "Quote & Bracket Toggler",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "Cycle the string at the cursor between single, double and backtick quotes, and wrap the selection in brackets, quotes or Markdown emphasis.",
       "author": "Sable",
       "permissions": [
@@ -525,6 +525,254 @@
       ],
       "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/pets",
       "homepage": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/pets"
+    },
+    {
+      "id": "vscode.ritwickdey.liveserver",
+      "name": "Live Server",
+      "version": "5.7.10",
+      "description": "Launch a development local Server with live reload feature for static & dynamic pages",
+      "author": "ritwickdey",
+      "permissions": [
+        "node",
+        "editor",
+        "workspace:read",
+        "workspace:write"
+      ],
+      "tags": [
+        "html",
+        "web",
+        "server",
+        "vscode"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.ritwickdey.liveserver",
+      "homepage": "https://github.com/ritwickdey/vscode-live-server"
+    },
+    {
+      "id": "vscode.esbenp.prettier-vscode",
+      "name": "Prettier - Code formatter",
+      "version": "12.4.0",
+      "description": "Code formatter using prettier",
+      "author": "esbenp",
+      "permissions": [
+        "node",
+        "editor",
+        "workspace:read",
+        "workspace:write"
+      ],
+      "tags": [
+        "formatter",
+        "formatting",
+        "javascript",
+        "css",
+        "vscode"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.esbenp.prettier-vscode",
+      "homepage": "https://github.com/prettier/prettier-vscode"
+    },
+    {
+      "id": "vscode.dbaeumer.vscode-eslint",
+      "name": "ESLint",
+      "version": "3.0.34",
+      "description": "Integrates ESLint JavaScript into VS Code.",
+      "author": "dbaeumer",
+      "permissions": [
+        "node",
+        "editor",
+        "workspace:read",
+        "workspace:write"
+      ],
+      "tags": [
+        "linter",
+        "linting",
+        "javascript",
+        "vscode"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.dbaeumer.vscode-eslint",
+      "homepage": "https://github.com/Microsoft/vscode-eslint"
+    },
+    {
+      "id": "vscode.redhat.vscode-yaml",
+      "name": "YAML",
+      "version": "1.25.2026101008",
+      "description": "YAML Language Support by Red Hat, with built-in Kubernetes syntax support",
+      "author": "redhat",
+      "permissions": [
+        "node",
+        "editor",
+        "workspace:read",
+        "workspace:write"
+      ],
+      "tags": [
+        "yaml",
+        "linter",
+        "completions",
+        "vscode"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.redhat.vscode-yaml",
+      "homepage": "https://github.com/redhat-developer/vscode-yaml"
+    },
+    {
+      "id": "vscode.christian-kohler.path-intellisense",
+      "name": "Path Intellisense",
+      "version": "2.8.0",
+      "description": "Visual Studio Code plugin that autocompletes filenames",
+      "author": "christian-kohler",
+      "permissions": [
+        "node",
+        "editor",
+        "workspace:read",
+        "workspace:write"
+      ],
+      "tags": [
+        "completions",
+        "files",
+        "vscode"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.christian-kohler.path-intellisense",
+      "homepage": "https://github.com/ChristianKohler/PathIntellisense"
+    },
+    {
+      "id": "vscode.formulahendry.auto-close-tag",
+      "name": "Auto Close Tag",
+      "version": "0.5.15",
+      "description": "Automatically add HTML/XML close tag, same as Visual Studio IDE or Sublime Text",
+      "author": "formulahendry",
+      "permissions": [
+        "node",
+        "editor",
+        "workspace:read",
+        "workspace:write"
+      ],
+      "tags": [
+        "html",
+        "editing",
+        "vscode"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.formulahendry.auto-close-tag",
+      "homepage": "https://github.com/formulahendry/vscode-auto-close-tag"
+    },
+    {
+      "id": "vscode.bradlc.vscode-tailwindcss",
+      "name": "Tailwind CSS IntelliSense",
+      "version": "0.16.0",
+      "description": "Intelligent Tailwind CSS tooling for VS Code",
+      "author": "bradlc",
+      "permissions": [
+        "node",
+        "editor",
+        "workspace:read",
+        "workspace:write"
+      ],
+      "tags": [
+        "css",
+        "completions",
+        "vscode"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.bradlc.vscode-tailwindcss",
+      "homepage": "https://github.com/tailwindlabs/tailwindcss-intellisense"
+    },
+    {
+      "id": "vscode.oderwat.indent-rainbow",
+      "name": "indent-rainbow",
+      "version": "8.3.1",
+      "description": "Makes indentation easier to read",
+      "author": "oderwat",
+      "permissions": [
+        "node",
+        "editor",
+        "workspace:read",
+        "workspace:write"
+      ],
+      "tags": [
+        "editing",
+        "whitespace",
+        "colors",
+        "vscode"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.oderwat.indent-rainbow",
+      "homepage": "https://github.com/oderwat/vscode-indent-rainbow"
+    },
+    {
+      "id": "vscode.usernamehw.errorlens",
+      "name": "Error Lens",
+      "version": "3.29.0",
+      "description": "Improve highlighting of errors, warnings and other language diagnostics.",
+      "author": "usernamehw",
+      "permissions": [
+        "node",
+        "editor",
+        "workspace:read",
+        "workspace:write"
+      ],
+      "tags": [
+        "linting",
+        "productivity",
+        "vscode"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.usernamehw.errorlens",
+      "homepage": "https://github.com/usernamehw/vscode-error-lens"
+    },
+    {
+      "id": "vscode.yzhang.markdown-all-in-one",
+      "name": "Markdown All in One",
+      "version": "3.6.2",
+      "description": "All you need to write Markdown (keyboard shortcuts, table of contents, auto preview and more)",
+      "author": "yzhang",
+      "permissions": [
+        "node",
+        "editor",
+        "workspace:read",
+        "workspace:write"
+      ],
+      "tags": [
+        "markdown",
+        "toc",
+        "tables",
+        "vscode"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.yzhang.markdown-all-in-one",
+      "homepage": "https://github.com/yzhang-gh/vscode-markdown"
+    },
+    {
+      "id": "vscode.mechatroner.rainbow-csv",
+      "name": "Rainbow CSV",
+      "version": "3.24.1",
+      "description": "Highlight CSV and TSV files, Run SQL-like queries",
+      "author": "mechatroner",
+      "permissions": [
+        "node",
+        "editor",
+        "workspace:read",
+        "workspace:write"
+      ],
+      "tags": [
+        "csv",
+        "colors",
+        "sql",
+        "vscode"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.mechatroner.rainbow-csv",
+      "homepage": "https://github.com/mechatroner/vscode_rainbow_csv"
+    },
+    {
+      "id": "vscode.aaron-bond.better-comments",
+      "name": "Better Comments",
+      "version": "3.0.2",
+      "description": "Improve your code commenting by annotating with alert, informational, TODOs, and more!",
+      "author": "aaron-bond",
+      "permissions": [
+        "node",
+        "editor",
+        "workspace:read",
+        "workspace:write"
+      ],
+      "tags": [
+        "colors",
+        "productivity",
+        "vscode"
+      ],
+      "url": "https://github.com/riaanmathur01/sable-ide/tree/main/plugins/vscode.aaron-bond.better-comments",
+      "homepage": "https://github.com/aaron-bond/better-comments"
     },
     {
       "id": "vscode.vscode.theme-defaults",

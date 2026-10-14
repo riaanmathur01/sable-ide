@@ -46,10 +46,24 @@ export function setMonacoInstance(monaco: Monaco) {
 export function registerEditor(editor: Editor, monaco: Monaco, groupId: string) {
   editorsByGroup.set(groupId, editor);
   monacoInstance = monaco;
+  for (const listener of editorsListeners) listener();
 }
 
 export function unregisterEditor(groupId: string, editor: Editor) {
   if (editorsByGroup.get(groupId) === editor) editorsByGroup.delete(groupId);
+  for (const listener of editorsListeners) listener();
+}
+
+/** A group's editor (the breadcrumbs above it follow its cursor). */
+export function editorForGroup(groupId: string): Editor | null {
+  return editorsByGroup.get(groupId) ?? null;
+}
+
+const editorsListeners = new Set<() => void>();
+/** Run `listener` whenever a group's editor is registered or unregistered. */
+export function onEditorsChange(listener: () => void): () => void {
+  editorsListeners.add(listener);
+  return () => editorsListeners.delete(listener);
 }
 
 /** Called by the tabs store whenever the focused group changes. */

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { useTabsStore } from "../store/tabsStore";
 import { useUiStore } from "../store/uiStore";
 import { useDebugStore } from "../store/debugStore";
+import { startDebugging } from "./debug/launchRunner";
 import { useBreakpointsStore } from "../store/breakpointsStore";
 import { useTerminalStore } from "../store/terminalStore";
 import { DEFAULT_SETTINGS, useSettingsStore } from "../store/settingsStore";
@@ -12,6 +13,7 @@ import { runActiveFile } from "./runFile";
 import { openFolderDialog } from "./openFolder";
 import { addFolderToWorkspace, closeWindow, newWindow } from "./workspaceCommands";
 import { refactor, refactorThis } from "./refactor";
+import { changeSignature, cursorOnDeclaration, move, safeDelete, undoLastRefactoring } from "./refactorings";
 import { readFile, writeFile } from "./ipc";
 import { formatKey, isMac, matchesKey, parseKey, type ParsedKey } from "./plugins/keybindings";
 import { onPluginEvent } from "./plugins/events";
@@ -19,6 +21,7 @@ import { vimOwnsKey } from "./vim";
 import { paletteRunner } from "./paletteRunner";
 import { parseJsonc } from "./jsonc";
 import { broadcast } from "./windows";
+import { focusBreadcrumbs } from "./breadcrumbs/focus";
 
 /**
  * Keyboard shortcuts: Sable's commands with their default keys, and your
@@ -107,6 +110,7 @@ export const COMMANDS: ShortcutCommand[] = [
   { id: "sable.recentFiles", title: "Recent files", keys: ["mod+e"], run: () => ui().openPalette("recentFiles") },
   { id: "sable.recentLocations", title: "Recent locations", keys: ["mod+shift+e"], run: () => ui().openPalette("recentLocations") },
   { id: "workbench.action.showAllSymbols", title: "Go to symbol in the project", keys: ["mod+t", "mod+alt+o"], run: () => ui().openPalette("symbols") },
+  { id: "breadcrumbs.focusAndSelect", title: "Focus breadcrumbs", keys: ["mod+shift+."], run: () => focusBreadcrumbs() },
   { id: "sable.fileStructure", title: "File structure", keys: ["mod+f12"], mac: ["cmd+f12"], run: () => ui().openPalette("structure") },
   { id: "editor.action.goToTypeDefinition", title: "Go to type declaration", keys: ["mod+shift+b"], run: () => navigation().goToAtCursor("typeDefinition") },
   { id: "editor.action.goToImplementation", title: "Go to implementation", keys: ["mod+alt+b"], run: () => navigation().goToAtCursor("implementation") },
@@ -125,7 +129,13 @@ export const COMMANDS: ShortcutCommand[] = [
   { id: "sable.refactor.extractConstant", title: "Extract constant", keys: ["mod+alt+c"], when: inEditor, whenLabel: "editor", run: () => refactor("extractConstant") },
   { id: "sable.refactor.inline", title: "Inline", keys: ["mod+alt+n"], when: inEditor, whenLabel: "editor", run: () => refactor("inline") },
   { id: "sable.refactor.this", title: "Refactor this…", keys: [], mac: ["ctrl+t"], when: inEditor, whenLabel: "editor", run: () => refactorThis() },
-  { id: "workbench.action.debug.start", title: "Start debugging / continue", keys: ["f5"], when: notInTerminal, whenLabel: "not in a terminal", run: () => debug().start() },
+  // ⌘⌫ deletes to the line start in the editor, so there it's Safe Delete only on a declaration's name.
+  { id: "sable.refactor.safeDelete", title: "Safe delete", keys: ["alt+delete"], mac: ["cmd+backspace"], when: (event) => inEditor(event) && (event.key !== "Backspace" || cursorOnDeclaration()), whenLabel: "editor", run: () => safeDelete() },
+  { id: "sable.refactor.changeSignature", title: "Change signature", keys: ["ctrl+f6"], mac: ["cmd+f6"], when: inEditor, whenLabel: "editor", run: () => changeSignature() },
+  // F6 is Pause while debugging.
+  { id: "sable.refactor.move", title: "Move", keys: ["f6"], when: (event) => inEditor(event) && !useDebugStore.getState().isDebugging, whenLabel: "editor, not debugging", run: () => move() },
+  { id: "sable.refactor.undo", title: "Undo last refactoring", keys: [], run: () => undoLastRefactoring() },
+  { id: "workbench.action.debug.start", title: "Start debugging / continue", keys: ["f5"], when: notInTerminal, whenLabel: "not in a terminal", run: () => startDebugging() },
   { id: "workbench.action.debug.stop", title: "Stop debugging", keys: ["shift+f5"], when: notInTerminal, whenLabel: "not in a terminal", run: () => debug().stop() },
   { id: "workbench.action.debug.restart", title: "Restart debugging", keys: ["mod+shift+f5"], when: notInTerminal, whenLabel: "not in a terminal", run: () => debug().restart() },
   { id: "workbench.action.debug.pause", title: "Pause", keys: ["f6"], when: notInTerminal, whenLabel: "not in a terminal", run: () => debug().pause() },

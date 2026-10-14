@@ -1,0 +1,29 @@
+{
+  "_comment": "Recorded shape of `gh issue view 7 --json number,title,body,author,state,stateReason,labels,assignees,milestone,comments,url,createdAt`.",
+  "assignees": [{ "id": "MDQ6VXNlcjU4MzIzMQ==", "login": "octocat", "name": "The Octocat" }],
+  "author": { "id": "MDQ6VXNlcjI=", "is_bot": false, "login": "bob", "name": "Bob" },
+  "body": "Signing in with an **empty password** crashes the app.\n\n### Steps\n1. Open the login form\n2. Leave the password empty\n3. Press *Sign in*\n\nExpected an error message instead.",
+  "comments": [
+    {
+      "id": "IC_kwDOB_1",
+      "author": { "login": "octocat" },
+      "authorAssociation": "OWNER",
+      "body": "Reproduced on `main`. The check runs before the length test.",
+      "createdAt": "2026-10-12T11:00:00Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/sable-test/demo/issues/7#issuecomment-2",
+      "viewerDidAuthor": true
+    }
+  ],
+  "createdAt": "2026-10-12T09:00:00Z",
+  "labels": [{ "id": "LA_kwDOB1", "name": "bug", "description": "Something isn't working", "color": "d73a4a" }],
+  "milestone": { "number": 1, "title": "v1.0", "description": "", "dueOn": null },
+  "number": 7,
+  "state": "OPEN",
+  "stateReason": "",
+  "title": "Crash when the password is empty",
+  "url": "https://github.com/sable-test/demo/issues/7"
+}

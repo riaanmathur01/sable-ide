@@ -350,6 +350,13 @@ pub async fn dispatch(state: &AgentState, events: &Events, command: &str, args: 
             .await),
             "debug_request" => ok(debug::send_request(&state.debug, arg(args, "seq")?, arg(args, "command")?, arg(args, "arguments")?).await),
             "debug_stop" => ok(debug::stop(&state.debug).await),
+            // launch.json debugging (launch_config.rs).
+            "debug_config_start" => launch_config_command(state, events, command, args).await,
+            "debug_config_focus" => launch_config_command(state, events, command, args).await,
+            "debug_config_stop" => launch_config_command(state, events, command, args).await,
+            "debug_config_stop_all" => launch_config_command(state, events, command, args).await,
+            "debug_config_terminal_started" => launch_config_command(state, events, command, args).await,
+            "debug_config_environment" => launch_config_command(state, events, command, args).await,
             "debug_terminal_started" => {
                 ok(debug::terminal_started(&state.debug, arg(args, "id")?, arg(args, "processId")?, arg(args, "error")?).await)
             }
@@ -382,6 +389,9 @@ pub async fn dispatch(state: &AgentState, events: &Events, command: &str, args: 
 
             // --- SQLite databases ----------------------------------------------------------
             "database_call" => ok(database::request(state.databases.clone(), arg(args, "op")?, arg(args, "args")?).await),
+
+            // --- GitHub (through gh, on this machine) -----------------------------------------
+            "github_call" => ok(crate::github::github_call(arg(args, "root")?, arg(args, "op")?, arg(args, "args")?, arg(args, "ghPath")?).await),
 
             // --- Git -------------------------------------------------------------------
             "git_status" => ok(git::git_status(arg(args, "path")?)),
@@ -432,6 +442,12 @@ pub async fn dispatch(state: &AgentState, events: &Events, command: &str, args: 
         Err(Fail::Argument(error)) => Some(Err(error)),
         Err(Fail::Unknown) => None,
     }
+}
+
+async fn launch_config_command(state: &AgentState, events: &Events, command: &str, args: &Value) -> Result<Value, String> {
+    crate::launch_config::dispatch("agent", debug_events(events), &state.debug, command, args)
+        .await
+        .unwrap_or_else(|| Err(format!("Unknown command {command}")))
 }
 
 fn debug_events(events: &Events) -> Arc<dyn debug::DebugEvents> {

@@ -219,6 +219,7 @@ function bootstrap() {
         onDidSave: (listener: (event: { path: string }) => unknown) => subscribe("didSave", listener),
         onDidOpen: (listener: (event: { path: string }) => unknown) => subscribe("didOpen", listener),
         onDidChange: (listener: (event: unknown) => unknown) => subscribe("didChange", listener),
+        onDidChangeContent: (listener: (event: unknown) => unknown) => subscribe("didChangeContent", listener),
         onDidChangeActiveEditor: (listener: (event: unknown) => unknown) => subscribe("didChangeActiveEditor", listener),
         onDidChangeSelection: (listener: (event: unknown) => unknown) => subscribe("didChangeSelection", listener),
         onDidChangeDiagnostics: (listener: (event: unknown) => unknown) => subscribe("didChangeDiagnostics", listener),

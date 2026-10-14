@@ -12,6 +12,7 @@ import { SourceControlPanel } from "./SourceControlPanel";
 import { HistoryPanel } from "./HistoryPanel";
 import { DebugPanel } from "../Debug/DebugPanel";
 import { PluginViewsPanel } from "../Plugins/PluginViewsPanel";
+import { GitHubPanel } from "../GitHub/GitHubPanel";
 import { PAGES, PLUGIN_VIEWS, VIEWS, openPage, showView, useViews } from "../ActivityBar/views";
 import { ViewMenu } from "../ActivityBar/ViewMenu";
 import { useSetting } from "../../store/settingsStore";
@@ -134,6 +135,7 @@ export function Sidebar() {
       {sidebarView === "history" && <HistoryPanel />}
       {sidebarView === "debug" && <DebugPanel />}
       {sidebarView === "pluginViews" && <PluginViewsPanel />}
+      {sidebarView === "github" && <GitHubPanel />}
 
       {sidebarView === "files" && pendingCreate && (
         <input

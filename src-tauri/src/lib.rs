@@ -15,9 +15,11 @@ pub mod events;
 mod lsp;
 pub mod notebook;
 pub mod database;
+pub mod github;
 mod watcher;
 
 mod debug;
+mod launch_config;
 #[cfg(feature = "desktop")]
 mod plugins;
 #[cfg(feature = "desktop")]
@@ -110,6 +112,7 @@ pub fn run() {
             commands::format::install_ruff,
             commands::refactor::python_refactor,
             commands::refactor::install_rope,
+            commands::refactor_deep::python_rope_refactor,
             commands::ai::ai_set_api_key,
             commands::ai::ai_delete_api_key,
             commands::ai::ai_key_status,
@@ -179,6 +182,12 @@ pub fn run() {
             debug::jvm_debug_listen,
             debug::jvm_debug_accept,
             debug::jvm_debug_cancel,
+            launch_config::debug_config_start,
+            launch_config::debug_config_focus,
+            launch_config::debug_config_stop,
+            launch_config::debug_config_stop_all,
+            launch_config::debug_config_terminal_started,
+            launch_config::debug_config_environment,
             watcher::watch_workspace,
             plugins::plugin_list,
             plugins::plugin_inspect,
@@ -215,6 +224,7 @@ pub fn run() {
             notebook::notebook_stop,
             notebook::notebook_install_ipykernel,
             database::database_call,
+            github::github_call,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

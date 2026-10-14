@@ -600,7 +600,7 @@ export class PluginRuntime {
                   "completions",
                 )) as CompletionResult[] | null;
                 return {
-                  suggestions: (Array.isArray(items) ? items : []).slice(0, 500).map((item) => ({
+                  suggestions: topCompletions(Array.isArray(items) ? items : [], model.getLineContent(position.lineNumber).slice(0, position.column - 1), word.word).map((item) => ({
                     label: String(item.label),
                     insertText: String(item.insertText ?? item.label),
                     insertTextRules: item.snippet
@@ -835,6 +835,27 @@ export class PluginRuntime {
       );
     }
   }
+}
+
+/**
+ * At most 500 completions reach the editor. When there are more (Tailwind
+ * offers thousands of classes), the ones matching what's typed before the
+ * cursor go first, so the cut doesn't drop them.
+ */
+const MAX_COMPLETIONS = 500;
+function topCompletions(items: CompletionResult[], linePrefix: string, word: string): CompletionResult[] {
+  if (items.length <= MAX_COMPLETIONS) return items;
+  const score = (item: CompletionResult) => {
+    const length = typeof item.replace === "number" && item.replace >= 0 ? Math.floor(item.replace) : word.length;
+    const typed = linePrefix.slice(linePrefix.length - length).toLowerCase();
+    const label = String(item.label).toLowerCase();
+    return !typed ? 0 : label.startsWith(typed) ? 2 : label.includes(typed) ? 1 : 0;
+  };
+  return items
+    .map((item, index) => ({ item, index, score: score(item) }))
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, MAX_COMPLETIONS)
+    .map(({ item }) => item);
 }
 
 function completionKind(monaco: Monaco, kind: string | undefined): MonacoTypes.languages.CompletionItemKind {

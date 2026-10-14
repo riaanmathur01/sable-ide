@@ -361,10 +361,11 @@ class Hover {
   }
 }
 
-class ThemeColor {
-  constructor(id) {
-    this.id = id;
-  }
+// A function, not a class: some extensions call it without `new` (Todo
+// Tree, for highlights with no colours), which VS Code's older builds allowed.
+function ThemeColor(id) {
+  if (!new.target) return new ThemeColor(id);
+  this.id = id;
 }
 class ThemeIcon {
   constructor(id, color) {
@@ -607,12 +608,24 @@ const __plainWorkspaceEdit = (edit) =>
   }));
 const __plainCommand = (command) =>
   command ? { id: command.command ?? command.id, title: command.title, arguments: command.arguments ?? [] } : undefined;
+/**
+ * A theme colour: the extension's own colours (contributes.colors, e.g.
+ * errorLens.errorForeground) as their default for a dark theme, which may
+ * name another colour; VS Code's as { id } for the host to look up.
+ */
+function __themeColor(id, depth = 0) {
+  const contributed = (__extension?.packageJSON?.contributes?.colors ?? []).find((color) => color?.id === id);
+  const fallback = contributed?.defaults?.dark ?? contributed?.defaults?.light;
+  if (typeof fallback !== "string" || depth > 3) return { id };
+  return /^#|^rgba?\(|^hsla?\(|^transparent$/i.test(fallback) ? fallback : __themeColor(fallback, depth + 1);
+}
+
 /** Decoration options: theme colours as { id }, the rest as is. */
 function __plainDecoration(options) {
   if (!options || typeof options !== "object") return options;
   const out = {};
   for (const [key, value] of Object.entries(options)) {
-    if (value instanceof ThemeColor) out[key] = { id: value.id };
+    if (value instanceof ThemeColor) out[key] = __themeColor(value.id);
     else if (value instanceof Uri) continue;
     else if (value && typeof value === "object" && !Array.isArray(value)) out[key] = __plainDecoration(value);
     else out[key] = value;
@@ -710,7 +723,73 @@ class TextEditor {
 async function __refresh() {
   const snapshot = await __sable.editor.active().catch(() => null);
   __active = snapshot ? new TextEditor(snapshot) : null;
+  if (__active) __trackDocument(__active.document);
   return __active;
+}
+
+/**
+ * The documents extensions have seen (workspace.textDocuments), and for
+ * each the text they last saw, so a change event can say what changed:
+ * Sable reports changes once typing settles, so contentChanges is one
+ * edit covering everything that differs (as language clients and tag
+ * closers need).
+ */
+const __documents = new Map();
+const __seenText = new Map();
+let __activated = false;
+function __trackDocument(document) {
+  const path = document.fileName;
+  const known = __documents.has(path);
+  __documents.set(path, document);
+  if (known) return;
+  __seenText.set(path, document.getText());
+  if (__activated) {
+    __onDidOpenTextDocument.fire(document);
+    // Language clients pull diagnostics for documents open in tabs.
+    __onDidChangeTabs.fire({ opened: __tabs().filter((tab) => tab.input.uri.fsPath === path), closed: [], changed: [] });
+  }
+}
+
+/**
+ * window.tabGroups: one group, a tab per document seen (Sable keeps them
+ * open in its tabs), the active editor's active.
+ */
+const __onDidChangeTabs = new EventEmitter();
+function __tabs() {
+  const tabs = [...__documents.values()].map((document) => ({
+    label: __path.basename(document.fileName),
+    input: new __moreApi.TabInputText(document.uri),
+    isActive: __active?.document.fileName === document.fileName,
+    isDirty: false,
+    isPinned: false,
+    isPreview: false,
+    group: undefined,
+  }));
+  return tabs;
+}
+function __tabGroup() {
+  const tabs = __tabs();
+  const group = { isActive: true, viewColumn: 1, activeTab: tabs.find((tab) => tab.isActive), tabs };
+  for (const tab of tabs) tab.group = group;
+  return group;
+}
+
+/** The single edit that turns `before` into `after`, in `before`'s coordinates. */
+function __contentChange(before, after) {
+  let start = 0;
+  const shorter = Math.min(before.length, after.length);
+  while (start < shorter && before.charCodeAt(start) === after.charCodeAt(start)) start++;
+  let end = 0;
+  while (end < shorter - start && before.charCodeAt(before.length - 1 - end) === after.charCodeAt(after.length - 1 - end)) end++;
+  // Don't split a \r\n pair.
+  if (start > 0 && before[start - 1] === "\r") start--;
+  const old = new TextDocument("", "", before);
+  return {
+    range: new Range(old.positionAt(start), old.positionAt(before.length - end)),
+    rangeOffset: start,
+    rangeLength: before.length - end - start,
+    text: after.slice(start, after.length - end),
+  };
 }
 
 const __documentFrom = (request) => new TextDocument(request.path, request.language, request.text, __version++);
@@ -745,8 +824,35 @@ function __memento(prefix) {
 
 function __configValue(full) {
   if (`config:${full}` in __stored) return __stored[`config:${full}`];
-  return __extension.configuration[full];
+  if (full in __extension.configuration) return __extension.configuration[full];
+  return __CORE_SETTINGS[full];
 }
+
+/** VS Code's own settings that extensions read (their defaults). */
+const __CORE_SETTINGS = {
+  "files.exclude": { "**/.git": true, "**/.svn": true, "**/.hg": true, "**/CVS": true, "**/.DS_Store": true, "**/Thumbs.db": true },
+  "files.watcherExclude": { "**/.git/objects/**": true, "**/.git/subtree-cache/**": true, "**/node_modules/*/**": true },
+  "search.exclude": { "**/node_modules": true, "**/bower_components": true, "**/*.code-search": true },
+  "files.associations": {},
+  "files.encoding": "utf8",
+  "files.eol": "auto",
+  "files.insertFinalNewline": false,
+  "files.trimTrailingWhitespace": false,
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": true,
+  "editor.formatOnSave": false,
+  "editor.defaultFormatter": null,
+  "editor.wordWrap": "off",
+  "editor.fontSize": 14,
+  "editor.lineHeight": 0,
+  "editor.fontFamily": "Menlo, Monaco, 'Courier New', monospace",
+  "editor.codeActionsOnSave": {},
+  "http.proxy": "",
+  "http.proxyStrictSSL": true,
+  "workbench.colorTheme": "Default Dark Modern",
+  "explorer.excludeGitIgnore": false,
+};
 
 function getConfiguration(section) {
   const prefix = section ? `${section}.` : "";
@@ -763,7 +869,16 @@ function getConfiguration(section) {
           found = true;
         }
       }
-      return found ? nested : defaultValue;
+      if (found) return nested;
+      // A key inside an object setting ("highlights.defaultHighlight.icon").
+      const parts = String(key).split(".");
+      for (let index = parts.length - 1; index > 0; index--) {
+        let inner = __configValue(`${prefix}${parts.slice(0, index).join(".")}`);
+        if (!inner || typeof inner !== "object") continue;
+        for (const part of parts.slice(index)) inner = inner?.[part];
+        return inner === undefined ? defaultValue : inner;
+      }
+      return defaultValue;
     },
     has: (key) => __configValue(`${prefix}${key}`) !== undefined,
     inspect: (key) => ({ key: `${prefix}${key}`, defaultValue: __extension.configuration[`${prefix}${key}`], globalValue: __stored[`config:${prefix}${key}`] }),
@@ -1079,7 +1194,17 @@ const window = {
   state: { focused: true },
   activeColorTheme: { kind: 2 },
   terminals: [],
-  tabGroups: { all: [], activeTabGroup: { tabs: [] }, onDidChangeTabs: new EventEmitter().event, onDidChangeTabGroups: new EventEmitter().event },
+  tabGroups: {
+    get all() {
+      return [__tabGroup()];
+    },
+    get activeTabGroup() {
+      return __tabGroup();
+    },
+    onDidChangeTabs: __onDidChangeTabs.event,
+    onDidChangeTabGroups: new EventEmitter().event,
+    close: async () => false,
+  },
   showInformationMessage: (message, ...rest) => __message("info", message, ...rest),
   showWarningMessage: (message, ...rest) => __message("warning", message, ...rest),
   showErrorMessage: (message, ...rest) => __message("error", message, ...rest),
@@ -1286,7 +1411,7 @@ const workspace = {
     return __root()?.split("/").pop();
   },
   get textDocuments() {
-    return __active ? [__active.document] : [];
+    return [...__documents.values()];
   },
   isTrusted: true,
   getConfiguration,
@@ -1334,10 +1459,15 @@ const workspace = {
       __node
         ? (await __node.fs.readdir(__pathOf(uri), { withFileTypes: true })).map((entry) => [entry.name, entry.isDirectory() ? FileType.Directory : FileType.File])
         : (await __sable.workspace.listDirectory(__relative(__pathOf(uri)))).map((entry) => [entry.name, entry.isDirectory ? FileType.Directory : FileType.File]),
-    createDirectory: async (uri) => __sable.workspace.createDirectory(__relative(__pathOf(uri))),
-    delete: async (uri) => __sable.workspace.delete(__relative(__pathOf(uri))),
-    rename: async (from, to) => __sable.workspace.rename(__relative(__pathOf(from)), __relative(__pathOf(to))),
-    copy: async (from, to) => __sable.workspace.writeFile(__relative(__pathOf(to)), await __sable.workspace.readFile(__relative(__pathOf(from)))),
+    // In Node, files outside the open folder (the extension's storage…) go through Node's fs.
+    createDirectory: async (uri) =>
+      __node && !__insideRoot(__pathOf(uri)) ? void (await __node.fs.mkdir(__pathOf(uri), { recursive: true })) : __sable.workspace.createDirectory(__relative(__pathOf(uri))),
+    delete: async (uri, options) =>
+      __node && !__insideRoot(__pathOf(uri)) ? __node.fs.rm(__pathOf(uri), { recursive: !!options?.recursive, force: true }) : __sable.workspace.delete(__relative(__pathOf(uri))),
+    rename: async (from, to) =>
+      __node && !(__insideRoot(__pathOf(from)) && __insideRoot(__pathOf(to))) ? __node.fs.rename(__pathOf(from), __pathOf(to)) : __sable.workspace.rename(__relative(__pathOf(from)), __relative(__pathOf(to))),
+    copy: async (from, to) =>
+      __node && !(__insideRoot(__pathOf(from)) && __insideRoot(__pathOf(to))) ? __node.fs.cp(__pathOf(from), __pathOf(to), { recursive: true }) : __sable.workspace.writeFile(__relative(__pathOf(to)), await __sable.workspace.readFile(__relative(__pathOf(from)))),
     isWritableFileSystem: () => true,
   },
   onDidChangeConfiguration: __onDidChangeConfiguration.event,
@@ -1366,7 +1496,12 @@ const workspace = {
 
 /** A document selector → Sable language ids ("*" for any). */
 function __languages(selector) {
-  const list = Array.isArray(selector) ? selector : [selector];
+  let list = Array.isArray(selector) ? selector : [selector];
+  // A glob-only entry ({ pattern: "**/*.{js,css}" }) beside language entries
+  // (Prettier's) would otherwise mean every language, taking Format
+  // Document from the language's own formatter.
+  const byLanguage = list.filter((entry) => typeof entry === "string" || entry?.language);
+  if (byLanguage.length) list = byLanguage;
   const ids = list.map((entry) => (typeof entry === "string" ? entry : entry?.language ?? "*"));
   return ids.includes("*") ? ["*"] : [...new Set(ids)];
 }
@@ -1503,6 +1638,9 @@ function __provider(kind, selector, provide) {
   return __register(selector, (language) =>
     __sable.languages.registerProvider(kind, language, async (request) => {
       try {
+        // Providers often read window.activeTextEditor (Markdown All in
+        // One's code lenses): make sure it's the file being asked about.
+        if (__active?.document.fileName !== request.path) await __refresh();
         const document = __documentFrom(request);
         const position = request.position ? new Position(request.position.line, request.position.character) : undefined;
         return (await provide(document, position, request)) ?? null;
@@ -1756,8 +1894,8 @@ function __builtinFile(path) {
 
 const __self = () => ({
   id: __extension.id,
-  extensionUri: Uri.file(""),
-  extensionPath: "",
+  extensionUri: Uri.file(__context?.extensionPath ?? ""),
+  extensionPath: __context?.extensionPath ?? "",
   isActive: true,
   packageJSON: __extension.packageJSON,
   extensionKind: 1,
@@ -1786,8 +1924,300 @@ const __disabledNamespace = (name) =>
     },
   );
 
+// --- The rest of VS Code's API types ---------------------------------------------------------
+// Classes and enums extensions construct or extend at load time (language
+// clients extend CallHierarchyItem, linters build Tasks, Rainbow CSV builds
+// semantic tokens…), so they load even where Sable has no equivalent.
+
+/** A class whose constructor stores its arguments as `fields`. */
+const __dataClass = (name, fields, extra = {}) => {
+  const cls = {
+    [name]: class {
+      constructor(...args) {
+        fields.forEach((field, index) => {
+          if (args[index] !== undefined) this[field] = args[index];
+        });
+      }
+    },
+  }[name];
+  Object.assign(cls.prototype, extra);
+  return cls;
+};
+
+class SemanticTokensLegend {
+  constructor(tokenTypes, tokenModifiers = []) {
+    this.tokenTypes = tokenTypes;
+    this.tokenModifiers = tokenModifiers;
+  }
+}
+class SemanticTokens {
+  constructor(data, resultId) {
+    this.data = data;
+    this.resultId = resultId;
+  }
+}
+/** VS Code's encoding: per token, 5 integers relative to the previous token. */
+class SemanticTokensBuilder {
+  constructor(legend) {
+    this._legend = legend;
+    this._tokens = [];
+  }
+  push(a, b, c, d, e) {
+    if (typeof a === "number") {
+      this._tokens.push([a, b, c, d, e ?? 0]);
+      return;
+    }
+    // push(range, tokenType, tokenModifiers)
+    const type = this._legend?.tokenTypes.indexOf(b) ?? -1;
+    if (type < 0 || !a.isSingleLine) throw new Error("Unknown token type or a multi-line range");
+    const modifiers = (c ?? []).reduce((bits, modifier) => {
+      const index = this._legend.tokenModifiers.indexOf(modifier);
+      return index < 0 ? bits : bits | (1 << index);
+    }, 0);
+    this._tokens.push([a.start.line, a.start.character, a.end.character - a.start.character, type, modifiers]);
+  }
+  build(resultId) {
+    const tokens = [...this._tokens].sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+    const data = new Uint32Array(tokens.length * 5);
+    let line = 0;
+    let character = 0;
+    tokens.forEach(([tokenLine, tokenCharacter, length, type, modifiers], index) => {
+      data.set([tokenLine - line, tokenLine === line ? tokenCharacter - character : tokenCharacter, length, type, modifiers], index * 5);
+      line = tokenLine;
+      character = tokenCharacter;
+    });
+    return new SemanticTokens(data, resultId);
+  }
+}
+const SemanticTokensEdit = __dataClass("SemanticTokensEdit", ["start", "deleteCount", "data"]);
+const SemanticTokensEdits = __dataClass("SemanticTokensEdits", ["edits", "resultId"]);
+
+class SnippetTextEdit {
+  constructor(range, snippet) {
+    this.range = range;
+    this.snippet = snippet;
+  }
+  static replace(range, snippet) {
+    return new SnippetTextEdit(range, snippet);
+  }
+  static insert(position, snippet) {
+    return new SnippetTextEdit(new Range(position, position), snippet);
+  }
+}
+
+class TaskGroup {
+  constructor(id, label) {
+    this.id = id;
+    this.label = label;
+    this.isDefault = undefined;
+  }
+}
+TaskGroup.Clean = new TaskGroup("clean", "Clean");
+TaskGroup.Build = new TaskGroup("build", "Build");
+TaskGroup.Rebuild = new TaskGroup("rebuild", "Rebuild");
+TaskGroup.Test = new TaskGroup("test", "Test");
+class Task {
+  constructor(definition, ...rest) {
+    // (definition, scope, name, source, execution?, problemMatchers?) or the
+    // old (definition, name, source, execution?, problemMatchers?).
+    if (typeof rest[0] === "string") rest.unshift(undefined);
+    const [scope, name, source, execution, problemMatchers] = rest;
+    Object.assign(this, { definition, scope, name, source, execution, problemMatchers: problemMatchers ?? [] });
+    this.presentationOptions = {};
+    this.runOptions = {};
+    this.isBackground = false;
+  }
+}
+class ShellExecution {
+  constructor(commandOrLine, argsOrOptions, options) {
+    if (Array.isArray(argsOrOptions)) Object.assign(this, { command: commandOrLine, args: argsOrOptions, options });
+    else Object.assign(this, { commandLine: commandOrLine, options: argsOrOptions });
+  }
+}
+class ProcessExecution {
+  constructor(process, argsOrOptions, options) {
+    Object.assign(this, Array.isArray(argsOrOptions) ? { process, args: argsOrOptions, options } : { process, args: [], options: argsOrOptions });
+  }
+}
+const CustomExecution = __dataClass("CustomExecution", ["callback"]);
+
+class DataTransferItem {
+  constructor(value) {
+    this.value = value;
+  }
+  async asString() {
+    return typeof this.value === "string" ? this.value : JSON.stringify(this.value);
+  }
+  asFile() {
+    return undefined;
+  }
+}
+class DataTransfer {
+  constructor() {
+    this._items = new Map();
+  }
+  get(mimeType) {
+    return this._items.get(mimeType.toLowerCase());
+  }
+  set(mimeType, value) {
+    this._items.set(mimeType.toLowerCase(), value);
+  }
+  forEach(callback, thisArg) {
+    for (const [mimeType, item] of this._items) callback.call(thisArg, item, mimeType, this);
+  }
+  [Symbol.iterator]() {
+    return this._items[Symbol.iterator]();
+  }
+}
+
+class TestMessage {
+  constructor(message) {
+    this.message = message;
+  }
+  static diff(message, expected, actual) {
+    return Object.assign(new TestMessage(message), { expectedOutput: expected, actualOutput: actual });
+  }
+}
+
+const __moreApi = {
+  SemanticTokensLegend, SemanticTokens, SemanticTokensBuilder, SemanticTokensEdit, SemanticTokensEdits, SnippetTextEdit,
+  Task, TaskGroup, ShellExecution, ProcessExecution, CustomExecution, DataTransferItem, DataTransfer, TestMessage,
+  EvaluatableExpression: __dataClass("EvaluatableExpression", ["range", "expression"]),
+  InlineValueText: __dataClass("InlineValueText", ["range", "text"]),
+  InlineValueVariableLookup: __dataClass("InlineValueVariableLookup", ["range", "variableName", "caseSensitiveLookup"]),
+  InlineValueEvaluatableExpression: __dataClass("InlineValueEvaluatableExpression", ["range", "expression"]),
+  NotebookEdit: __dataClass("NotebookEdit", ["range", "newCells"]),
+  InlineCompletionList: __dataClass("InlineCompletionList", ["items"]),
+  InlineCompletionItem: __dataClass("InlineCompletionItem", ["insertText", "range", "command"]),
+  InlayHintLabelPart: __dataClass("InlayHintLabelPart", ["value"]),
+  CallHierarchyItem: __dataClass("CallHierarchyItem", ["kind", "name", "detail", "uri", "range", "selectionRange"]),
+  CallHierarchyIncomingCall: __dataClass("CallHierarchyIncomingCall", ["from", "fromRanges"]),
+  CallHierarchyOutgoingCall: __dataClass("CallHierarchyOutgoingCall", ["to", "fromRanges"]),
+  TypeHierarchyItem: __dataClass("TypeHierarchyItem", ["kind", "name", "detail", "uri", "range", "selectionRange"]),
+  LinkedEditingRanges: __dataClass("LinkedEditingRanges", ["ranges", "wordPattern"]),
+  DocumentDropEdit: __dataClass("DocumentDropEdit", ["insertText"]),
+  DiagnosticRelatedInformation: __dataClass("DiagnosticRelatedInformation", ["location", "message"]),
+  TerminalLink: __dataClass("TerminalLink", ["startIndex", "length", "tooltip"]),
+  TerminalProfile: __dataClass("TerminalProfile", ["options"]),
+  FileDecoration: __dataClass("FileDecoration", ["badge", "tooltip", "color"]),
+  NotebookRange: __dataClass("NotebookRange", ["start", "end"]),
+  NotebookCellOutputItem: __dataClass("NotebookCellOutputItem", ["data", "mime"]),
+  NotebookCellOutput: __dataClass("NotebookCellOutput", ["items", "metadata"]),
+  NotebookCellData: __dataClass("NotebookCellData", ["kind", "value", "languageId"]),
+  NotebookData: __dataClass("NotebookData", ["cells"]),
+  NotebookCellStatusBarItem: __dataClass("NotebookCellStatusBarItem", ["text", "alignment"]),
+  DebugAdapterExecutable: __dataClass("DebugAdapterExecutable", ["command", "args", "options"]),
+  DebugAdapterServer: __dataClass("DebugAdapterServer", ["port", "host"]),
+  DebugAdapterNamedPipeServer: __dataClass("DebugAdapterNamedPipeServer", ["path"]),
+  DebugAdapterInlineImplementation: __dataClass("DebugAdapterInlineImplementation", ["implementation"]),
+  Breakpoint: __dataClass("Breakpoint", ["enabled", "condition", "hitCondition", "logMessage"]),
+  SourceBreakpoint: __dataClass("SourceBreakpoint", ["location", "enabled", "condition", "hitCondition", "logMessage"]),
+  FunctionBreakpoint: __dataClass("FunctionBreakpoint", ["functionName", "enabled", "condition", "hitCondition", "logMessage"]),
+  DebugThread: __dataClass("DebugThread", ["session", "threadId"]),
+  DebugStackFrame: __dataClass("DebugStackFrame", ["session", "threadId", "frameId"]),
+  TestTag: __dataClass("TestTag", ["id"]),
+  TestRunRequest: __dataClass("TestRunRequest", ["include", "exclude", "profile", "continuous"]),
+  TestMessageStackFrame: __dataClass("TestMessageStackFrame", ["label", "uri", "position"]),
+  TestCoverageCount: __dataClass("TestCoverageCount", ["covered", "total"]),
+  FileCoverage: __dataClass("FileCoverage", ["uri", "statementCoverage", "branchCoverage", "declarationCoverage"]),
+  StatementCoverage: __dataClass("StatementCoverage", ["executed", "location", "branches"]),
+  BranchCoverage: __dataClass("BranchCoverage", ["executed", "location", "label"]),
+  DeclarationCoverage: __dataClass("DeclarationCoverage", ["name", "executed", "location"]),
+  TabInputText: __dataClass("TabInputText", ["uri"]),
+  TabInputTextDiff: __dataClass("TabInputTextDiff", ["original", "modified"]),
+  TabInputCustom: __dataClass("TabInputCustom", ["uri", "viewType"]),
+  TabInputWebview: __dataClass("TabInputWebview", ["viewType"]),
+  TabInputNotebook: __dataClass("TabInputNotebook", ["uri", "notebookType"]),
+  TabInputNotebookDiff: __dataClass("TabInputNotebookDiff", ["original", "modified", "notebookType"]),
+  TabInputTerminal: __dataClass("TabInputTerminal", []),
+  TelemetryTrustedValue: __dataClass("TelemetryTrustedValue", ["value"]),
+  LanguageModelError: class LanguageModelError extends Error {},
+  QuickInputButtons: { Back: { iconPath: new ThemeIcon("arrow-left") } },
+  TextEditorSelectionChangeKind: { Keyboard: 1, Mouse: 2, Command: 3 },
+  TextEditorLineNumbersStyle: { Off: 0, On: 1, Relative: 2, Interval: 3 },
+  InputBoxValidationSeverity: { Info: 1, Warning: 2, Error: 3 },
+  SymbolTag: { Deprecated: 1 },
+  CompletionItemTag: { Deprecated: 1 },
+  InlineCompletionTriggerKind: { Invoke: 0, Automatic: 1 },
+  IndentAction: { None: 0, Indent: 1, IndentOutdent: 2, Outdent: 3 },
+  SyntaxTokenType: { Other: 0, Comment: 1, String: 2, RegEx: 3 },
+  DiagnosticTag: { Unnecessary: 1, Deprecated: 2 },
+  LanguageStatusSeverity: { Information: 0, Warning: 1, Error: 2 },
+  TerminalLocation: { Panel: 1, Editor: 2 },
+  ExtensionKind: { UI: 1, Workspace: 2 },
+  ColorThemeKind: { Light: 1, Dark: 2, HighContrast: 3, HighContrastLight: 4 },
+  TaskRevealKind: { Always: 1, Silent: 2, Never: 3 },
+  TaskPanelKind: { Shared: 1, Dedicated: 2, New: 3 },
+  ShellQuoting: { Escape: 1, Strong: 2, Weak: 3 },
+  TaskScope: { Global: 1, Workspace: 2 },
+  FilePermission: { Readonly: 1 },
+  FileChangeType: { Changed: 1, Created: 2, Deleted: 3 },
+  TreeItemCheckboxState: { Unchecked: 0, Checked: 1 },
+  TerminalExitReason: { Unknown: 0, Shutdown: 1, Process: 2, User: 3, Extension: 4 },
+  EnvironmentVariableMutatorType: { Replace: 1, Append: 2, Prepend: 3 },
+  TextDocumentChangeReason: { Undo: 1, Redo: 2 },
+  NotebookEditorRevealType: { Default: 0, InCenter: 1, InCenterIfOutsideViewport: 2, AtTop: 3 },
+  NotebookCellKind: { Markup: 1, Code: 2 },
+  NotebookControllerAffinity: { Default: 1, Preferred: 2 },
+  NotebookCellStatusBarAlignment: { Left: 1, Right: 2 },
+  DebugConsoleMode: { Separate: 0, MergeWithParent: 1 },
+  DebugConfigurationProviderTriggerKind: { Initial: 1, Dynamic: 2 },
+  CommentThreadCollapsibleState: { Collapsed: 0, Expanded: 1 },
+  CommentMode: { Editing: 0, Preview: 1 },
+  CommentThreadState: { Unresolved: 0, Resolved: 1 },
+  TestRunProfileKind: { Run: 1, Debug: 2, Coverage: 3 },
+  LanguageModelChatMessageRole: { User: 1, Assistant: 2 },
+  ChatResultFeedbackKind: { Unhelpful: 0, Helpful: 1 },
+  chat: __disabledNamespace("chat"),
+  lm: __disabledNamespace("lm"),
+};
+Object.assign(ViewColumn, { Four: 4, Five: 5, Six: 6, Seven: 7, Eight: 8, Nine: 9 });
+Object.assign(TextEditorCursorStyle, { LineThin: 4, BlockOutline: 5, UnderlineThin: 6 });
+// Namespace members that have nothing to do in Sable (events that never
+// fire, registrations that are accepted).
+const __never = () => new EventEmitter().event;
+Object.assign(env, { logLevel: LogLevel.Info, onDidChangeLogLevel: __never() });
+for (const name of [
+  "onDidChangeTextEditorViewColumn", "onDidChangeVisibleNotebookEditors", "onDidChangeActiveNotebookEditor", "onDidChangeNotebookEditorSelection",
+  "onDidChangeNotebookEditorVisibleRanges", "onDidChangeTerminalState", "onDidChangeTerminalShellIntegration",
+  "onDidStartTerminalShellExecution", "onDidEndTerminalShellExecution",
+]) window[name] ??= __never();
+for (const name of ["onDidChangeNotebookDocument", "onWillSaveNotebookDocument", "onDidSaveNotebookDocument", "onDidOpenNotebookDocument", "onDidCloseNotebookDocument", "onWillCreateFiles", "onWillDeleteFiles", "onWillRenameFiles"]) {
+  workspace[name] ??= __never();
+}
+Object.assign(window, {
+  visibleNotebookEditors: [],
+  activeNotebookEditor: undefined,
+  activeTerminal: undefined,
+  showWorkspaceFolderPick: async () => __workspaceFolders()?.[0],
+  showOpenDialog: async () => (__unsupported("window.showOpenDialog"), undefined),
+  showSaveDialog: async () => (__unsupported("window.showSaveDialog"), undefined),
+  showNotebookDocument: async () => (__unsupported("Notebooks"), undefined),
+  withScmProgress: async (task) => task({ report() {} }),
+  registerWebviewPanelSerializer: () => __noop(),
+  registerTerminalProfileProvider: () => __noop(),
+});
+Object.assign(workspace, {
+  workspaceFile: undefined,
+  notebookDocuments: [],
+  updateWorkspaceFolders: () => false,
+  save: async (uri) => uri,
+  saveAs: async () => undefined,
+  openNotebookDocument: async () => (__unsupported("Notebooks"), undefined),
+  registerNotebookSerializer: () => (__unsupported("Notebooks"), __noop()),
+});
+Object.assign(languages, {
+  registerInlineValuesProvider: __ignoredProvider("Inline values"),
+  registerDocumentDropEditProvider: __ignoredProvider("Drop edits"),
+  createLanguageStatusItem: (id, selector) => ({
+    id, selector, name: undefined, severity: 0, text: "", detail: undefined, busy: false, command: undefined, accessibilityInformation: undefined,
+    dispose() {},
+  }),
+});
+
 const vscode = {
-  version: "1.90.0",
+  ...__moreApi,
+  version: "1.107.0",
   Disposable, EventEmitter, CancellationTokenSource, Position, Range, Selection, TextEdit, Uri, WorkspaceEdit,
   Diagnostic, DiagnosticSeverity, CompletionItem, CompletionItemKind, CompletionList, CompletionTriggerKind,
   SnippetString, MarkdownString, Hover, ThemeColor, ThemeIcon, CodeAction, CodeActionKind, TreeItem,
@@ -2023,19 +2453,47 @@ function __wireEvents(sable) {
     else if (event.selection) __active._selection = new Selection(__fromSable(event.selection.start), __fromSable(event.selection.end));
     if (__active) __onDidChangeTextEditorSelection.fire({ textEditor: __active, selections: __active.selections, kind: 1 });
   });
+  // Each edit as it happens: apply it to the text extensions have seen and
+  // report it (language clients sync documents this way; Auto Close Tag
+  // reacts to the ">" just typed). As in VS Code, the editor's selection
+  // is still where it was before the edit while listeners run.
+  sable.events.onDidChangeContent?.((event) => {
+    const before = __seenText.get(event.path);
+    if (before === undefined || !event.changes?.length) return;
+    let text = before;
+    for (const change of [...event.changes].sort((a, b) => b.rangeOffset - a.rangeOffset)) {
+      text = text.slice(0, change.rangeOffset) + change.text + text.slice(change.rangeOffset + change.rangeLength);
+    }
+    __seenText.set(event.path, text);
+    const previous = __documents.get(event.path);
+    const language = previous?.languageId ?? __active?.document.languageId;
+    const start = event.changes[event.changes.length - 1].range.start;
+    const editor = new TextEditor({ path: event.path, language, text, selection: { start: { line: start.line + 1, column: start.character + 1 }, end: { line: start.line + 1, column: start.character + 1 } } });
+    __documents.set(event.path, editor.document);
+    if (!__active || __active.document.fileName === event.path) __active = editor;
+    __onDidChangeTextDocument.fire({
+      document: editor.document,
+      contentChanges: event.changes.map((change) => ({ ...change, range: __rangeFrom(change.range) })),
+      reason: event.isUndoing ? 1 : event.isRedoing ? 2 : undefined,
+    });
+  });
+  // Once typing settles: catch up with any edit not reported above.
   sable.events.onDidChange(async (event) => {
     const editor = await __refresh();
-    if (editor && editor.document.fileName === event.path) __onDidChangeTextDocument.fire({ document: editor.document, contentChanges: [], reason: undefined });
+    if (!editor || editor.document.fileName !== event.path) return;
+    const text = editor.document.getText();
+    const before = __seenText.get(event.path) ?? text;
+    if (before === text) return;
+    __seenText.set(event.path, text);
+    __onDidChangeTextDocument.fire({ document: editor.document, contentChanges: [__contentChange(before, text)], reason: undefined });
   });
   sable.events.onDidSave(async (event) => {
     const editor = await __refresh();
     const document = editor && editor.document.fileName === event.path ? editor.document : new TextDocument(event.path, "", "");
     __onDidSaveTextDocument.fire(document);
   });
-  sable.events.onDidOpen(async (event) => {
-    const editor = await __refresh();
-    if (editor && editor.document.fileName === event.path) __onDidOpenTextDocument.fire(editor.document);
-  });
+  // Opening a file fires onDidOpenTextDocument through __trackDocument (once per document).
+  sable.events.onDidOpen(() => void __refresh());
   // The status bar's click runs the first item's command; Sable runs the
   // extension's internal commands (code lenses, tree items) through
   // __vscode.execute. Neither shows in the command palette.
@@ -2050,19 +2508,38 @@ function __wireEvents(sable) {
   sable.events.onDidChangeDiagnostics?.(() => void __refreshDiagnostics());
 }
 
+/** Under Node: real folders for the extension's storage, beside the plugins (kept across updates). */
+function __storageFolders(extensionPath) {
+  if (!__node || !extensionPath) return { global: "", workspace: undefined, log: "" };
+  const path = require("path");
+  const base = path.join(extensionPath, "..", "..", ".storage", __extension.id);
+  const root = __root();
+  const workspaceKey = root ? require("crypto").createHash("sha1").update(root).digest("hex").slice(0, 16) : null;
+  const folders = { global: path.join(base, "global"), workspace: workspaceKey ? path.join(base, "workspace", workspaceKey) : undefined, log: path.join(base, "logs") };
+  try {
+    require("fs").mkdirSync(folders.log, { recursive: true });
+  } catch {
+    /* read-only */
+  }
+  return folders;
+}
+
 function __makeContext(extensionPath) {
+  const storage = __storageFolders(extensionPath);
   return {
     subscriptions: [],
     extensionPath,
     extensionUri: Uri.file(extensionPath),
-    storagePath: undefined,
-    globalStoragePath: "",
-    logPath: "",
-    storageUri: undefined,
-    globalStorageUri: Uri.file(""),
-    logUri: Uri.file(""),
+    storagePath: storage.workspace,
+    globalStoragePath: storage.global,
+    logPath: storage.log,
+    storageUri: storage.workspace ? Uri.file(storage.workspace) : undefined,
+    globalStorageUri: Uri.file(storage.global),
+    logUri: Uri.file(storage.log),
     extensionMode: ExtensionMode.Production,
-    extension: __self(),
+    get extension() {
+      return __self();
+    },
     globalState: __memento("global:"),
     workspaceState: __memento("workspace:"),
     secrets: {
@@ -2094,6 +2571,47 @@ async function __activate(sable, modules, extension) {
 }
 
 /**
+ * env.appRoot under Node: a folder laid out like VS Code's, whose bundled
+ * ripgrep (which Todo Tree and other search extensions run) is the `rg`
+ * on PATH, when there is one.
+ */
+function __appRoot() {
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const exe = process.platform === "win32" ? "rg.exe" : "rg";
+    const dirs = [...(process.env.PATH ?? "").split(path.delimiter), "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"];
+    const rg = dirs.filter(Boolean).map((dir) => path.join(dir, exe)).find((file) => fs.existsSync(file));
+    const root = path.join(require("os").tmpdir(), "sable-vscode-app-root");
+    for (const relative of ["node_modules/@vscode/ripgrep/bin", "node_modules/vscode-ripgrep/bin"]) {
+      const dir = path.join(root, relative);
+      fs.mkdirSync(dir, { recursive: true });
+      const link = path.join(dir, exe);
+      if (rg && !fs.existsSync(link)) fs.symlinkSync(rg, link);
+    }
+    env.appRoot = root;
+  } catch (error) {
+    console.warn(error);
+  }
+}
+
+/**
+ * Extensions built as ES modules (Prettier 12, …) `import` "vscode", which
+ * goes through Node's module hooks rather than Module._load: answer it with
+ * a module re-exporting the layer. Needs Node 22.15+ (module.registerHooks).
+ */
+function __esmVscode(Module) {
+  if (typeof Module.registerHooks !== "function") return;
+  globalThis.__sableVscode = vscode;
+  const names = Object.keys(vscode).filter((name) => /^[A-Za-z_$][\w$]*$/.test(name));
+  const source = `const api = globalThis.__sableVscode;\nexport default api;\n${names.map((name) => `export const ${name} = api.${name};`).join("\n")}\n`;
+  Module.registerHooks({
+    resolve: (specifier, context, next) => (specifier === "vscode" ? { url: "sable:vscode", shortCircuit: true } : next(specifier, context)),
+    load: (url, context, next) => (url === "sable:vscode" ? { format: "module", source, shortCircuit: true } : next(url, context)),
+  });
+}
+
+/**
  * Node: load the extension with Node's own require (real fs, child
  * processes, its node_modules), answering only `require("vscode")`.
  */
@@ -2108,11 +2626,19 @@ async function __activateNode(sable, extension, entryPath, extensionRoot) {
     if (request === "vscode") return vscode;
     return load.call(this, request, parent, isMain);
   };
+  __esmVscode(Module);
+  __appRoot();
   await __loadStorage();
   await __refresh();
   __wireEvents(sable);
   __context = __makeContext(extensionRoot);
-  __exports = require(entryPath);
+  try {
+    __exports = require(entryPath);
+  } catch (error) {
+    // An ES module with top-level await (or a Node that can't require ESM).
+    if (!["ERR_REQUIRE_ASYNC_MODULE", "ERR_REQUIRE_ESM"].includes(error?.code)) throw error;
+    __exports = await import(require("url").pathToFileURL(entryPath).href);
+  }
   await __runActivate();
 }
 
@@ -2131,6 +2657,9 @@ async function __runActivate() {
     await __sable.languages.contribute?.(__extension.languages ?? [], __extension.grammars ?? []).catch((error) => console.warn(error));
   }
   const activate = __exports?.activate ?? __exports?.default?.activate;
+  // Documents opened from now on fire onDidOpenTextDocument (the ones
+  // before are in workspace.textDocuments).
+  __activated = true;
   if (typeof activate === "function") {
     const result = await activate(__context);
     if (result !== undefined) __exports = Object.assign(Object.create(null), __exports, { api: result });

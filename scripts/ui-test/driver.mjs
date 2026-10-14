@@ -4,11 +4,21 @@
 // 1531). Commands the bridge can't serve (they need the app window) get
 // stand-ins here. See README → Testing.
 import puppeteer from "puppeteer-core";
+import { existsSync } from "node:fs";
 
 // Ports (SABLE_UI_VITE_PORT / SABLE_UI_BRIDGE_PORT to run beside another test).
 const VITE_PORT = process.env.SABLE_UI_VITE_PORT ?? "1530";
 const BRIDGE_PORT = process.env.SABLE_UI_BRIDGE_PORT ?? "1531";
-const CHROME = process.env.SABLE_CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+// Chrome, or another Chromium browser if it isn't installed.
+const CHROME =
+  process.env.SABLE_CHROME ??
+  [
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+  ].find((path) => existsSync(path)) ??
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 const STANDINS = {
   load_settings: {},

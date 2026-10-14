@@ -36,10 +36,13 @@ import { registerFormatting } from "./formatting";
 import { registerTestCodeLenses } from "./testing/codeLens";
 import { registerConflictSupport } from "./git/conflictEditor";
 import { registerPythonRefactorings } from "./refactor";
+import { registerDeepRefactorings } from "./refactorings";
 import { registerInlineCompletions } from "./ai/inlineCompletions";
 import { registerEasedScrolling } from "./easedScroll";
 import { registerSnippets } from "./snippets";
 import { registerEditorColors } from "./colorPicker/editorColors";
+import { registerSpellChecker } from "./spell/spellMonaco";
+import { registerEmmet } from "./emmet/emmetMonaco";
 
 self.MonacoEnvironment = {
   getWorker(_workerId: string, label: string) {
@@ -79,9 +82,13 @@ registerFormatting(monaco);
 registerTestCodeLenses(monaco);
 registerConflictSupport(monaco);
 registerPythonRefactorings(monaco);
+registerDeepRefactorings(monaco);
 registerInlineCompletions(monaco);
 registerEasedScrolling(monaco);
 registerSnippets(monaco);
+// Emmet abbreviations, and the spell checker (lib/emmet, lib/spell).
+registerEmmet(monaco);
+registerSpellChecker(monaco);
 // Monaco cancels its own pending requests (a closing quick-fix menu, a
 // disposed editor) with a rejected promise nothing awaits: not an error.
 window.addEventListener("unhandledrejection", (event) => {
@@ -289,6 +296,8 @@ monaco.editor.onDidChangeMarkers((uris) => {
     }
     const problems: Problem[] = [];
     for (const marker of monaco.editor.getModelMarkers({ resource: uri })) {
+      // Spelling stays in the editor: it would drown out real problems.
+      if (marker.owner === "spell") continue;
       const severity = MARKER_SEVERITY[marker.severity];
       if (!severity) continue; // hints render faded; not "problems"
       problems.push({

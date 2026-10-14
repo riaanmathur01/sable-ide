@@ -1,4 +1,4 @@
-import { Bug, Files, GitBranch, History, LayoutPanelLeft, Puzzle, Search, Settings, type LucideIcon } from "lucide-react";
+import { Bug, Files, GitBranch, GitPullRequest, History, LayoutPanelLeft, Puzzle, Search, Settings, type LucideIcon } from "lucide-react";
 import { usePluginViewsStore } from "../../store/pluginViewsStore";
 import type { SidebarView } from "../../store/uiStore";
 import { useUiStore } from "../../store/uiStore";
@@ -21,6 +21,7 @@ export const VIEWS: ViewItem[] = [
   { id: "git", label: "Source Control", icon: GitBranch, shortcut: "⇧⌘G" },
   { id: "history", label: "History", icon: History },
   { id: "debug", label: "Run and Debug", icon: Bug, shortcut: "⇧⌘D" },
+  { id: "github", label: "GitHub", icon: GitPullRequest },
 ];
 
 /** Views plugins contribute (tree views, webview views), in one place. */

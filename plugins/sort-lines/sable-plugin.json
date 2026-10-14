@@ -1,7 +1,7 @@
 {
   "id": "sort-lines",
   "name": "Sort Lines",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Sort, reverse, shuffle and de-duplicate lines in the selection or the whole file.",
   "author": "Sable",
   "main": "main.js",

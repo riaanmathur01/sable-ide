@@ -25,6 +25,7 @@ import {
   ContextMenu,
   type ContextMenuItem,
 } from "../ContextMenu/ContextMenu";
+import { moveFileWithImports, pathIn, safeDeleteFile } from "../../lib/refactorings";
 import "./FileTree.css";
 
 const ROW_HEIGHT = 24;
@@ -250,6 +251,8 @@ export function FileTree() {
 
   async function moveEntry(entry: FsEntry, targetDirectory: string) {
     try {
+      // Code files: offer to update imports (a preview), else just move.
+      if (!entry.isDirectory && (await moveFileWithImports(entry.path, pathIn(targetDirectory, entry.name)))) return;
       // Flush unsaved edits in any affected tab to the old location
       // first, so nothing is lost when paths change.
       await useTabsStore.getState().saveTabsUnder(entry.path);
@@ -303,6 +306,7 @@ export function FileTree() {
     try {
       // Same as a move: flush edits, rename, then repoint open tabs so
       // later (auto-)saves don't recreate the file at its old path.
+      if (!entry.isDirectory && (await moveFileWithImports(entry.path, pathIn(parentDirectoryOf(entry.path), newName)))) return;
       await useTabsStore.getState().saveTabsUnder(entry.path);
       const newPath = await renamePath(entry.path, newName);
       await refreshDirectory(parentDirectoryOf(entry.path));
@@ -379,6 +383,7 @@ export function FileTree() {
             { label: "Download…", onSelect: () => void downloadFromRemote(entry) },
           ]
         : []),
+      ...(entry.isDirectory ? [] : [{ label: "Safe Delete…", onSelect: () => void safeDeleteFile(entry.path) }]),
       {
         label: "Delete",
         danger: true,

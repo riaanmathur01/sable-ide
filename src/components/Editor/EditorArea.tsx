@@ -4,6 +4,8 @@ import { TabBar } from "./TabBar";
 import { useTabsStore, type EditorGroup } from "../../store/tabsStore";
 import { DebugToolbar } from "../Debug/DebugToolbar";
 import { Resizer } from "../Layout/Resizer";
+import { Breadcrumbs } from "./Breadcrumbs";
+import { useSetting } from "../../store/settingsStore";
 import "./EditorArea.css";
 
 // Monaco (and its workers) live in their own chunks, fetched the first
@@ -25,6 +27,7 @@ const PluginDetailsView = preloadable(() => import("../Plugins/PluginDetailsView
 const PluginWebviewTab = preloadable(() => import("../Plugins/PluginWebviewTab"));
 const NotebookView = preloadable(() => import("../Notebook/NotebookView"));
 const DatabaseView = preloadable(() => import("../Database/DatabaseView"));
+const GitHubTab = preloadable(() => import("../GitHub/GitHubTab"));
 
 const MIN_GROUP_WIDTH = 220;
 
@@ -142,12 +145,17 @@ function EditorGroupView({
   const webviewActive = activeTab?.kind === "webview";
   const notebookActive = activeTab?.kind === "notebook";
   const databaseActive = activeTab?.kind === "database";
-  const fileActive = !diffActive && !settingsActive && !mergeActive && !historyActive && !previewActive && !pluginActive && !webviewActive && !notebookActive && !databaseActive;
+  const githubActive = activeTab?.kind === "github";
+  const fileActive = !diffActive && !settingsActive && !mergeActive && !historyActive && !previewActive && !pluginActive && !webviewActive && !notebookActive && !databaseActive && !githubActive;
   const hasFileTab = group.tabs.some((tab) => tab.kind === "file");
+  const showBreadcrumbs = useSetting("breadcrumbs.enabled");
 
   return (
     <>
       <TabBar group={group} isFocused={isFocused} isSplit={isSplit} />
+      {showBreadcrumbs && fileActive && hasFileTab && group.lastFilePath && (
+        <Breadcrumbs groupId={group.id} path={group.lastFilePath} />
+      )}
       <div className="editor-surface">
         {hasFileTab && (
           <div className="editor-layer" style={{ display: fileActive ? "block" : "none" }}>
@@ -221,6 +229,13 @@ function EditorGroupView({
           <div className="editor-layer">
             <Suspense fallback={null}>
               <PluginDetailsView key={activeTab.path} pluginId={activeTab.pluginId} />
+            </Suspense>
+          </div>
+        )}
+        {githubActive && activeTab.github && (
+          <div className="editor-layer">
+            <Suspense fallback={null}>
+              <GitHubTab key={activeTab.path} target={activeTab.github} />
             </Suspense>
           </div>
         )}

@@ -273,6 +273,15 @@ export interface Sable {
     onDidOpen(listener: (event: { path: string }) => unknown): Disposable;
     /** The text of a file changed (after typing pauses). */
     onDidChange(listener: (event: { path: string }) => unknown): Disposable;
+    /** Every edit as it happens (not debounced): what changed, with 0-based ranges in the text before it, as VS Code's onDidChangeTextDocument. */
+    onDidChangeContent(
+      listener: (event: {
+        path: string;
+        changes: { range: { start: { line: number; character: number }; end: { line: number; character: number } }; rangeOffset: number; rangeLength: number; text: string }[];
+        isUndoing: boolean;
+        isRedoing: boolean;
+      }) => unknown,
+    ): Disposable;
     /** A different file is in front (path null: none). */
     onDidChangeActiveEditor(listener: (event: { path: string | null }) => unknown): Disposable;
     /** The selection or cursor moved (settled, not every keystroke). */

@@ -73,6 +73,13 @@ export interface Settings {
   "ai.inlineOpenaiModel": string;
   "ai.inlineGoogleModel": string;
   "updates.checkOnStartup": boolean;
+  "github.ghPath": string;
+  "breadcrumbs.enabled": boolean;
+  "emmet.enabled": boolean;
+  "emmet.triggerOnTab": boolean;
+  "spellCheck.enabled": boolean;
+  "spellCheck.language": "en-US" | "en-GB";
+  "spellCheck.userWords": string;
 }
 
 export type SettingKey = keyof Settings;
@@ -133,6 +140,7 @@ export const SETTINGS_SCHEMA: SettingSpec[] = [
   { key: "editor.bracketPairColorization", section: "Editor Appearance", type: "boolean", label: "Bracket Pair Colors", description: "Color matching brackets by nesting depth (rainbow brackets).", default: false },
   { key: "editor.bracketPairGuides", section: "Editor Appearance", type: "boolean", label: "Bracket Pair Guides", description: "Draw guides connecting the active bracket pair.", default: true },
   { key: "editor.stickyScroll", section: "Editor Appearance", type: "boolean", label: "Sticky Scroll", description: "Pin the enclosing function/class headers to the top while scrolling.", default: true },
+  { key: "breadcrumbs.enabled", section: "Editor Appearance", type: "boolean", label: "Breadcrumbs", description: "Show the file's path and the symbol at the cursor above the editor. Click a part to jump to a neighbouring file or symbol; ⇧⌘. focuses them from the keyboard.", default: true },
   { key: "editor.smoothScrolling", section: "Editor Appearance", type: "boolean", label: "Smooth Scrolling", description: "Ease scrolling: each wheel scroll goes as far as usual, speeding up and slowing down along a bell curve, and settles on a whole line.", default: true },
   // --- Editor: behavior -----------------------------------------------------
   { key: "editor.autoClosingBrackets", section: "Editing", type: "boolean", label: "Auto-close Brackets & Quotes", description: "Insert the closing bracket or quote as you type the opening one.", default: true },
@@ -144,6 +152,11 @@ export const SETTINGS_SCHEMA: SettingSpec[] = [
   { key: "editor.insertFinalNewline", section: "Editing", type: "boolean", label: "Insert Final Newline", description: "Ensure files end with a newline on manual save.", default: false },
   { key: "files.autoSave", section: "Editing", type: "boolean", label: "Auto Save", description: "Save files automatically shortly after you stop typing.", default: true },
   { key: "files.autoSaveDelay", section: "Editing", type: "number", min: 200, max: 10000, step: 100, label: "Auto Save Delay (ms)", description: "How long after the last keystroke auto-save waits.", default: 800 },
+  { key: "emmet.enabled", section: "Emmet", type: "boolean", label: "Emmet", description: "Expand Emmet abbreviations (ul>li*3, .card>h2+p, m10, df, jcsb…) in HTML, JSX/TSX, Vue, Svelte, XML and CSS/SCSS/Less. Expansions show in the suggestion list as you type.", default: true },
+  { key: "emmet.triggerOnTab", section: "Emmet", type: "boolean", label: "Expand on Tab", description: "Tab expands the abbreviation before the cursor (when no suggestion or snippet is active).", default: true },
+  { key: "spellCheck.enabled", section: "Spell Check", type: "boolean", label: "Spell Check", description: "Underline misspelled words in comments, strings, identifiers (camelCase and snake_case parts) and Markdown/plain text. The quick fix (⌘.) suggests corrections or adds the word to a dictionary. Spelling isn't listed in Problems.", default: true },
+  { key: "spellCheck.language", section: "Spell Check", type: "enum", options: [{ value: "en-US", label: "English (US)" }, { value: "en-GB", label: "English (UK)" }], label: "Language", description: "The dictionary to check against.", default: "en-US" },
+  { key: "spellCheck.userWords", section: "Spell Check", type: "string", multiline: true, placeholder: "One word per line", label: "User Dictionary", description: "Words that are always spelled right, in every project. “Add to user dictionary” in the quick fix adds here. A project's own words go in its .vscode/settings.json (cSpell.words, shared with VS Code's Code Spell Checker) or cspell.json.", default: "" },
   // --- Terminal ---------------------------------------------------------------
   { key: "terminal.fontSize", section: "Terminal", type: "number", min: 8, max: 28, step: 0.5, label: "Font Size", description: "Terminal font size in pixels.", default: 12.5 },
   { key: "terminal.fontFamily", section: "Terminal", type: "string", fontPicker: true, label: "Font Family", description: "Terminal font. Nerd Fonts show icons from shell prompts like Starship or Powerlevel10k.", default: MONO_FONT_STACK },
@@ -166,6 +179,7 @@ export const SETTINGS_SCHEMA: SettingSpec[] = [
   { key: "ai.inlineOpenaiModel", section: "AI Completions", type: "string", label: "OpenAI Model", description: "A fast model for suggestions when the provider is OpenAI.", default: "gpt-5-mini" },
   { key: "ai.inlineGoogleModel", section: "AI Completions", type: "string", label: "Google Model", description: "A fast model for suggestions when the provider is Google.", default: "gemini-flash-latest" },
   { key: "plugins.marketplaceUrl", section: "Plugins", type: "string", placeholder: "https://…/registry.json", label: "Marketplace URL", description: "The catalogue the Plugins marketplace lists. Point it at your own JSON file (same format) to run a private marketplace, e.g. for a team.", default: "https://raw.githubusercontent.com/riaanmathur01/sable-ide/main/plugins/registry.json" },
+  { key: "github.ghPath", section: "GitHub", type: "string", placeholder: "gh", label: "GitHub CLI Path", description: "The GitHub CLI (gh) the GitHub view uses for pull requests and issues. Leave empty to find gh on its own (Homebrew, PATH). Sable stores no GitHub tokens: sign in with `gh auth login`.", default: "" },
   { key: "updates.checkOnStartup", section: "Updates", type: "boolean", label: "Check for Updates on Startup", description: "Look for a newer Sable when it starts, and say so in the status bar. “Check for Updates” in the command palette installs it.", default: true },
   { key: "ai.customInstructions", section: "AI Agent", type: "string", multiline: true, placeholder: "e.g. Prefer functional components. Always add tests.", label: "Custom Instructions", description: "Extra guidance appended to the agent's system prompt.", default: "" },
 ];

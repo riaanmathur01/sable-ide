@@ -68,6 +68,12 @@ export const REMOTE_COMMANDS = new Set([
   "debug_request",
   "debug_stop",
   "debug_terminal_started",
+  "debug_config_start",
+  "debug_config_focus",
+  "debug_config_stop",
+  "debug_config_stop_all",
+  "debug_config_terminal_started",
+  "debug_config_environment",
   "install_debugpy",
   "install_js_debug",
   "install_java_debug",
@@ -116,6 +122,7 @@ export const REMOTE_COMMANDS = new Set([
   "notebook_stop",
   "notebook_install_ipykernel",
   "database_call",
+  "github_call",
 ]);
 
 /** File commands, and the argument holding the path they act on. */

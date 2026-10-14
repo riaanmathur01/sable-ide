@@ -76,11 +76,11 @@ impl DebugEvents for SinkEvents {
 
 /// A process to run as the debug adapter.
 pub struct Adapter {
-    program: PathBuf,
-    args: Vec<String>,
+    pub(crate) program: PathBuf,
+    pub(crate) args: Vec<String>,
     /// Prepended to PATH (GUI apps lack the shell's PATH; Delve needs to
     /// find `go`).
-    extra_path: Vec<PathBuf>,
+    pub(crate) extra_path: Vec<PathBuf>,
 }
 
 /// How to talk to the adapter.
@@ -103,13 +103,13 @@ pub enum Transport {
 /// Everything needed to start debugging one program.
 pub struct LaunchPlan {
     /// None when the adapter already runs elsewhere (Java).
-    adapter: Option<Adapter>,
-    transport: Transport,
-    adapter_id: &'static str,
+    pub(crate) adapter: Option<Adapter>,
+    pub(crate) transport: Transport,
+    pub(crate) adapter_id: &'static str,
     /// The `launch` request's arguments.
-    launch: Value,
+    pub(crate) launch: Value,
     /// Filters for setExceptionBreakpoints (e.g. debugpy's "uncaught").
-    exception_filters: Vec<&'static str>,
+    pub(crate) exception_filters: Vec<&'static str>,
 }
 
 /// State shared by every connection of one session.
@@ -205,7 +205,7 @@ fn request(seq: i64, command: &str, arguments: Value) -> String {
 }
 
 /// A synthetic `output` event, so build logs show in the debug console.
-fn console_output(events: &dyn DebugEvents, category: &str, text: &str) {
+pub(crate) fn console_output(events: &dyn DebugEvents, category: &str, text: &str) {
     events.emit(
         "debug:message",
         json!({
@@ -234,7 +234,7 @@ pub fn debug_language(program: &str) -> Option<&'static str> {
 
 /// Run a build step, streaming nothing but reporting failures with the
 /// compiler's own message.
-async fn run_build(
+pub(crate) async fn run_build(
     events: &dyn DebugEvents,
     program: &Path,
     args: &[String],
@@ -474,7 +474,7 @@ fn native_plan(events: &dyn DebugEvents, adapter: PathBuf, binary: PathBuf, cwd:
 }
 
 /// js-debug's DAP server script inside Sable's tools folder.
-fn js_debug_server() -> Option<PathBuf> {
+pub(crate) fn js_debug_server() -> Option<PathBuf> {
     let script = tools_dir()?.join("js-debug").join("src").join("dapDebugServer.js");
     script.exists().then_some(script)
 }

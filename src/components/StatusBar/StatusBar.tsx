@@ -22,6 +22,7 @@ import { useProblemCounts } from "../../store/problemsStore";
 import { serverIdFor } from "../../lib/lsp/lspClient";
 import { InterpreterPicker } from "./InterpreterPicker";
 import { BranchPicker } from "./BranchPicker";
+import { GitHubStatusItem } from "../GitHub/GitHubStatusItem";
 import { usePluginStore } from "../../store/pluginStore";
 import { useRemoteStore } from "../../store/remoteStore";
 import "../Plugins/Plugins.css";
@@ -221,6 +222,7 @@ export function StatusBar() {
             )}
           </button>
         )}
+        <GitHubStatusItem />
         <button
           className="status-bar-button status-bar-problems"
           title="Problems — errors and warnings (click to open)"
