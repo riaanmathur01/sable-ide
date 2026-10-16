@@ -9,6 +9,7 @@
 // running code) also builds without the desktop parts, as the remote
 // agent (agent/) that serves it over SSH, WSL or a
 // container.
+pub mod acp;
 pub mod agent;
 mod commands;
 pub mod events;
@@ -34,6 +35,9 @@ mod devcontainer;
 mod plugin_node;
 #[cfg(feature = "desktop")]
 mod windows;
+// Claude Code (Anthropic's CLI) connects to Sable as its IDE.
+#[cfg(feature = "desktop")]
+mod claude_code;
 #[cfg(all(test, feature = "desktop"))]
 mod ui_bridge;
 
@@ -58,6 +62,9 @@ pub fn run() {
                 lsp::set_tools_dir(data.join("tools"));
                 commands::history::set_history_dir(data.join("history"));
                 plugins::set_plugins_dir(data.join("plugins"));
+                // Coding agents from the ACP registry (beside the remote
+                // agent's own cache, agents/<version>/).
+                acp::commands::set_agents_dir(data.join("agents"));
             }
             Ok(())
         })
@@ -70,6 +77,8 @@ pub fn run() {
         .manage(windows::PerWindow::<debug::DebugManager>::default())
         .manage(windows::PerWindow::<notebook::NotebookState>::default())
         .manage(windows::PerWindow::<database::DatabaseState>::default())
+        .manage(windows::PerWindow::<acp::AcpState>::default())
+        .manage(windows::PerWindow::<claude_code::ClaudeCodeState>::default())
         .manage(commands::ai::AiState::default())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::Destroyed = event {
@@ -225,7 +234,35 @@ pub fn run() {
             notebook::notebook_install_ipykernel,
             database::database_call,
             github::github_call,
+            acp::commands::acp_call,
+            acp::commands::acp_registry,
+            acp::commands::acp_install,
+            acp::commands::acp_link_local,
+            acp::commands::acp_providers,
+            acp::commands::acp_config,
+            acp::commands::acp_set_config,
+            acp::commands::acp_set_secret,
+            acp::commands::acp_delete_secret,
+            acp::commands::acp_secret_status,
+            acp::commands::acp_start,
+            acp::commands::acp_account_status,
+            acp::commands::acp_terminal_spec,
+            acp::commands::acp_threads_load,
+            acp::commands::acp_threads_save,
+            claude_code::claude_code_start,
+            claude_code::claude_code_stop,
+            claude_code::claude_code_status,
+            claude_code::claude_code_set_folders,
+            claude_code::claude_code_respond,
+            claude_code::claude_code_notify,
+            claude_code::claude_code_find_cli,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(|_app, event| {
+            // Quitting: no Claude Code lock file may outlive the app.
+            if let tauri::RunEvent::Exit = event {
+                claude_code::remove_all_locks();
+            }
+        });
 }

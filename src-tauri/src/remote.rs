@@ -401,6 +401,11 @@ fn current(owner: &str) -> Option<Arc<Connection>> {
     CONNECTIONS.lock().unwrap().get_or_insert_with(HashMap::new).get(owner).cloned()
 }
 
+/// Whether window `owner` is connected to a remote (its workspace is there).
+pub fn is_connected(owner: &str) -> bool {
+    current(owner).is_some()
+}
+
 /// What the frontend learns about a connection.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -1,4 +1,15 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import {
+  acceptAllEdits,
+  cancelAgent,
+  explainSelection,
+  fixSelection,
+  focusExternalAgent,
+  newAgentThread,
+  rejectAllEdits,
+  sendSelectionToAgent,
+  switchAgent,
+} from "../../lib/acp/commands";
 import { useUiStore, type PaletteMode } from "../../store/uiStore";
 import { cursorContext, goTo, useNavigationStore } from "../../store/navigationStore";
 import {
@@ -53,6 +64,7 @@ import { isNotebookPath, notebookHooks, type NotebookCommand } from "../../lib/n
 import { databaseHooks, type DatabaseCommand } from "../../lib/database/hooks";
 import { githubPaletteCommands } from "../../lib/github/commands";
 import { editorExtrasCommands } from "../../lib/editorExtrasCommands";
+import { claudeCodeCommands } from "../../lib/claudeCode";
 import {
   restartLanguageServers,
   setUpPythonSemanticHighlighting,
@@ -517,6 +529,16 @@ function buildCommands(): PaletteItem[] {
       detail: "⌥⌘A",
       run: () => ui.toggleAgent(),
     },
+    { id: "sable.acp.focus", label: "Agent: Focus External Agent (Claude Agent…)", detail: "⌘⎋", run: () => focusExternalAgent() },
+    { id: "sable.acp.newThread", label: "Agent: New Thread", detail: "⇧⌘⎋", run: () => void newAgentThread() },
+    { id: "sable.acp.switchAgent", label: "Agent: Switch Agent…", run: () => void switchAgent() },
+    { id: "sable.acp.sendSelection", label: "Agent: Send Selection to Agent", detail: "⌥⌘K", run: () => void sendSelectionToAgent() },
+    { id: "sable.acp.explain", label: "Agent: Explain Selection", run: () => void explainSelection() },
+    { id: "sable.acp.fix", label: "Agent: Fix Selection", run: () => void fixSelection() },
+    { id: "sable.acp.acceptAll", label: "Agent: Accept All Edits", detail: "⇧⌘Y", run: () => acceptAllEdits() },
+    { id: "sable.acp.rejectAll", label: "Agent: Reject All Edits", detail: "⌥⇧⌘Y", run: () => void rejectAllEdits() },
+    { id: "sable.acp.cancel", label: "Agent: Stop", run: () => void cancelAgent() },
+    { id: "sable.acp.settings", label: "Agent: Manage AI Agents…", run: () => tabs.openSettings("agents") },
     {
       id: "agent-new",
       label: "Agent: New Chat",
@@ -655,6 +677,7 @@ function buildCommands(): PaletteItem[] {
     ...databaseCommands(),
     ...githubPaletteCommands(),
     ...editorExtrasCommands(),
+    ...claudeCodeCommands(),
     { id: "inline-completions", label: "AI: Toggle Inline Completions", run: toggleInlineCompletions },
     {
       id: "debug-attach",

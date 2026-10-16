@@ -22,6 +22,27 @@ import { paletteRunner } from "./paletteRunner";
 import { parseJsonc } from "./jsonc";
 import { broadcast } from "./windows";
 import { focusBreadcrumbs } from "./breadcrumbs/focus";
+import {
+  acceptAllEdits,
+  agentRunning,
+  cancelAgent,
+  explainSelection,
+  fixSelection,
+  focusExternalAgent,
+  hasPendingEdits,
+  newAgentThread,
+  rejectAllEdits,
+  sendSelectionToAgent,
+  switchAgent,
+} from "./acp/commands";
+import { useClaudeCodeStore } from "./claudeCode/store";
+
+/** ⌥⌘K: a Claude Code CLI connected to this window (IDE integration) gets
+ *  the selection as an @-mention; otherwise it goes to the agent panel. */
+function sendSelectionToConnectedAgent() {
+  if (useClaudeCodeStore.getState().clients > 0) return import("./claudeCode/launch").then((module) => module.sendSelectionToClaude());
+  return sendSelectionToAgent();
+}
 
 /**
  * Keyboard shortcuts: Sable's commands with their default keys, and your
@@ -75,10 +96,32 @@ export const COMMANDS: ShortcutCommand[] = [
   { id: "workbench.action.openSettings", title: "Open settings", keys: ["mod+,"], run: () => tabs().openSettings() },
   { id: "sable.agent.focus", title: "Focus AI agent", keys: ["mod+l"], run: () => ui().focusAgent() },
   { id: "sable.agent.toggle", title: "Toggle AI agent panel", keys: ["mod+alt+a"], run: () => ui().toggleAgent() },
+  // External agents (Claude Agent, Codex…) over ACP.
+  { id: "sable.acp.focus", title: "Focus external agent (Claude Agent…)", keys: ["mod+escape"], run: () => focusExternalAgent() },
+  { id: "sable.acp.newThread", title: "New agent thread", keys: ["mod+shift+escape"], run: () => newAgentThread() },
+  { id: "sable.acp.switchAgent", title: "Switch agent…", keys: [], run: () => switchAgent() },
+  // ⌥⌘K: to Claude Code in a terminal while one is connected (IDE integration), else to the agent panel.
+  { id: "sable.acp.sendSelection", title: "Send selection to agent", keys: ["mod+alt+k"], run: () => sendSelectionToConnectedAgent() },
+  { id: "sable.acp.explain", title: "Explain with agent", keys: [], run: () => explainSelection() },
+  { id: "sable.acp.fix", title: "Fix with agent", keys: [], run: () => fixSelection() },
+  { id: "sable.acp.acceptAll", title: "Accept all agent edits", keys: ["mod+shift+y"], when: () => hasPendingEdits(), whenLabel: "agent edits waiting", run: () => acceptAllEdits() },
+  { id: "sable.acp.rejectAll", title: "Reject all agent edits", keys: ["mod+shift+alt+y"], when: () => hasPendingEdits(), whenLabel: "agent edits waiting", run: () => rejectAllEdits() },
+  {
+    id: "sable.acp.cancel",
+    title: "Stop the agent",
+    keys: ["escape"],
+    when: (event) => agentRunning() && event.target instanceof Element && !!event.target.closest(".acp-panel") && !document.querySelector(".acp-suggest, .acp-menu"),
+    whenLabel: "agent running, in its panel",
+    run: () => cancelAgent(),
+  },
   { id: "workbench.action.files.save", title: "Save", keys: ["mod+s"], run: () => tabs().activePath && tabs().saveTab(tabs().activePath!) },
   { id: "sable.run", title: "Run active file", keys: ["mod+r"], run: () => runActiveFile() },
   { id: "workbench.action.togglePanel", title: "Toggle bottom panel", keys: ["mod+j", "mod+`"], run: () => ui().toggleTerminal() },
   { id: "workbench.action.terminal.new", title: "New terminal", keys: ["ctrl+shift+`"], run: () => useTerminalStore.getState().newTerminal() },
+  // Anthropic's CLI in a terminal tab. No default keys: ⌘⎋ / ⇧⌘⎋ belong to the
+  // agent panel, and ⌥⌘K (sable.acp.sendSelection) reaches a connected CLI.
+  { id: "sable.claudeCode.run", title: "Run Claude Code", keys: [], run: () => import("./claudeCode/launch").then((module) => module.runClaudeCode()) },
+  { id: "sable.claudeCode.sendSelection", title: "Send selection to Claude Code", keys: [], when: inEditor, whenLabel: "editor", run: () => import("./claudeCode/launch").then((module) => module.sendSelectionToClaude()) },
   { id: "workbench.action.toggleSidebarVisibility", title: "Toggle sidebar", keys: ["mod+b"], run: () => ui().toggleSidebar() },
   { id: "workbench.action.files.openFolder", title: "Open folder", keys: ["mod+o"], run: () => openFolderDialog() },
   { id: "workbench.action.newWindow", title: "New window", keys: ["mod+shift+n"], run: () => void newWindow() },

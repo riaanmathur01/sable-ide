@@ -23,6 +23,7 @@ import { serverIdFor } from "../../lib/lsp/lspClient";
 import { InterpreterPicker } from "./InterpreterPicker";
 import { BranchPicker } from "./BranchPicker";
 import { GitHubStatusItem } from "../GitHub/GitHubStatusItem";
+import { ClaudeCodeStatusItem } from "../ClaudeCode/ClaudeCodeStatusItem";
 import { usePluginStore } from "../../store/pluginStore";
 import { useRemoteStore } from "../../store/remoteStore";
 import "../Plugins/Plugins.css";
@@ -311,6 +312,7 @@ export function StatusBar() {
           </button>
         )}
         {lspStatus && <span className="status-bar-item">{lspStatus}</span>}
+        <ClaudeCodeStatusItem />
         <PluginStatusItems />
         {hasActiveTab && autoSave && (
           <span className="status-bar-item">Auto Save</span>

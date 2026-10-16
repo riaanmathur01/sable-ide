@@ -11,7 +11,7 @@ interface CursorPosition {
 
 export type SidebarView = "files" | "search" | "git" | "history" | "debug" | "pluginViews" | "github";
 /** The Settings tab's pages, and the Plugins page's tabs. */
-export type SettingsPage = "settings" | "plugins";
+export type SettingsPage = "settings" | "plugins" | "agents";
 export type PluginsTab = "marketplace" | "installed" | "create";
 export type BottomPanel = "terminal" | "debug" | "problems" | "usages" | "hierarchy" | "tests" | "ports";
 

@@ -37,7 +37,6 @@ desktop = [
   "dep:keyring",
   "dep:fontdb",
   "dep:ttf-parser",
-  "dep:flate2",
 ]
 
 [build-dependencies]
@@ -66,10 +65,22 @@ grep-matcher = "0.1.8"
 futures-util = "0.3.32"
 tauri-plugin-opener = { version = "2.7.0", optional = true }
 base64 = "0.23.1"
-flate2 = { version = "1", optional = true }
+flate2 = "1"
+# Coding agents from the ACP registry (src/acp): archives to unpack and
+# check. Built into the remote agent too, which installs agents there.
+tar = "0.4"
+zip = { version = "4", default-features = false, features = ["deflate-flate2"] }
+sha2 = "0.10"
+semver = "1"
 # SQLite databases (database.rs): the C library built in, so the remote
 # agent needs no system SQLite.
 rusqlite = { version = "0.40", features = ["bundled"] }
+# The Claude Code IDE server's auth token (claude_code.rs).
+getrandom = "0.3"
+
+[target.'cfg(unix)'.dependencies]
+# Whether a stale Claude Code lock file's process is still alive (kill -0).
+libc = "0.2"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-process = { version = "2.4.0", optional = true }

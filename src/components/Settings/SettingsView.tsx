@@ -22,6 +22,7 @@ import { ShortcutsEditor } from "./ShortcutsEditor";
 import { pythonServerHasSemanticTokens } from "../../lib/ipc";
 import { setUpPythonSemanticHighlighting } from "../../lib/lsp/lspClient";
 import { PluginsPage } from "../Plugins/PluginsPage";
+import { AgentsSettings } from "../Agents/AgentsSettings";
 import { allThemes, hasTheme, onThemeRegistryChange, themeRegistryVersion, type ThemeDefinition } from "../../lib/themes";
 import "./SettingsView.css";
 
@@ -53,7 +54,7 @@ function matches(spec: SettingSpec, query: string): boolean {
 }
 
 /** Sections with a page of their own (listed in the nav, not the page). */
-const OWN_PAGE = new Set(["Plugins"]);
+const OWN_PAGE = new Set(["Plugins", "AI Agents"]);
 
 /**
  * The Settings tab (⌘,): the settings page — rendered entirely from
@@ -84,6 +85,7 @@ export default function SettingsView() {
     );
   }
   const onPluginsPage = page === "plugins" && !searching;
+  const onAgentsPage = page === "agents" && !searching;
 
   return (
     <div className="settings-view">
@@ -116,7 +118,7 @@ export default function SettingsView() {
             {SECTIONS.filter((section) => !OWN_PAGE.has(section)).map((section) => (
               <button
                 key={section}
-                className={!onPluginsPage && section === activeSection ? "active" : undefined}
+                className={!onPluginsPage && !onAgentsPage && section === activeSection ? "active" : undefined}
                 onClick={() => scrollToSection(section)}
               >
                 {section}
@@ -129,12 +131,19 @@ export default function SettingsView() {
             >
               Plugins
             </button>
+            <button
+              className={onAgentsPage ? "active" : undefined}
+              onClick={() => useUiStore.getState().showSettingsPage("agents")}
+            >
+              AI Agents
+            </button>
           </nav>
         )}
 
         <div className="settings-content">
           {onPluginsPage && <PluginsPage />}
-          {!onPluginsPage && SECTIONS.map((section) => {
+          {onAgentsPage && <AgentsSettings />}
+          {!onPluginsPage && !onAgentsPage && SECTIONS.map((section) => {
             // Shown on their own page, except in search results.
             if (OWN_PAGE.has(section) && !searching) return null;
             if (section === "Keyboard Shortcuts") {

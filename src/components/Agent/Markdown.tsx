@@ -1,8 +1,43 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { useTabsStore } from "../../store/tabsStore";
 import { useWorkspaceStore } from "../../store/workspaceStore";
-import { revealPosition } from "../../lib/editorRegistry";
+import { revealPosition, whenMonaco } from "../../lib/editorRegistry";
+
+/** Monaco's language id for a fence's language ("ts", "py", "rust"…). */
+function monacoLanguage(monaco: Awaited<ReturnType<typeof whenMonaco>>, fence: string): string | null {
+  const wanted = fence.toLowerCase();
+  if (!wanted) return null;
+  const languages = monaco.languages.getLanguages();
+  const found =
+    languages.find((lang) => lang.id === wanted) ??
+    languages.find((lang) => lang.aliases?.some((alias) => alias.toLowerCase() === wanted)) ??
+    languages.find((lang) => lang.extensions?.includes(`.${wanted}`));
+  if (found) return found.id;
+  const common: Record<string, string> = { sh: "shell", bash: "shell", zsh: "shell", console: "shell", shell: "shell", py: "python", rs: "rust", js: "javascript", ts: "typescript", tsx: "typescript", jsx: "javascript", yml: "yaml", md: "markdown" };
+  return common[wanted] ?? null;
+}
+
+/** Code highlighted like the editor (Monaco's tokenizer and theme), once Monaco is up. */
+function useColorized(code: string, language: string): string | null {
+  const [html, setHtml] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      void whenMonaco().then(async (monaco) => {
+        const id = monacoLanguage(monaco, language);
+        if (!id || cancelled) return;
+        const colored = await monaco.editor.colorize(code, id, { tabSize: 2 });
+        if (!cancelled) setHtml(colored);
+      });
+    }, 120); // Streaming: wait for the block to settle a little.
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [code, language]);
+  return html;
+}
 
 /**
  * A deliberately small Markdown renderer for agent replies: fenced code
@@ -157,6 +192,7 @@ function Inline({ text }: { text: string }) {
 
 function CodeBlock({ language, code }: { language: string; code: string }) {
   const [copied, setCopied] = useState(false);
+  const colorized = useColorized(code, language);
   return (
     <div className="md-code">
       <div className="md-code-header">
@@ -174,7 +210,8 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
         </button>
       </div>
       <pre>
-        <code>{code}</code>
+        {/* Monaco's colorize escapes the text: spans only. */}
+        {colorized ? <code className="md-colorized" dangerouslySetInnerHTML={{ __html: colorized }} /> : <code>{code}</code>}
       </pre>
     </div>
   );

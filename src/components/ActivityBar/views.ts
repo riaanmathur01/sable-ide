@@ -57,5 +57,5 @@ export function openPage(page: keyof typeof PAGES) {
 export function useActivePage(): keyof typeof PAGES | null {
   const settingsActive = useTabsStore((state) => state.activePath === SETTINGS_TAB_KEY);
   const page = useUiStore((state) => state.settingsPage);
-  return settingsActive ? page : null;
+  return settingsActive && page !== "agents" ? page : null;
 }

@@ -278,6 +278,48 @@ may ask once too (More info → Run anyway).
   code, run commands, and use git and the GitHub CLI. Replies stream in;
   chats are saved per project, and you can keep several. Works with
   Anthropic, OpenAI (or any OpenAI-compatible API), and Google Gemini.
+- **Coding agents (ACP)** — external agents in the same panel, installed
+  like extensions and used through the
+  [Agent Client Protocol](https://agentclientprotocol.com) (as in Zed and
+  JetBrains): **Claude Agent** (Anthropic's Claude Agent SDK, with an API
+  key, a Console account or a cloud provider), **Claude Code** — your
+  own installed `claude` CLI, run headless with its own sign-in (so your
+  Claude subscription works) — **Codex** (your ChatGPT plan, an OpenAI
+  key, Amazon Bedrock, Azure OpenAI, Ollama / LM Studio or any
+  Responses-API endpoint), **Kimi Code** (your Kimi account, or a Kimi
+  Platform, Anthropic, OpenAI-compatible, Gemini or local model), **Cursor**
+  (your Cursor account or API key; Cursor's proprietary CLI is downloaded
+  only after you agree to its notice, or Sable uses the one you
+  installed), and the rest of the ACP registry.
+  Pick the agent in the panel's header (⌘⎋ focuses it). Threads stream
+  Markdown, collapsible thinking, a live plan, and a card per tool call —
+  reads, searches, edits with their diffs, commands with their terminal
+  output — and ask before anything risky (Allow once ⌘⏎ / Always allow /
+  Reject ⌘⌫, inline). Edits stay reviewable: accept or reject each file or
+  each hunk (in Sable's diff view), or all at once (⇧⌘Y / ⌥⇧⌘Y). The
+  input takes @-mentions of files, folders and symbols, the current file
+  or selection, pasted images and the agent's slash commands, with pickers
+  for its modes, models and options. Files the agent reads and writes go
+  through the editor (unsaved changes included; writes are undoable).
+  **Settings → AI Agents** installs, updates and removes agents and sets
+  how each signs in — subscriptions (ChatGPT, Kimi, Cursor) with the
+  agent's own browser, one-time-code or terminal sign-in, API keys,
+  **Amazon Bedrock** (Claude Agent, Codex), **Google Vertex AI**,
+  **Microsoft Foundry**, **Azure OpenAI**, local models or your own
+  gateway; keys live in the system keychain and reach only the agent's
+  process. They're also in
+  **Plugins → Marketplace → AI Agents**. In a remote window agents run on
+  the remote machine. See [docs/agents.md](docs/agents.md).
+- **Coding agent in the terminal (IDE integration)** — Sable can run Claude Code,
+  Anthropic's command-line coding agent (install it from Anthropic; Sable
+  doesn't include it), in a terminal tab: **Terminal: Run Claude Code**
+  (command palette). Sable is the editor the CLI connects to, as Anthropic's VS Code
+  and JetBrains integrations are: its proposed edits open in Sable's diff
+  view with Accept / Reject, it sees your selection, open files and
+  problems, and ⌥⌘K sends it the selection as an @-mention while it's
+  connected (otherwise ⌥⌘K goes to the agent panel). You sign in
+  inside the CLI with its own `/login`; Sable never sees your
+  credentials. See [docs/agents.md](docs/agents.md).
 - **Plugins** — add commands, formatters, completions, linters
   (squiggles), and status-bar items in JavaScript. **Settings → Plugins**
   (or the puzzle icon) has a **Marketplace** to browse and install from,
@@ -496,6 +538,9 @@ one can be changed. The defaults:
 | `⇧⌘P` / `⌘P` | Command palette / go to file |
 | `⌘,` | Settings |
 | `⌘L` | Ask the AI agent |
+| `⌘⎋` / `⇧⌘⎋` | Focus the external agent (Claude Agent…) / new agent thread |
+| `⌥⌘K` | Send the selection to the agent — to Claude Code in the terminal while it's connected, else to the agent panel |
+| `⇧⌘Y` / `⌥⇧⌘Y` | Accept / reject all agent edits |
 | `⌘S` | Save (auto-save also runs after typing stops) |
 | `⌘R` | Run the active file in the terminal |
 | `⇧⌥F` | Format document |
@@ -522,8 +567,9 @@ one can be changed. The defaults:
 ## Testing
 
 ```sh
-cd src-tauri && cargo test --lib   # shell runner, search, AI streaming, debugger, git, remote
+cd src-tauri && cargo test --lib   # shell runner, search, AI streaming, debugger, git, remote, agents (ACP)
 npx tsc --noEmit                    # type-check the frontend
+node scripts/unit-test/acp.mjs      # the ACP client's JSON-RPC peer and edit-review diffs
 ```
 
 The debugger tests are end-to-end: each starts the real adapter, stops
@@ -580,6 +626,37 @@ service), and `node scripts/ui-test/refactorings-engines.mjs` (no
 browser) their TypeScript and text-based engines;
 `SABLE_TEST_ROPE_PYTHON=… cargo test --lib refactor_deep` tests the Rope
 side.
+`node scripts/ui-test/claude-code-cli.mjs` tests the Claude Code IDE
+integration end to end with a fake CLI
+(`scripts/ui-test/fixtures/fake-claude-ide-cli.mjs`): the lock file, the
+token check, MCP, every tool, diff review, selection and @-mentions. The
+bridge and the script both need `CLAUDE_CONFIG_DIR` set to the same temp
+folder (run-all.mjs does this), so the real `~/.claude/ide` is never
+touched; `SABLE_TEST_REAL_CLAUDE=1` also starts the installed `claude`
+(temp config and HOME, no prompt typed) to check that it discovers Sable
+and connects. `cargo test --lib claude_code` covers the server itself.
+
+`scripts/ui-test/agents.mjs` tests the coding-agent panel, Settings →
+AI Agents and the Marketplace's AI Agents category against a fake ACP
+agent (`scripts/ui-test/fixtures/fake-acp-agent.mjs`) that the backend
+installs for real from a stand-in registry the bridge serves; run it
+through `run-all.mjs --only agents` (which gives the bridge
+`SABLE_UI_AGENTS_DIR`, `SABLE_UI_FILES_DIR` and `SABLE_ACP_REGISTRY_URL`).
+The fake agent can also answer as Codex, Kimi Code or Cursor
+(`FAKE_ACP_AS`), so the suite covers each one's sign-in flows (ChatGPT in
+the browser and by one-time code, API keys, Bedrock, Kimi's terminal
+sign-in, Cursor's install notice and no-browser fallback).
+`cargo test --lib acp::real_tests -- --ignored --nocapture` installs the
+real Claude Agent adapter from npm and checks its handshake (initialize,
+sign-in methods, `session/new`; it never sends a prompt) —
+`real_codex_handshake`, `real_kimi_code_handshake` and
+`real_cursor_handshake` do the same for the real Codex, Kimi Code and
+Cursor, with temp home and config folders (Cursor's CLI is downloaded
+into a temp folder, or taken from `SABLE_CURSOR_PACKAGE`) — and
+`acp::real_tests::real_claude_code_cli` checks your installed `claude`
+(discovery, `--version`, `auth status`, the adapter's handshake, headless
+start-up — again without a prompt). The suite's Claude Code part runs
+against a fake `claude` (`scripts/ui-test/fixtures/fake-claude-cli.mjs`).
 
 **Running every UI suite.** `node scripts/ui-test/run-all.mjs` starts
 Vite (port 1550) and, for each suite, a fresh bridge (port 1551) with

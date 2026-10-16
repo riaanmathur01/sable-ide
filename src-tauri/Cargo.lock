@@ -3653,19 +3653,24 @@ dependencies = [
  "flate2",
  "fontdb",
  "futures-util",
+ "getrandom 0.3.4",
  "git2",
  "grep-matcher",
  "grep-regex",
  "grep-searcher",
  "ignore",
  "keyring",
+ "libc",
  "lsp-types",
  "notify",
  "portable-pty",
  "reqwest",
  "rusqlite",
+ "semver",
  "serde",
  "serde_json",
+ "sha2",
+ "tar",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
@@ -3674,6 +3679,7 @@ dependencies = [
  "tauri-plugin-updater",
  "tokio",
  "ttf-parser",
+ "zip",
 ]
 
 [[package]]
@@ -6253,6 +6259,7 @@ checksum = "caa8cd6af31c3b31c6631b8f483848b91589021b28fffe50adada48d4f4d2ed1"
 dependencies = [
  "arbitrary",
  "crc32fast",
+ "flate2",
  "indexmap 2.14.0",
  "memchr",
 ]

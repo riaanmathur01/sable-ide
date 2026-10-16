@@ -24,6 +24,9 @@ import { SETTINGS_SCHEMA } from "../../store/settingsStore";
 import { pluginId } from "../../lib/plugins/scaffold";
 import { PERMISSION_DESCRIPTIONS, type PluginInfo, type PluginPermission } from "../../lib/plugins/types";
 import { SettingRow } from "../Settings/SettingsView";
+import { useAgentHubStore, visibleAgents } from "../../store/agentHubStore";
+import { agentName } from "../../lib/acp/agents";
+import { AgentMarketplace } from "../Agents/AgentMarketplace";
 import "./Plugins.css";
 
 const DOCS_URL = "https://github.com/riaanmathur01/sable-ide/blob/main/docs/plugins.md";
@@ -80,7 +83,11 @@ function Marketplace() {
   const error = usePluginStore((state) => state.marketplaceError);
   const loading = usePluginStore((state) => state.marketplaceLoading);
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<"all" | "plugins" | "themes">("all");
+  const [category, setCategory] = useState<"all" | "plugins" | "themes" | "agents">("all");
+  const agentRegistry = useAgentHubStore((state) => state.registry);
+  useEffect(() => {
+    void useAgentHubStore.getState().load();
+  }, []);
   const [url, setUrl] = useState("");
   const busy = usePluginStore((state) => state.busy);
   const store = usePluginStore.getState();
@@ -107,7 +114,12 @@ function Marketplace() {
           : [...matching.filter((entry) => !isTheme(entry)), ...matching.filter(isTheme)],
     [matching, category],
   );
-  const counts = { all: matching.length, plugins: matching.filter((entry) => !isTheme(entry)).length, themes: matching.filter(isTheme).length };
+  const agentWords = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const agents = visibleAgents(agentRegistry).filter((entry) => {
+    const haystack = `${agentName(entry.id, entry.name)} ${entry.description} ${entry.authors.join(" ")} ${entry.id} ai agent`.toLowerCase();
+    return agentWords.every((word) => haystack.includes(word));
+  });
+  const counts = { all: matching.length, plugins: matching.filter((entry) => !isTheme(entry)).length, themes: matching.filter(isTheme).length, agents: agents.length };
 
   const marketplaceSpec = SETTINGS_SCHEMA.find((spec) => spec.key === "plugins.marketplaceUrl");
 
@@ -122,9 +134,9 @@ function Marketplace() {
           <RefreshCw size={13} strokeWidth={1.5} className={loading ? "spinning" : undefined} />
         </button>
       </div>
-      {marketplace !== null && (
+      {(marketplace !== null || agents.length > 0) && (
         <div className="marketplace-categories" role="tablist">
-          {(["all", "plugins", "themes"] as const).map((name) => (
+          {(["all", "plugins", "themes", "agents"] as const).map((name) => (
             <button
               key={name}
               role="tab"
@@ -132,14 +144,16 @@ function Marketplace() {
               className={category === name ? "active" : undefined}
               onClick={() => setCategory(name)}
             >
-              {name === "all" ? "All" : name === "plugins" ? "Plugins" : "Color Themes"}
+              {name === "all" ? "All" : name === "plugins" ? "Plugins" : name === "agents" ? "AI Agents" : "Color Themes"}
               <span className="marketplace-count">{counts[name]}</span>
             </button>
           ))}
         </div>
       )}
 
-      {error ? (
+      {category === "agents" ? (
+        <AgentMarketplace agents={agents} />
+      ) : error ? (
         <div className="plugins-notice error">
           {error}
           <button className="plugins-button" onClick={() => void store.loadMarketplace()}>

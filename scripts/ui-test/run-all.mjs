@@ -76,6 +76,7 @@ const SUITES = [
   { name: "refactorings-engines", browser: false },
   // The restored suites.
   { name: "view-switcher" },
+  { name: "agents" },
   { name: "marketplace" },
   { name: "plugin-details" },
   { name: "rename" },
@@ -92,6 +93,7 @@ const SUITES = [
   { name: "vscode-real", requires: [needs.openVsx], timeout: 15 },
   // The suites that were already in the repository.
   { name: "editor-extras" },
+  { name: "claude-code-cli" },
   { name: "github", requires: [needs.git] },
   { name: "database", requires: [needs.sqlite], timeout: 15 },
   { name: "launch-json", requires: [needs.debugpy], timeout: 15 },
@@ -210,12 +212,30 @@ function buildBridge() {
 async function startBridge(suiteDir) {
   const plugins = path.join(suiteDir, "plugins");
   const history = path.join(suiteDir, "history");
-  fs.mkdirSync(plugins, { recursive: true });
-  fs.mkdirSync(history, { recursive: true });
+  const agents = path.join(suiteDir, "agents");
+  const files = path.join(suiteDir, "files");
+  for (const dir of [plugins, history, agents, files]) fs.mkdirSync(dir, { recursive: true });
   const log = fs.openSync(path.join(suiteDir, "bridge.log"), "w");
   const child = start(bridgeBinary, ["ui_bridge::ui_bridge", "--exact", "--ignored", "--nocapture"], {
     cwd: path.join(repo, "src-tauri"),
-    env: { ...process.env, SABLE_UI_BRIDGE_PORT: BRIDGE_PORT, SABLE_UI_PLUGINS_DIR: plugins, SABLE_UI_HISTORY_DIR: history },
+    // Agents (ACP): their own folder, and a stand-in registry the suite can
+    // put in files/ (served by the bridge at /files/).
+    env: {
+      ...process.env,
+      SABLE_UI_BRIDGE_PORT: BRIDGE_PORT,
+      SABLE_UI_PLUGINS_DIR: plugins,
+      SABLE_UI_HISTORY_DIR: history,
+      SABLE_UI_AGENTS_DIR: agents,
+      SABLE_UI_FILES_DIR: files,
+      SABLE_ACP_REGISTRY_URL: `http://127.0.0.1:${BRIDGE_PORT}/files/registry.json`,
+      FAKE_ACP_STATE: path.join(suiteDir, "fake-acp-state"),
+      // Claude Code: a fake claude CLI (never the real one in tests).
+      SABLE_CLAUDE_PATH: path.join(here, "fixtures", "fake-claude-cli.mjs"),
+      FAKE_CLAUDE_STATE: path.join(suiteDir, "fake-claude-state"),
+      // CLAUDE_CONFIG_DIR: the Claude Code IDE server's lock files go to the
+      // suite's folder, never the real ~/.claude/ide.
+      CLAUDE_CONFIG_DIR: path.join(suiteDir, "claude-config"),
+    },
     stdio: ["ignore", log, log],
   });
   await waitUntil(async () => {
@@ -333,7 +353,18 @@ for (const suite of selected) {
         await startVite();
       }
       bridge = await startBridge(suiteDir);
-      Object.assign(env, { SABLE_UI_VITE_PORT: VITE_PORT, SABLE_UI_BRIDGE_PORT: BRIDGE_PORT, SABLE_UI_PLUGINS_DIR: path.join(suiteDir, "plugins") });
+      Object.assign(env, {
+        SABLE_UI_VITE_PORT: VITE_PORT,
+        SABLE_UI_BRIDGE_PORT: BRIDGE_PORT,
+        SABLE_UI_PLUGINS_DIR: path.join(suiteDir, "plugins"),
+        SABLE_UI_AGENTS_DIR: path.join(suiteDir, "agents"),
+        SABLE_UI_FILES_DIR: path.join(suiteDir, "files"),
+        FAKE_ACP_STATE: path.join(suiteDir, "fake-acp-state"),
+        FAKE_CLAUDE_STATE: path.join(suiteDir, "fake-claude-state"),
+        // Claude Code IDE integration: lock files go to the suite's folder,
+        // never the real ~/.claude/ide.
+        CLAUDE_CONFIG_DIR: path.join(suiteDir, "claude-config"),
+      });
     }
     const result = await runSuite(suite, suiteDir, env);
     const lines = result.output.split("\n");

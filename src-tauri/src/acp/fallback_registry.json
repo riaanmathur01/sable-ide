@@ -1,0 +1,162 @@
+{
+ "version": "1.0.0",
+ "agents": [
+  {
+   "id": "claude-acp",
+   "name": "Claude Agent",
+   "version": "0.90.0",
+   "description": "ACP wrapper for Anthropic's Claude",
+   "repository": "https://github.com/agentclientprotocol/claude-agent-acp",
+   "authors": [
+    "Anthropic",
+    "Zed Industries",
+    "JetBrains"
+   ],
+   "license": "proprietary",
+   "license_url": "https://github.com/agentclientprotocol/claude-agent-acp/blob/main/LICENSE",
+   "distribution": {
+    "npx": {
+     "package": "@agentclientprotocol/claude-agent-acp@0.90.0"
+    }
+   },
+   "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/claude-acp.svg"
+  },
+  {
+   "id": "codex-acp",
+   "name": "Codex",
+   "version": "2.2.2",
+   "description": "ACP adapter for OpenAI's coding assistant",
+   "repository": "https://github.com/agentclientprotocol/codex-acp",
+   "authors": [
+    "OpenAI",
+    "JetBrains s.r.o",
+    "Zed Industries"
+   ],
+   "license": "Apache-2.0",
+   "license_url": "https://github.com/agentclientprotocol/codex-acp/blob/main/LICENSE",
+   "distribution": {
+    "npx": {
+     "package": "@agentclientprotocol/codex-acp@2.2.2"
+    }
+   },
+   "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/codex-acp.svg"
+  },
+  {
+   "id": "kimi",
+   "name": "Kimi CLI",
+   "version": "1.52.0",
+   "description": "Moonshot AI's coding assistant",
+   "repository": "https://github.com/MoonshotAI/kimi-cli",
+   "website": "https://moonshotai.github.io/kimi-cli/",
+   "authors": [
+    "Moonshot AI"
+   ],
+   "license": "MIT",
+   "license_url": "https://github.com/MoonshotAI/kimi-cli/blob/main/LICENSE",
+   "distribution": {
+    "binary": {
+     "darwin-aarch64": {
+      "archive": "https://github.com/MoonshotAI/kimi-cli/releases/download/1.52.0/kimi-1.52.0-aarch64-apple-darwin.tar.gz",
+      "cmd": "./kimi",
+      "args": [
+       "acp"
+      ],
+      "sha256": "43fe091f70bbf8860974200f9021a05689a020857cc9926d56f1505f0d0d5cb8"
+     },
+     "linux-aarch64": {
+      "archive": "https://github.com/MoonshotAI/kimi-cli/releases/download/1.52.0/kimi-1.52.0-aarch64-unknown-linux-gnu.tar.gz",
+      "cmd": "./kimi",
+      "args": [
+       "acp"
+      ],
+      "sha256": "9e06eea96273600aed485b1f0bedda95b7084db4f22cf28614fe20138933507a"
+     },
+     "linux-x86_64": {
+      "archive": "https://github.com/MoonshotAI/kimi-cli/releases/download/1.52.0/kimi-1.52.0-x86_64-unknown-linux-gnu.tar.gz",
+      "cmd": "./kimi",
+      "args": [
+       "acp"
+      ],
+      "sha256": "a676204f7804ed5dae87652a9d66f578e0718d5026c9cb1bfa32b9a5eace4208"
+     },
+     "windows-aarch64": {
+      "archive": "https://github.com/MoonshotAI/kimi-cli/releases/download/1.52.0/kimi-1.52.0-aarch64-pc-windows-msvc.zip",
+      "cmd": "./kimi.exe",
+      "args": [
+       "acp"
+      ],
+      "sha256": "7c77cd413e7a3a59416c171a45ee4ff50534869b331469138aad84b9e3acb6c0"
+     },
+     "windows-x86_64": {
+      "archive": "https://github.com/MoonshotAI/kimi-cli/releases/download/1.52.0/kimi-1.52.0-x86_64-pc-windows-msvc.zip",
+      "cmd": "./kimi.exe",
+      "args": [
+       "acp"
+      ],
+      "sha256": "2c269e15e152b9f28ac1556795280f90a2c9860ff44c60c628c3fce4dd4c58a7"
+     }
+    }
+   },
+   "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/kimi.svg"
+  },
+  {
+   "id": "cursor",
+   "name": "Cursor",
+   "version": "2026.10.14",
+   "description": "Cursor's coding agent",
+   "website": "https://cursor.com/docs/cli/acp",
+   "authors": [
+    "Cursor"
+   ],
+   "license": "proprietary",
+   "license_url": "https://cursor.com/terms-of-service",
+   "distribution": {
+    "binary": {
+     "darwin-aarch64": {
+      "archive": "https://downloads.cursor.com/lab/2026.10.14-0f9edde/darwin/arm64/agent-cli-package.tar.gz",
+      "cmd": "./dist-package/cursor-agent",
+      "args": [
+       "acp"
+      ]
+     },
+     "darwin-x86_64": {
+      "archive": "https://downloads.cursor.com/lab/2026.10.14-0f9edde/darwin/x64/agent-cli-package.tar.gz",
+      "cmd": "./dist-package/cursor-agent",
+      "args": [
+       "acp"
+      ]
+     },
+     "linux-aarch64": {
+      "archive": "https://downloads.cursor.com/lab/2026.10.14-0f9edde/linux/arm64/agent-cli-package.tar.gz",
+      "cmd": "./dist-package/cursor-agent",
+      "args": [
+       "acp"
+      ]
+     },
+     "linux-x86_64": {
+      "archive": "https://downloads.cursor.com/lab/2026.10.14-0f9edde/linux/x64/agent-cli-package.tar.gz",
+      "cmd": "./dist-package/cursor-agent",
+      "args": [
+       "acp"
+      ]
+     },
+     "windows-aarch64": {
+      "archive": "https://downloads.cursor.com/lab/2026.10.14-0f9edde/windows/arm64/agent-cli-package.zip",
+      "cmd": "./dist-package\\cursor-agent.cmd",
+      "args": [
+       "acp"
+      ]
+     },
+     "windows-x86_64": {
+      "archive": "https://downloads.cursor.com/lab/2026.10.14-0f9edde/windows/x64/agent-cli-package.zip",
+      "cmd": "./dist-package\\cursor-agent.cmd",
+      "args": [
+       "acp"
+      ]
+     }
+    }
+   },
+   "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/cursor.svg"
+  }
+ ]
+}

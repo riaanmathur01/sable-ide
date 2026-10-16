@@ -217,19 +217,30 @@ const glyphPoint = (page, line) =>
 
 // Avatars come from GitHub's image host: answered here with a drawn one.
 async function stubAvatars(page) {
-  await page.setRequestInterception(true);
-  page.on("request", (request) => {
-    const url = request.url();
+  // A CDP Fetch session of our own, not page.setRequestInterception():
+  // puppeteer's interception also pauses the requests of the page's web
+  // workers without ever reporting them, so Monaco's editor worker never
+  // loaded and diffs were never computed ("timed out waiting for diff
+  // colors"). Only requests leaving the machine are paused here, so
+  // Vite's (localhost) and blob:/data: URLs are never touched.
+  const client = await page.createCDPSession();
+  client.on("Fetch.requestPaused", ({ requestId, request }) => {
+    const url = request.url;
     if (url.startsWith("https://avatars.githubusercontent.com/")) {
       const login = decodeURIComponent(new URL(url).pathname.slice(1));
       const hue = [...login].reduce((sum, char) => sum + char.charCodeAt(0) * 37, 0) % 360;
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="hsl(${hue},45%,55%)"/><circle cx="32" cy="26" r="12" fill="hsl(${hue},45%,85%)"/><rect x="14" y="42" width="36" height="22" rx="11" fill="hsl(${hue},45%,85%)"/></svg>`;
-      void request.respond({ status: 200, contentType: "image/svg+xml", body: svg });
-    } else if (!url.startsWith("http://localhost") && !url.startsWith("data:") && !url.startsWith("blob:")) {
+      void client
+        .send("Fetch.fulfillRequest", { requestId, responseCode: 200, responseHeaders: [{ name: "Content-Type", value: "image/svg+xml" }], body: Buffer.from(svg).toString("base64") })
+        .catch(() => {});
+    } else if (/^https?:\/\/(localhost|127\.0\.0\.1)[:/]/.test(url)) {
+      void client.send("Fetch.continueRequest", { requestId }).catch(() => {});
+    } else {
       // Nothing else leaves the machine.
-      void request.abort();
-    } else void request.continue();
+      void client.send("Fetch.failRequest", { requestId, errorReason: "BlockedByClient" }).catch(() => {});
+    }
   });
+  await client.send("Fetch.enable", { patterns: [{ urlPattern: "https://*" }, { urlPattern: "http://*" }, { urlPattern: "ws://*" }, { urlPattern: "wss://*" }] });
 }
 
 // Terminals need the app window: record what would run.

@@ -72,7 +72,7 @@ const TOOL_ICONS: Record<string, typeof FileText> = {
  * tool call as a collapsible card (with approve/deny and revert), and the
  * input box. All behavior lives in agentStore.
  */
-export function AgentPanel() {
+export function AgentPanel({ switcher }: { switcher?: React.ReactNode } = {}) {
   const items = useAgentStore((state) => state.items);
   const isRunning = useAgentStore((state) => state.isRunning);
   const status = useAgentStore((state) => state.status);
@@ -126,7 +126,7 @@ export function AgentPanel() {
   return (
     <aside className="agent-panel" style={{ width }}>
       <div className="agent-header">
-        <span className="agent-title">{showHistory ? "Chats" : "Agent"}</span>
+        {switcher ?? <span className="agent-title">{showHistory ? "Chats" : "Agent"}</span>}
         <div className="agent-header-actions">
           <button
             title="New chat"

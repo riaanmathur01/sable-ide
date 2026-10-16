@@ -72,6 +72,9 @@ export interface Settings {
   "ai.inlineAnthropicModel": string;
   "ai.inlineOpenaiModel": string;
   "ai.inlineGoogleModel": string;
+  "agents.followAlong": boolean;
+  "agents.thinkingExpanded": boolean;
+  "agents.includeActiveFile": boolean;
   "updates.checkOnStartup": boolean;
   "github.ghPath": string;
   "breadcrumbs.enabled": boolean;
@@ -80,6 +83,9 @@ export interface Settings {
   "spellCheck.enabled": boolean;
   "spellCheck.language": "en-US" | "en-GB";
   "spellCheck.userWords": string;
+  "claudeCode.path": string;
+  "claudeCode.autoConnect": boolean;
+  "claudeCode.reviewDiffs": boolean;
 }
 
 export type SettingKey = keyof Settings;
@@ -181,6 +187,13 @@ export const SETTINGS_SCHEMA: SettingSpec[] = [
   { key: "plugins.marketplaceUrl", section: "Plugins", type: "string", placeholder: "https://…/registry.json", label: "Marketplace URL", description: "The catalogue the Plugins marketplace lists. Point it at your own JSON file (same format) to run a private marketplace, e.g. for a team.", default: "https://raw.githubusercontent.com/riaanmathur01/sable-ide/main/plugins/registry.json" },
   { key: "github.ghPath", section: "GitHub", type: "string", placeholder: "gh", label: "GitHub CLI Path", description: "The GitHub CLI (gh) the GitHub view uses for pull requests and issues. Leave empty to find gh on its own (Homebrew, PATH). Sable stores no GitHub tokens: sign in with `gh auth login`.", default: "" },
   { key: "updates.checkOnStartup", section: "Updates", type: "boolean", label: "Check for Updates on Startup", description: "Look for a newer Sable when it starts, and say so in the status bar. “Check for Updates” in the command palette installs it.", default: true },
+  { key: "agents.followAlong", section: "AI Agents", type: "boolean", label: "Follow Along", description: "Open each file an external agent (Claude Agent, Codex…) edits, at the change, as it works.", default: true },
+  { key: "agents.includeActiveFile", section: "AI Agents", type: "boolean", label: "Offer the Current File as Context", description: "Show the file (and selection) you're in as a context chip in the agent's input. Click a chip to leave it out.", default: true },
+  { key: "agents.thinkingExpanded", section: "AI Agents", type: "boolean", label: "Show Thinking Expanded", description: "Show an agent's thinking open instead of collapsed.", default: false },
+  // --- Claude Code (Anthropic's CLI, run in Sable's terminal) -------------------
+  { key: "claudeCode.path", section: "Claude Code (Anthropic's CLI)", type: "string", placeholder: "claude", label: "CLI Path", description: "The `claude` program Terminal: Run Claude Code (command palette) starts. Leave empty to find it on its own (PATH, ~/.local/bin, Homebrew, npm). Sable runs Anthropic's CLI as it is and never sees your Claude credentials: sign in inside it with /login.", default: "" },
+  { key: "claudeCode.autoConnect", section: "Claude Code (Anthropic's CLI)", type: "boolean", label: "Connect Automatically", description: "Let Claude Code connect to this window as its IDE: Sable shares the selection, open files and problems with it and shows its proposed edits for review. When off, Claude Code started from Sable doesn't connect until you run /ide in it.", default: true },
+  { key: "claudeCode.reviewDiffs", section: "Claude Code (Anthropic's CLI)", type: "boolean", label: "Review Edits in a Diff", description: "Open each edit Claude Code proposes in a diff with Accept / Reject (you can also answer in its terminal). When off, Claude Code edits files directly once you approve them in its terminal.", default: true },
   { key: "ai.customInstructions", section: "AI Agent", type: "string", multiline: true, placeholder: "e.g. Prefer functional components. Always add tests.", label: "Custom Instructions", description: "Extra guidance appended to the agent's system prompt.", default: "" },
 ];
 

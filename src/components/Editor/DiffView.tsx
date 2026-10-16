@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Columns2, Minus, Plus, Rows2 } from "lucide-react";
+import { Check, Columns2, Minus, Plus, Rows2, Undo2 } from "lucide-react";
 import type * as MonacoTypes from "monaco-editor";
 import { gitCommitFileDiff, gitFileDiff, readFile } from "../../lib/ipc";
 import { getModelValue } from "../../lib/editorRegistry";
@@ -8,9 +8,12 @@ import type { DiffSource } from "../../store/tabsStore";
 import { monaco } from "../../lib/monacoSetup";
 import { getSetting, useSettingsStore } from "../../store/settingsStore";
 import { cachedThemeId, themeById } from "../../lib/themes";
-import { stageHunk, unstageHunk, type LineChange } from "../../lib/git/hunks";
+import { applyLineChanges, sameChange, stageHunk, unstageHunk, type LineChange } from "../../lib/git/hunks";
+import { useAcpStore } from "../../store/acpStore";
+import { writeFileContents } from "../../lib/fileContents";
 import { useGitStore } from "../../store/gitStore";
 import { attachPrReview, loadPrSides, PrDiffToolbar } from "../GitHub/prReview";
+import { ProposalToolbar, loadProposalSides } from "../ClaudeCode/ProposalToolbar";
 import "./DiffView.css";
 
 type DiffEditor = MonacoTypes.editor.IStandaloneDiffEditor;
@@ -21,8 +24,9 @@ type DiffEditor = MonacoTypes.editor.IStandaloneDiffEditor;
  */
 interface HunkTarget {
   editor: DiffEditor;
-  staged: boolean;
-  apply: (change: LineChange) => void;
+  /** The lenses above each change (Stage hunk; Accept / Reject). */
+  lenses: { action: string; title: string; tooltip: string }[];
+  apply: (change: LineChange, action: string) => void;
 }
 const hunkTargets = new Map<string, HunkTarget>();
 let hunkLensesChanged: MonacoTypes.Emitter<MonacoTypes.languages.CodeLensProvider> | null = null;
@@ -32,10 +36,10 @@ let diffModelCount = 0;
 function registerHunkLenses() {
   if (hunkProvider) return;
   hunkLensesChanged = new monaco.Emitter();
-  monaco.editor.registerCommand("sable.diff.hunk", (_accessor, uri: string, index: number) => {
+  monaco.editor.registerCommand("sable.diff.hunk", (_accessor, uri: string, index: number, action: string) => {
     const target = hunkTargets.get(uri);
     const change = target?.editor.getLineChanges()?.[index];
-    if (target && change) target.apply(change);
+    if (target && change) target.apply(change, action);
   });
   hunkProvider = {
     onDidChange: hunkLensesChanged.event,
@@ -43,19 +47,14 @@ function registerHunkLenses() {
       const uri = model.uri.toString();
       const target = hunkTargets.get(uri);
       const changes = target?.editor.getLineChanges() ?? [];
-      const lenses = changes.map((change, index) => {
+      const lenses = changes.flatMap((change, index) => {
         // A deletion has no modified lines: label the line after it.
         const line = Math.max(1, change.modifiedEndLineNumber === 0 ? change.modifiedStartLineNumber + 1 : change.modifiedStartLineNumber);
         const lineNumber = Math.min(line, model.getLineCount());
-        return {
+        return target!.lenses.map((lens) => ({
           range: { startLineNumber: lineNumber, startColumn: 1, endLineNumber: lineNumber, endColumn: 1 },
-          command: {
-            id: "sable.diff.hunk",
-            title: target!.staged ? "Unstage hunk" : "Stage hunk",
-            tooltip: target!.staged ? "Take this change out of the next commit" : "Put just this change in the next commit",
-            arguments: [uri, index],
-          },
-        };
+          command: { id: "sable.diff.hunk", title: lens.title, tooltip: lens.tooltip, arguments: [uri, index, lens.action] },
+        }));
       });
       return { lenses, dispose() {} };
     },
@@ -87,10 +86,36 @@ async function loadSides(root: string, source: DiffSource): Promise<{ original: 
       return { original: await currentText(source.filePath), modified: source.text, isBinary: false };
     case "pr":
       return loadPrSides(source);
+    case "agent": {
+      const entry = agentReview(source.threadId, source.filePath);
+      return { original: entry?.original ?? "", modified: (await currentText(source.filePath).catch(() => "")) ?? "", isBinary: false };
+    }
+    case "claude":
+      return loadProposalSides(source, currentText);
   }
 }
 
 /** Pick a Monaco language id from a file's extension. */
+/**
+ * Monaco bug workaround: every standalone code editor's constructor points
+ * two globals — the hover delegate factory (used by every action bar,
+ * e.g. the editor's context menu) and the markdown code-block renderer —
+ * at the instantiation service it was created with. A diff editor's two
+ * inner editors get the diff editor's *child* service, which is disposed
+ * with it, so afterwards the context menu throws "InstantiationService
+ * has been disposed" and no longer opens. Creating (and at once
+ * disposing) an editor through the public API re-points both globals at
+ * Monaco's root service, which is never disposed. No model: it renders
+ * nothing and listeners that look at the model skip it.
+ */
+function reanchorEditorServices() {
+  try {
+    monaco.editor.create(document.createElement("div"), { model: null, automaticLayout: false }).dispose();
+  } catch {
+    // Best effort: worst case, the old behavior.
+  }
+}
+
 function languageForPath(path: string): string {
   const extension = "." + (path.split(".").pop()?.toLowerCase() ?? "");
   const language = monaco.languages
@@ -119,6 +144,8 @@ export default function DiffView({ source }: DiffViewProps) {
   const diffEditorRef = useRef<ReturnType<
     typeof monaco.editor.createDiffEditor
   > | null>(null);
+  /** The right side's text now (a Claude Code proposal is editable). */
+  const modifiedText = useRef<() => string | null>(() => null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -144,6 +171,10 @@ export default function DiffView({ source }: DiffViewProps) {
           setMessage("Binary file — diff not shown");
           return;
         }
+        if (source.kind === "agent" && (!agentReview(source.threadId, source.filePath) || diff.original === diff.modified)) {
+          setMessage("No agent changes waiting in this file");
+          return;
+        }
         if (source.kind === "working" && diff.original === diff.modified) {
           setMessage(source.staged ? "Nothing staged in this file" : "No unstaged changes left in this file");
           return;
@@ -166,11 +197,12 @@ export default function DiffView({ source }: DiffViewProps) {
           theme: useSettingsStore.getState().loaded
             ? themeById(getSetting("workbench.colorTheme")).id
             : cachedThemeId(),
-          readOnly: true,
+          // A proposed change can be touched up before accepting it.
+          readOnly: source.kind !== "claude",
           originalEditable: false,
           // Monaco hides CodeLens in diff editors by default; the
           // "Stage hunk" / "Unstage hunk" actions are CodeLens.
-          diffCodeLens: source.kind === "working",
+          diffCodeLens: source.kind === "working" || source.kind === "agent",
           renderSideBySide: sideBySide,
           automaticLayout: true,
           minimap: { enabled: false },
@@ -186,6 +218,8 @@ export default function DiffView({ source }: DiffViewProps) {
           modified: modifiedModel,
         });
         diffEditorRef.current = diffEditor;
+        const modified = modifiedModel;
+        modifiedText.current = () => (modified.isDisposed() ? null : modified.getValue());
         const modifiedEditor = diffEditor.getModifiedEditor();
         modifiedEditor.setScrollTop(scrollTop.current);
         modifiedEditor.onDidScrollChange((event) => {
@@ -194,6 +228,36 @@ export default function DiffView({ source }: DiffViewProps) {
 
         if (source.kind === "pr") detachReview = attachPrReview(diffEditor, source);
 
+        if (source.kind === "agent") {
+          registerHunkLenses();
+          const original = originalModel;
+          const modified = modifiedModel;
+          hunkTargets.set(modified.uri.toString(), {
+            editor: diffEditor,
+            lenses: [
+              { action: "accept", title: "✓ Accept", tooltip: "Keep this change" },
+              { action: "reject", title: "↺ Reject", tooltip: "Undo this change in the file" },
+            ],
+            apply: (change, action) => {
+              const all = diffEditor.getLineChanges() ?? [];
+              const before = original.getLinesContent();
+              const after = modified.getLinesContent();
+              if (action === "accept") {
+                // The change joins the baseline: it's no longer "the agent's".
+                const baseline = applyLineChanges(before, after, [change]).join(original.getEOL()) + (original.getValue().endsWith("\n") || modified.getValue().endsWith("\n") ? original.getEOL() : "");
+                if (all.length <= 1 || baseline === modified.getValue()) useAcpStore.getState().acceptFile(source.threadId, source.filePath);
+                else setAgentReviewOriginal(source.threadId, source.filePath, baseline);
+                setReloadToken((token) => token + 1);
+              } else {
+                const kept = applyLineChanges(before, after, all.filter((other) => !sameChange(other, change)));
+                const text = kept.join(modified.getEOL()) + (modified.getValue().endsWith("\n") ? modified.getEOL() : "");
+                void writeFileContents(source.filePath, text).then(() => setReloadToken((token) => token + 1));
+              }
+            },
+          });
+          diffEditor.onDidUpdateDiff(() => hunkLensesChanged?.fire(hunkProvider!));
+        }
+
         if (source.kind === "working") {
           registerHunkLenses();
           const original = originalModel;
@@ -201,7 +265,11 @@ export default function DiffView({ source }: DiffViewProps) {
           const staged = source.staged;
           hunkTargets.set(modified.uri.toString(), {
             editor: diffEditor,
-            staged,
+            lenses: [
+              staged
+                ? { action: "unstage", title: "Unstage hunk", tooltip: "Take this change out of the next commit" }
+                : { action: "stage", title: "Stage hunk", tooltip: "Put just this change in the next commit" },
+            ],
             apply: (change) => {
               const changes = diffEditor.getLineChanges() ?? [];
               const lines = staged
@@ -226,10 +294,15 @@ export default function DiffView({ source }: DiffViewProps) {
       disposed = true;
       if (modifiedModel) hunkTargets.delete(modifiedModel.uri.toString());
       detachReview?.();
+      const hadEditor = diffEditorRef.current !== null;
       diffEditorRef.current?.dispose();
       diffEditorRef.current = null;
-      originalModel?.dispose();
-      modifiedModel?.dispose();
+      if (hadEditor) reanchorEditorServices();
+      // A diff still being computed in the worker fails ("no diff result
+      // available") if its models go first — e.g. a Claude Code proposal
+      // closed right after it opened. Let it finish.
+      const models = [originalModel, modifiedModel];
+      setTimeout(() => models.forEach((model) => model?.dispose()), 1000);
     };
     // Re-fetch only when the target changes; the toggle is handled below.
     // (EditorArea also keys this component by the diff's tab id.)
@@ -245,6 +318,8 @@ export default function DiffView({ source }: DiffViewProps) {
     <div className="diff-view">
       <div className="diff-toolbar">
         {source.kind === "pr" && <PrDiffToolbar source={source} />}
+        {source.kind === "agent" && <AgentDiffToolbar threadId={source.threadId} path={source.filePath} onChange={() => setReloadToken((token) => token + 1)} />}
+        {source.kind === "claude" && <ProposalToolbar source={source} modifiedText={() => modifiedText.current()} />}
         {source.kind === "working" && (
           <button
             className="diff-toggle diff-stage-file"
@@ -278,5 +353,45 @@ export default function DiffView({ source }: DiffViewProps) {
         {message && <div className="diff-message">{message}</div>}
       </div>
     </div>
+  );
+}
+
+function agentReview(threadId: string, path: string) {
+  return useAcpStore.getState().threads[threadId]?.review[path];
+}
+
+/** Accepting one change: the file's baseline moves forward. */
+function setAgentReviewOriginal(threadId: string, path: string, original: string) {
+  useAcpStore.setState((state) => {
+    const thread = state.threads[threadId];
+    const entry = thread?.review[path];
+    if (!thread || !entry) return {};
+    return { threads: { ...state.threads, [threadId]: { ...thread, review: { ...thread.review, [path]: { ...entry, original } } } } };
+  });
+}
+
+/** Accept / reject the whole file, for an agent's changes. */
+function AgentDiffToolbar({ threadId, path, onChange }: { threadId: string; path: string; onChange: () => void }) {
+  const pending = useAcpStore((state) => Boolean(state.threads[threadId]?.review[path]));
+  const touched = useAcpStore((state) => state.threads[threadId]?.review[path]?.touchedAt);
+  useEffect(() => {
+    onChange();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [touched]);
+  if (!pending) return null;
+  return (
+    <>
+      <button className="diff-toggle diff-stage-file" title="Undo all of the agent's changes to this file" onClick={() => void useAcpStore.getState().rejectFile(threadId, path).then(onChange)}>
+        <Undo2 size={14} strokeWidth={1.5} />
+        <span>Reject file</span>
+      </button>
+      <button className="diff-toggle diff-stage-file" title="Keep all of the agent's changes to this file" onClick={() => {
+        useAcpStore.getState().acceptFile(threadId, path);
+        onChange();
+      }}>
+        <Check size={14} strokeWidth={1.5} />
+        <span>Accept file</span>
+      </button>
+    </>
   );
 }

@@ -1,0 +1,27 @@
+{
+ "version": "1.0.0",
+ "agents": [
+  {
+   "id": "kimi-code",
+   "name": "Kimi Code",
+   "version": "2.2.0",
+   "description": "Moonshot AI's Kimi Code CLI (the current Kimi agent; the registry's \"kimi\" entry is the archived Kimi CLI)",
+   "repository": "https://github.com/MoonshotAI/kimi-code",
+   "website": "https://www.kimi.com/code",
+   "authors": [
+    "Moonshot AI"
+   ],
+   "license": "MIT",
+   "distribution": {
+    "npx": {
+     "package": "@moonshot-ai/kimi-code@2.2.0",
+     "args": [
+      "acp"
+     ]
+    }
+   },
+   "license_url": "https://github.com/MoonshotAI/kimi-code/blob/main/LICENSE",
+   "icon": "https://cdn.agentclientprotocol.com/registry/v1/latest/kimi.svg"
+  }
+ ]
+}

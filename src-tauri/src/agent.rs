@@ -59,6 +59,8 @@ pub struct AgentState {
     debug: debug::DebugManager,
     notebooks: notebook::NotebookState,
     databases: Arc<database::DatabaseState>,
+    /// Coding agents (ACP) run here, beside the code: ~/.sable/agents.
+    agents: crate::acp::AcpState,
     tunnels: std::sync::Mutex<std::collections::HashMap<u64, mpsc::UnboundedSender<Vec<u8>>>>,
     watching_ports: std::sync::atomic::AtomicBool,
 }
@@ -205,6 +207,9 @@ fn ok<T: Serialize>(result: Result<T, String>) -> Result<Value, String> {
 
 /// The commands a remote workspace needs. `None`: not a remote command.
 pub async fn dispatch(state: &AgentState, events: &Events, command: &str, args: &Value) -> Option<Result<Value, String>> {
+    if command.starts_with("acp_") {
+        return crate::acp::dispatch(&state.agents, events, &crate::acp::remote_root(), command, args).await;
+    }
     let result: Result<Result<Value, String>, Fail> = async {
         Ok(match command {
             // --- Files -------------------------------------------------------------

@@ -19,7 +19,7 @@ import { usePluginStore } from "./store/pluginStore";
 import { ActivityBar } from "./components/ActivityBar/ActivityBar";
 import { clearTestContexts } from "./lib/testing/runner";
 import { ColorPicker } from "./components/ColorPicker/ColorPicker";
-import { AgentPanel } from "./components/Agent/AgentPanel";
+import { AgentsPanel } from "./components/Agents/AgentsPanel";
 import { Resizer } from "./components/Layout/Resizer";
 import { useUiStore, lastTerminalVisible } from "./store/uiStore";
 import { useColorTheme, useSetting, useSettingsStore } from "./store/settingsStore";
@@ -50,6 +50,7 @@ const workspaceRestored = Promise.race([
 ]);
 import { initLspListeners } from "./lib/lsp/lspClient";
 import { initDebugListeners } from "./lib/debug/debugClient";
+import { initClaudeCode } from "./lib/claudeCode";
 import "./App.css";
 
 /**
@@ -92,6 +93,8 @@ function App() {
   useEffect(() => {
     initLspListeners();
     initDebugListeners();
+    // Claude Code (Anthropic's CLI) connects to this window as its IDE.
+    initClaudeCode();
     // Themes from plugins don't wait for the folder: the window's colors
     // may depend on one.
     void usePluginStore.getState().loadThemes();
@@ -298,7 +301,7 @@ function App() {
               defaultSize={380}
               onResize={(size) => setPanelSize("agentWidth", size)}
             />
-            <AgentPanel />
+            <AgentsPanel />
           </>
         )}
       </div>

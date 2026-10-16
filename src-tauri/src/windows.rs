@@ -92,11 +92,16 @@ pub fn closed(app: &AppHandle, label: &str) {
     let lsp = app.state::<PerWindow<crate::lsp::LspManager>>().remove(label);
     let debug = app.state::<PerWindow<crate::debug::DebugManager>>().remove(label);
     let notebooks = app.state::<PerWindow<crate::notebook::NotebookState>>().remove(label);
+    let agents = app.state::<PerWindow<crate::acp::AcpState>>().remove(label);
     if let Some(databases) = app.state::<PerWindow<crate::database::DatabaseState>>().remove(label) {
         databases.interrupt_all();
     }
+    let claude_code = app.state::<PerWindow<crate::claude_code::ClaudeCodeState>>().remove(label);
     let label = label.to_string();
     tauri::async_runtime::spawn(async move {
+        if let Some(claude_code) = claude_code {
+            crate::claude_code::stop(&claude_code).await;
+        }
         if let Some(lsp) = lsp {
             let _ = crate::lsp::stop_all(&lsp).await;
         }
@@ -105,6 +110,9 @@ pub fn closed(app: &AppHandle, label: &str) {
         }
         if let Some(notebooks) = notebooks {
             crate::notebook::stop_all(&notebooks).await;
+        }
+        if let Some(agents) = agents {
+            agents.shutdown().await;
         }
         crate::remote::disconnect(&label).await;
         crate::plugin_node::stop_window(&label);

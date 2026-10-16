@@ -1,0 +1,203 @@
+/* Claude Code (Anthropic's CLI): diff review toolbar, status item, install help. */
+
+.claude-proposal-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  margin-right: 8px;
+}
+
+.claude-proposal-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.claude-proposal-label svg {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.claude-proposal-hint {
+  overflow: hidden;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+}
+
+.claude-proposal-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.claude-proposal-button:hover:not(:disabled) {
+  border-color: var(--text-muted);
+}
+
+.claude-proposal-button.accept {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.claude-proposal-button.accept:hover:not(:disabled) {
+  filter: brightness(1.08);
+  border-color: var(--accent);
+}
+
+.claude-proposal-button.reject:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.claude-proposal-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.claude-code-status svg {
+  color: var(--accent);
+}
+
+/* Install help */
+
+.claude-install-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14vh;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.claude-install {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(520px, calc(100vw - 32px));
+  padding: 16px 18px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.claude-install p {
+  margin: 0;
+}
+
+.claude-install code {
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+
+.claude-install-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.claude-install-close {
+  display: flex;
+  margin-left: auto;
+  padding: 3px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.claude-install-close:hover {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.claude-install-command {
+  margin: 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  user-select: text;
+}
+
+.claude-install-note {
+  font-size: 12px;
+}
+
+.claude-install-error {
+  padding: 6px 8px;
+  border: 1px solid var(--danger);
+  border-radius: 5px;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.claude-install-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.claude-install-actions button {
+  height: 26px;
+  padding: 0 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.claude-install-actions button:hover:not(:disabled) {
+  border-color: var(--text-muted);
+}
+
+.claude-install-actions button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.claude-install-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

@@ -41,12 +41,28 @@ static NOTEBOOKS: std::sync::LazyLock<crate::notebook::NotebookState> = std::syn
 /// Databases opened through the bridge.
 static DATABASES: std::sync::LazyLock<std::sync::Arc<crate::database::DatabaseState>> = std::sync::LazyLock::new(Default::default);
 
+/// The Claude Code IDE server started through the bridge (its lock file
+/// goes to $CLAUDE_CONFIG_DIR/ide: point that at a temp folder).
+static CLAUDE_CODE: std::sync::LazyLock<crate::claude_code::ClaudeCodeState> = std::sync::LazyLock::new(Default::default);
+
 /// Debug sessions started through the bridge (launch.json debugging).
 static DEBUG: std::sync::LazyLock<crate::debug::DebugManager> = std::sync::LazyLock::new(Default::default);
 
+/// Coding agents run through the bridge (the page's window).
+static AGENTS: std::sync::LazyLock<std::sync::Arc<crate::acp::AcpState>> = std::sync::LazyLock::new(Default::default);
+
 async fn dispatch(command: &str, args: &Value) -> Result<Value, String> {
+    if command.starts_with("acp_") {
+        let context = crate::acp::commands::Context { label: "bridge".into(), events: bridge_events(), state: AGENTS.clone() };
+        if let Some(result) = crate::acp::commands::bridge_dispatch(&context, command, args).await {
+            return Ok(reply(result));
+        }
+    }
     let debug_events = || -> std::sync::Arc<dyn crate::debug::DebugEvents> { std::sync::Arc::new(crate::debug::SinkEvents(bridge_events())) };
     if let Some(result) = crate::launch_config::dispatch("bridge", debug_events(), &DEBUG, command, args).await {
+        return Ok(reply(result));
+    }
+    if let Some(result) = crate::claude_code::bridge_dispatch(bridge_events(), &CLAUDE_CODE, command, args).await {
         return Ok(reply(result));
     }
     Ok(match command {
@@ -185,6 +201,19 @@ async fn serve(mut stream: tokio::net::TcpStream) {
             break (end + 4, length);
         }
     };
+    // GET /files/<name>: a file from SABLE_UI_FILES_DIR (a suite's stand-in
+    // registry and downloads, e.g. the fake ACP agent).
+    let head = String::from_utf8_lossy(&buffer[..header_end]).to_string();
+    if let Some(name) = head.strip_prefix("GET /files/").and_then(|rest| rest.split_whitespace().next()) {
+        let dir = std::env::var("SABLE_UI_FILES_DIR").unwrap_or_default();
+        let safe = !name.contains("..") && !dir.is_empty();
+        let response = match std::fs::read(std::path::Path::new(&dir).join(name)).ok().filter(|_| safe) {
+            Some(body) => [format!("HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", body.len()).into_bytes(), body].concat(),
+            None => b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".to_vec(),
+        };
+        let _ = stream.write_all(&response).await;
+        return;
+    }
     while buffer.len() < header_end + length {
         let Ok(read) = stream.read(&mut chunk).await else { return };
         if read == 0 {
@@ -215,6 +244,11 @@ async fn ui_bridge() {
     }
     if let Ok(dir) = std::env::var("SABLE_UI_HISTORY_DIR") {
         history::set_history_dir(std::path::PathBuf::from(dir));
+    }
+    // Agents: a folder of the test's own (SABLE_UI_AGENTS_DIR), else one
+    // beside the plugins folder.
+    if let Some(dir) = std::env::var_os("SABLE_UI_AGENTS_DIR").or_else(|| std::env::var_os("SABLE_UI_PLUGINS_DIR").map(|p| std::path::PathBuf::from(p).with_file_name("agents").into_os_string())) {
+        crate::acp::commands::set_agents_dir(std::path::PathBuf::from(dir));
     }
     if let Ok(dir) = std::env::var("SABLE_UI_PLUGINS_DIR") {
         plugins::set_plugins_dir(std::path::PathBuf::from(dir));

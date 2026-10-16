@@ -33,6 +33,8 @@ export interface TerminalSession {
   command?: TerminalCommand;
   /** Sessions sharing a reuse key replace each other (one Debug tab). */
   reuseKey?: string;
+  /** Keep `title` (ignore the program's own title, e.g. "claude"). */
+  fixedTitle?: boolean;
 }
 
 /** Program sessions waiting for their view to mount and start them. */
@@ -163,7 +165,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
   setTitle: (id, title) =>
     set((state) => ({
       sessions: state.sessions.map((session) =>
-        session.id === id && session.title !== title ? { ...session, title } : session,
+        session.id === id && session.title !== title && !session.fixedTitle ? { ...session, title } : session,
       ),
     })),
 

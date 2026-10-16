@@ -52,7 +52,11 @@ export type DiffSource =
   /** A file (left) against text from the clipboard (right). */
   | { kind: "clipboard"; filePath: string; text: string }
   /** A pull request's file between its base and head (GitHub review). */
-  | PrDiffSource;
+  | PrDiffSource
+  /** An external agent's edits to a file, before you accept them. */
+  | { kind: "agent"; filePath: string; threadId: string }
+  /** A change Claude Code proposes (lib/claudeCode/proposals.ts): Accept / Reject. */
+  | { kind: "claude"; filePath: string; proposalId: string; tabName: string };
 
 export interface EditorTab {
   /** Stable key. File tabs use the file path; diff tabs use a synthetic key. */
@@ -112,6 +116,10 @@ function diffKey(source: DiffSource): string {
       return `diff:b:${source.filePath}`;
     case "pr":
       return `diff:pr:${source.root}#${source.number}:${source.path}`;
+    case "agent":
+      return `diff:a:${source.filePath}`;
+    case "claude":
+      return `diff:claude:${source.proposalId}`;
   }
 }
 
@@ -132,6 +140,10 @@ function diffName(source: DiffSource): string {
       return `${base} ↔ Clipboard`;
     case "pr":
       return `${base} (#${source.number})`;
+    case "agent":
+      return `${base} (Agent Changes)`;
+    case "claude":
+      return `${base} (Proposed)`;
   }
 }
 
